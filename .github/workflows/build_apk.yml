@@ -23,14 +23,27 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Generate Fresh Android Gradle & Setup C++ Engine
+      - name: Generate Clean Android Project & Inject C++ Engine
         run: |
           rm -rf android/
           flutter create . --platforms=android --org com.tiptop --project-name tiptop_game_engine
+          
           mkdir -p android/app/src/main/cpp/ffi_exports
           cp cpp_engine/CMakeLists.txt android/app/src/main/cpp/
           cp cpp_engine/ffi_exports/engine_api.cpp android/app/src/main/cpp/ffi_exports/
-          sed -i '/android {/a \    externalNativeBuild {\n        cmake {\n            path "src/main/cpp/CMakeLists.txt"\n        }\n    }' android/app/build.gradle
+          
+          # Интелигентно вмъкване на C++ в новия .kts или стар .gradle файл
+          python3 -c '
+          import glob
+          for f in glob.glob("android/app/build.gradle*"):
+              data = open(f).read()
+              if "build.gradle.kts" in f:
+                  snippet = "\n    externalNativeBuild {\n        cmake {\n            path = file(\"src/main/cpp/CMakeLists.txt\")\n        }\n    }\n"
+              else:
+                  snippet = "\n    externalNativeBuild {\n        cmake {\n            path \"src/main/cpp/CMakeLists.txt\"\n        }\n    }\n"
+              data = data.replace("android {", "android {" + snippet, 1)
+              open(f, "w").write(data)
+          '
 
       - name: Install Dependencies
         run: flutter pub get
@@ -42,4 +55,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tiptop_game_engine_apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/**/*.apk
