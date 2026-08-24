@@ -7,8 +7,8 @@ class AiService {
   AiService._internal();
 
   String apiKey = '';
-  String provider = 'OpenAI';
-  String model = 'gpt-4o';
+  String provider = '🌐 OpenRouter (Всички)';
+  String model = 'meta-llama/llama-3.3-70b-instruct:free';
 
   void configure({
     required String key,
@@ -17,29 +17,42 @@ class AiService {
   }) {
     apiKey = key.trim();
     provider = selectedProvider;
-    model = selectedModel;
+    model = selectedModel.replaceAll('🎁 ', '').replaceAll(' (Free)', '').trim();
   }
 
-  // 1. Download & Fetch real models list from Provider API
-  Future<List<String>> fetchAvailableModels() async {
-    if (apiKey.isEmpty) {
-      throw Exception('Please enter an API Key first.');
-    }
-
-    final client = HttpClient();
-    Uri url;
-
-    if (provider == 'Groq (Fast)') {
-      url = Uri.parse('https://api.groq.com/openai/v1/models');
-    } else if (provider == 'OpenRouter (Free/All)') {
-      url = Uri.parse('https://openrouter.ai/api/v1/models');
+  Uri _getModelsEndpoint() {
+    if (provider.contains('OpenRouter')) {
+      return Uri.parse('https://openrouter.ai/api/v1/models');
+    } else if (provider.contains('Groq')) {
+      return Uri.parse('https://api.groq.com/openai/v1/models');
+    } else if (provider.contains('DeepSeek')) {
+      return Uri.parse('https://api.deepseek.com/models');
     } else {
-      url = Uri.parse('https://api.openai.com/v1/models');
+      return Uri.parse('https://api.openai.com/v1/models');
     }
+  }
+
+  Uri _getChatEndpoint() {
+    if (provider.contains('OpenRouter')) {
+      return Uri.parse('https://openrouter.ai/api/v1/chat/completions');
+    } else if (provider.contains('Groq')) {
+      return Uri.parse('https://api.groq.com/openai/v1/chat/completions');
+    } else if (provider.contains('DeepSeek')) {
+      return Uri.parse('https://api.deepseek.com/chat/completions');
+    } else {
+      return Uri.parse('https://api.openai.com/v1/chat/completions');
+    }
+  }
+
+  Future<List<String>> fetchAvailableModels() async {
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
+    final url = _getModelsEndpoint();
 
     try {
       final request = await client.getUrl(url);
-      request.headers.set('Authorization', 'Bearer $apiKey');
+      if (apiKey.isNotEmpty) {
+        request.headers.set('Authorization', 'Bearer $apiKey');
+      }
       request.headers.set('Content-Type', 'application/json');
 
       final response = await request.close();
@@ -48,58 +61,108 @@ class AiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(responseBody);
         final List<dynamic> rawList = data['data'] ?? [];
-        List<String> models = rawList.map((m) => m['id'].toString()).toList();
+        List<String> models = [];
 
-        // Sort: Put free / mini / flash models at the top
+        for (var m in rawList) {
+          String id = m['id'].toString();
+          if (id.contains(':free') || id.contains('free') || id.contains('flash') || id.contains('mini')) {
+            models.add('🎁 $id (Free)');
+          } else {
+            models.add(id);
+          }
+        }
+
         models.sort((a, b) {
-          bool aFree = a.contains('free') || a.contains('mini') || a.contains('flash');
-          bool bFree = b.contains('free') || b.contains('mini') || b.contains('flash');
+          bool aFree = a.startsWith('🎁');
+          bool bFree = b.startsWith('🎁');
           if (aFree && !bFree) return -1;
           if (!aFree && bFree) return 1;
           return a.compareTo(b);
         });
 
-        return models;
+        return models.isNotEmpty ? models : getDefaultModelsFor(provider);
       } else {
-        throw Exception('API Error (${response.statusCode}): $responseBody');
+        return getDefaultModelsFor(provider);
       }
+    } catch (e) {
+      return getDefaultModelsFor(provider);
     } finally {
       client.close();
     }
   }
 
-  // 2. Real Connection Test
-  Future<String> testConnection() async {
-    if (apiKey.isEmpty) {
-      return 'Error: API Key is empty!';
-    }
-
-    final stopwatch = Stopwatch()..start();
-    try {
-      final models = await fetchAvailableModels();
-      stopwatch.stop();
-      return 'Success! Connected in ${stopwatch.elapsedMilliseconds}ms (${models.length} models fetched)';
-    } catch (e) {
-      return 'Connection Failed: ${e.toString()}';
+  List<String> getDefaultModelsFor(String prov) {
+    if (prov.contains('OpenRouter')) {
+      return [
+        '🎁 meta-llama/llama-3.3-70b-instruct:free',
+        '🎁 deepseek/deepseek-r1:free',
+        '🎁 qwen/qwen-2.5-72b-instruct:free',
+        '🎁 google/gemini-2.0-flash-exp:free',
+        '🎁 mistralai/mistral-7b-instruct:free',
+        'openai/gpt-4o',
+        'anthropic/claude-3.5-sonnet',
+      ];
+    } else if (prov.contains('Groq')) {
+      return [
+        '🎁 llama-3.3-70b-versatile (Free)',
+        '🎁 llama-3.1-8b-instant (Free)',
+        '🎁 mixtral-8x7b-32768 (Free)',
+        '🎁 gemma2-9b-it (Free)',
+      ];
+    } else if (prov.contains('DeepSeek')) {
+      return ['deepseek-chat', 'deepseek-reasoner'];
+    } else {
+      return ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'];
     }
   }
 
-  // 3. Send Prompt for Chat or Builder Agent
+  Future<String> testConnection() async {
+    if (apiKey.isEmpty) {
+      return 'Грешка: Моля въведете API ключ в полето отдолу.';
+    }
+
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 8);
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      final request = await client.postUrl(_getChatEndpoint());
+      request.headers.set('Content-Type', 'application/json');
+      request.headers.set('Authorization', 'Bearer $apiKey');
+
+      final body = {
+        'model': model,
+        'messages': [
+          {'role': 'user', 'content': 'Ping'}
+        ],
+        'max_tokens': 5,
+      };
+
+      request.write(jsonEncode(body));
+      final response = await request.close();
+      final responseBody = await response.transform(utf8.decoder).join();
+      stopwatch.stop();
+
+      if (response.statusCode == 200) {
+        return 'Успешна връзка! Пинг: ${stopwatch.elapsedMilliseconds}ms\nМоделът $model е напълно активен.';
+      } else {
+        final err = jsonDecode(responseBody);
+        String msg = err['error']?['message'] ?? responseBody;
+        return 'Грешка от сървъра: $msg';
+      }
+    } catch (e) {
+      return 'Грешка при връзка: Проверете дали ключът е правилен за $provider.';
+    } finally {
+      client.close();
+    }
+  }
+
   Future<String> sendPrompt(String prompt, {bool isBuilderMode = true}) async {
     if (apiKey.isEmpty) {
-      return 'Error: Please set and save your API key in the API Manager tab first.';
+      return 'Грешка: Моля първо въведете и свържете вашия API ключ в таб "API Manager".';
     }
 
-    final client = HttpClient();
-    Uri url;
-
-    if (provider == 'Groq (Fast)') {
-      url = Uri.parse('https://api.groq.com/openai/v1/chat/completions');
-    } else if (provider == 'OpenRouter (Free/All)') {
-      url = Uri.parse('https://openrouter.ai/api/v1/chat/completions');
-    } else {
-      url = Uri.parse('https://api.openai.com/v1/chat/completions');
-    }
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 25);
+    final url = _getChatEndpoint();
 
     try {
       final request = await client.postUrl(url);
@@ -107,16 +170,11 @@ class AiService {
       request.headers.set('Authorization', 'Bearer $apiKey');
 
       String systemInstruction = isBuilderMode
-          ? 'You are an expert AI Game Engine Architect for Google Filament. Output short, actionable game construction commands or JSON scene descriptions.'
-          : 'You are a friendly, helpful gaming AI assistant.';
-
-      String actualModel = model;
-      if (model == 'Free Auto-Tier') {
-        actualModel = (provider == 'Groq (Fast)') ? 'llama-3.1-8b-instant' : 'gpt-4o-mini';
-      }
+          ? 'You are an expert AI Game Engine Architect for Google Filament. Output short, actionable game construction commands or JSON.'
+          : 'You are a helpful gaming AI assistant.';
 
       final body = {
-        'model': actualModel,
+        'model': model,
         'messages': [
           {'role': 'system', 'content': systemInstruction},
           {'role': 'user', 'content': prompt}
@@ -130,12 +188,13 @@ class AiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(responseBody);
-        return data['choices'][0]['message']['content'] ?? 'Empty response from AI';
+        return data['choices'][0]['message']['content'] ?? 'Няма отговор от AI';
       } else {
-        return 'API Error (${response.statusCode}): $responseBody';
+        final err = jsonDecode(responseBody);
+        return 'API Грешка: ${err['error']?['message'] ?? responseBody}';
       }
     } catch (e) {
-      return 'Network Error: $e';
+      return 'Мрежова грешка: $e';
     } finally {
       client.close();
     }

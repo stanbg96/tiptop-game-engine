@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tiptop_game_engine/core/theme/app_theme.dart';
 
 class FeedActionBar extends StatelessWidget {
   final int likes;
@@ -23,7 +24,7 @@ class FeedActionBar extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Creator Avatar with Follow (+) badge
+        // Creator Avatar with Laser Pink (+) badge
         Stack(
           clipBehavior: Clip.none,
           alignment: Alignment.bottomCenter,
@@ -33,8 +34,10 @@ class FeedActionBar extends StatelessWidget {
               height: 48,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
-                color: Colors.deepPurple,
+                border: Border.all(color: AppTheme.sciFiCyan, width: 2),
+                gradient: const RadialGradient(
+                  colors: [AppTheme.laserPink, Color(0xFF1E1035)],
+                ),
               ),
               child: const Icon(Icons.person, color: Colors.white, size: 28),
             ),
@@ -44,7 +47,7 @@ class FeedActionBar extends StatelessWidget {
                 padding: const EdgeInsets.all(2),
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.redAccent,
+                  color: AppTheme.laserPink,
                 ),
                 child: const Icon(Icons.add, color: Colors.white, size: 14),
               ),
@@ -53,9 +56,9 @@ class FeedActionBar extends StatelessWidget {
         ),
         const SizedBox(height: 18),
 
-        // Like Button
+        // Like Button (Laser Pink)
         IconButton(
-          icon: const Icon(Icons.favorite, color: Colors.redAccent, size: 36),
+          icon: const Icon(Icons.favorite, color: AppTheme.laserPink, size: 36),
           onPressed: onLike,
         ),
         Text(
@@ -64,9 +67,9 @@ class FeedActionBar extends StatelessWidget {
         ),
         const SizedBox(height: 14),
 
-        // Comment Button
+        // Comment Button (Sci-Fi Cyan)
         IconButton(
-          icon: const Icon(Icons.comment_rounded, color: Colors.white, size: 32),
+          icon: const Icon(Icons.comment_rounded, color: AppTheme.sciFiCyan, size: 32),
           onPressed: onComment,
         ),
         Text(
@@ -75,18 +78,18 @@ class FeedActionBar extends StatelessWidget {
         ),
         const SizedBox(height: 14),
 
-        // Save / Bookmark Button
+        // Save Button (Laser Amber / Gold)
         IconButton(
-          icon: const Icon(Icons.bookmark, color: Colors.amberAccent, size: 32),
+          icon: const Icon(Icons.bookmark, color: Color(0xFFFFD600), size: 32),
           onPressed: () {},
         ),
         const Text(
-          'Save',
+          'Запази',
           style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 14),
 
-        // Share Button
+        // Share Button (Laser Glow White)
         IconButton(
           icon: const Icon(Icons.share, color: Colors.white, size: 30),
           onPressed: onShare,

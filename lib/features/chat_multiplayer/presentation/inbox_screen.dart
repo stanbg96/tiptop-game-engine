@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tiptop_game_engine/core/theme/app_theme.dart';
 
 class InboxScreen extends StatefulWidget {
   const InboxScreen({Key? key}) : super(key: key);
@@ -11,36 +12,38 @@ class _InboxScreenState extends State<InboxScreen> {
   final List<Map<String, String>> _chats = [
     {
       'name': 'Alex_Gamer',
-      'msg': 'Send me the QR code for your 3D room!',
-      'time': '2m ago',
+      'msg': 'Прати ми QR кода за 3D мултиплейър стаята ти!',
+      'time': '2 мин',
       'avatar': '🎮',
     },
     {
       'name': 'Sarah_3D_Art',
-      'msg': 'I liked your Cyberpunk track!',
-      'time': '1h ago',
+      'msg': 'Харесах новата ти лазерна състезателна писта!',
+      'time': '1 ч',
       'avatar': '🎨',
     },
     {
       'name': 'Cloud Build Bot',
-      'msg': 'Your APK compilation is ready for download.',
-      'time': '3h ago',
+      'msg': 'Твоята TipTop APK компилация е готова за изтегляне.',
+      'time': '3 ч',
       'avatar': '🤖',
     },
   ];
 
-  // Dialog for Multiplayer QR Invite
   void _showMultiplayerQrDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF161622),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: const Color(0xFF121422),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppTheme.laserPink, width: 1.5),
+        ),
         title: const Row(
           children: [
-            Icon(Icons.qr_code_2, color: Colors.cyanAccent),
+            Icon(Icons.qr_code_2, color: AppTheme.laserPink),
             SizedBox(width: 8),
-            Text('Multiplayer Invite', style: TextStyle(color: Colors.white, fontSize: 16)),
+            Text('Мултиплейър Покани', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
         content: Column(
@@ -51,17 +54,20 @@ class _InboxScreenState extends State<InboxScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(color: AppTheme.laserPink.withValues(alpha: 0.5), blurRadius: 15),
+                ],
               ),
-              child: const Icon(Icons.qr_code_scanner, size: 140, color: Colors.black),
+              child: const Icon(Icons.qr_code_scanner, size: 130, color: Colors.black),
             ),
             const SizedBox(height: 12),
             const Text(
-              'Scan to join Room #8841-3D',
-              style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold),
+              'Сканирай за стая #8841-SciFi',
+              style: TextStyle(color: AppTheme.sciFiCyan, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
             const Text(
-              'Share this QR code with your friend in chat to play together.',
+              'Изпрати този код в чата на приятел, за да влезете заедно в 3D играта!',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
@@ -70,25 +76,27 @@ class _InboxScreenState extends State<InboxScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Close', style: TextStyle(color: Colors.purpleAccent)),
+            child: const Text('Затвори', style: TextStyle(color: AppTheme.laserPink)),
           ),
         ],
       ),
     );
   }
 
-  // Dialog for Cloud Export (APK, PC, IPA)
   void _showCloudExportDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF161622),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: const Color(0xFF121422),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppTheme.sciFiCyan, width: 1.5),
+        ),
         title: const Row(
           children: [
-            Icon(Icons.cloud_upload, color: Colors.purpleAccent),
+            Icon(Icons.cloud_upload, color: AppTheme.sciFiCyan),
             SizedBox(width: 8),
-            Text('Cloud Build Export', style: TextStyle(color: Colors.white, fontSize: 16)),
+            Text('Облачен Експорт', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
         content: Column(
@@ -99,17 +107,20 @@ class _InboxScreenState extends State<InboxScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(color: AppTheme.sciFiCyan.withValues(alpha: 0.5), blurRadius: 15),
+                ],
               ),
-              child: const Icon(Icons.qr_code, size: 140, color: Colors.black),
+              child: const Icon(Icons.qr_code, size: 130, color: Colors.black),
             ),
             const SizedBox(height: 12),
             const Text(
-              'Build QR Ready (.APK / .EXE / .IPA)',
-              style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 13),
+              'QR Код за Сваляне (.APK / .EXE / .IPA)',
+              style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 12),
             ),
             const SizedBox(height: 4),
             const Text(
-              'Scan with PC or phone camera to download standalone compilation.',
+              'Сканирай с компютър или друг телефон за директно изтегляне на играта.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
@@ -118,7 +129,7 @@ class _InboxScreenState extends State<InboxScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Done', style: TextStyle(color: Colors.cyanAccent)),
+            child: const Text('Готово', style: TextStyle(color: AppTheme.sciFiCyan)),
           ),
         ],
       ),
@@ -130,29 +141,29 @@ class _InboxScreenState extends State<InboxScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: const Color(0xFF0E101A),
         elevation: 0,
         title: const Text(
-          'Inbox & Direct Messages',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          'Входящи & Съобщения',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white),
         ),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.cloud_upload_outlined, color: Colors.purpleAccent),
-            tooltip: 'Cloud Export Game',
+            icon: const Icon(Icons.cloud_upload_outlined, color: AppTheme.sciFiCyan),
+            tooltip: 'Облачен Експорт',
             onPressed: _showCloudExportDialog,
           ),
           IconButton(
-            icon: const Icon(Icons.qr_code_2, color: Colors.cyanAccent),
-            tooltip: 'Generate Multiplayer QR',
+            icon: const Icon(Icons.qr_code_2, color: AppTheme.laserPink),
+            tooltip: 'Мултиплейър QR',
             onPressed: _showMultiplayerQrDialog,
           ),
         ],
       ),
       body: ListView.separated(
         itemCount: _chats.length,
-        separatorBuilder: (context, index) => const Divider(color: Colors.white10, height: 1),
+        separatorBuilder: (context, index) => Divider(color: AppTheme.laserPink.withValues(alpha: 0.15), height: 1),
         itemBuilder: (context, index) {
           final chat = _chats[index];
           return ListTile(
@@ -162,11 +173,11 @@ class _InboxScreenState extends State<InboxScreen> {
             ),
             title: Text(
               chat['name']!,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
             ),
             subtitle: Text(
               chat['msg']!,
-              style: const TextStyle(color: Colors.grey, fontSize: 13),
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -174,14 +185,14 @@ class _InboxScreenState extends State<InboxScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(chat['time']!, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                Text(chat['time']!, style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 11)),
                 const SizedBox(height: 4),
-                const Icon(Icons.camera_alt_outlined, color: Colors.grey, size: 16),
+                const Icon(Icons.send_rounded, color: AppTheme.laserPink, size: 14),
               ],
             ),
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Opening chat with ${chat['name']}')),
+                SnackBar(content: Text('Отваряне на чат с ${chat['name']}...')),
               );
             },
           );
