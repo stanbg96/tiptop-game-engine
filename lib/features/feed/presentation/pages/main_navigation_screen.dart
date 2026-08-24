@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:tiktok_game_engine/features/feed/presentation/pages/feed_screen.dart';
-import 'package:tiktok_game_engine/features/mushroom_studio/presentation/pages/mushroom_studio_screen.dart';
-import 'package:tiktok_game_engine/features/brain_ai/presentation/pages/brain_ai_screen.dart';
-import 'package:tiktok_game_engine/features/chat_multiplayer/presentation/inbox_screen.dart';
-import 'package:tiktok_game_engine/features/profile/presentation/profile_screen.dart';
+import 'package:tiptop_game_engine/features/feed/presentation/pages/feed_screen.dart';
+import 'package:tiptop_game_engine/features/mushroom_studio/presentation/pages/mushroom_studio_screen.dart';
+import 'package:tiptop_game_engine/features/brain_ai/presentation/pages/brain_ai_screen.dart';
+import 'package:tiptop_game_engine/features/chat_multiplayer/presentation/inbox_screen.dart';
+import 'package:tiptop_game_engine/features/profile/presentation/profile_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({Key? key}) : super(key: key);

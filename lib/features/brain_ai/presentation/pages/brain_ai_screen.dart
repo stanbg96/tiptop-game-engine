@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tiktok_game_engine/features/brain_ai/logic/ai_service.dart';
+import 'package:tiptop_game_engine/features/brain_ai/logic/ai_service.dart';
 
 class BrainAiScreen extends StatefulWidget {
   const BrainAiScreen({Key? key}) : super(key: key);

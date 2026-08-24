@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tiktok_game_engine/features/feed/presentation/widgets/feed_action_bar.dart';
+import 'package:tiptop_game_engine/features/feed/presentation/widgets/feed_action_bar.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({Key? key}) : super(key: key);

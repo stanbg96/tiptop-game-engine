@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tiktok_game_engine/features/feed/presentation/pages/main_navigation_screen.dart';
+import 'package:tiptop_game_engine/features/feed/presentation/pages/main_navigation_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({Key? key}) : super(key: key);
