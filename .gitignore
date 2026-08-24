@@ -1,0 +1,13 @@
+android-sdk/
+flutter/
+aura_engine/
+.cache/
+.config/
+.gradle/
+.local/
+.pub-cache/
+.dart_tool/
+.dartServer/
+*.zip
+.bash_history*
+y
