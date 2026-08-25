@@ -10,23 +10,76 @@ class LiveStreamScreen extends StatefulWidget {
 
 class _LiveStreamScreenState extends State<LiveStreamScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final PageController _streamPageController = PageController();
 
   int _coins = 850;
-  int _likesCount = 24890;
+  int _activeLeaderboardTab = 0; // 0: Creators, 1: Gifters
 
-  final List<Map<String, String>> _liveComments = [
-    {'user': '@alex_pro', 'text': 'Тази 3D лава сцена в Filament е брутална! 🔥'},
-    {'user': '@maya_gamer', 'text': 'Пратих ти Кибер Дракон! 🐉'},
-    {'user': '@speed_runner', 'text': 'Кой води в класирането днес? 🏆'},
-    {'user': '@pixel_queen', 'text': 'Геймплеят върви на 60 FPS! 😍'},
+  final List<Map<String, dynamic>> _coinHistory = [
+    {'title': 'Зареждане на Монети', 'change': '+500', 'date': 'Днес, 14:20', 'isAdd': true},
+    {'title': 'Подарък: Кибер Дракон', 'change': '-200', 'date': 'Вчера, 21:45', 'isAdd': false},
+    {'title': 'Зареждане на Монети', 'change': '+1200', 'date': '24 Авг, 19:10', 'isAdd': true},
+  ];
+
+  final List<Map<String, dynamic>> _liveStreamers = [
+    {
+      'name': '@host_creator',
+      'avatar': '👑',
+      'title': '3D Gameplay Stream (Google Filament)',
+      'game': 'Cyberpunk Neon Runner 3D',
+      'likes': 24893,
+      'viewers': '18.4K',
+      'isFollowed': false,
+      'bgGradient': [Color(0xFF2A0845), Color(0xFF0F041D)],
+      'comments': [
+        {'user': '@alex_pro', 'text': 'Тази 3D лава сцена в Filament е брутална! 🔥'},
+        {'user': '@maya_gamer', 'text': 'Пратих ти Кибер Дракон! 🐉'},
+        {'user': '@speed_runner', 'text': 'Кой води в класирането днес? 🏆'},
+      ],
+    },
+    {
+      'name': '@alex_3d_live',
+      'avatar': '🎮',
+      'title': 'Строене на 3D Лава Ниво с AI Мозъка',
+      'game': 'Lava Volcano Arena',
+      'likes': 18450,
+      'viewers': '12.1K',
+      'isFollowed': false,
+      'bgGradient': [Color(0xFF380B12), Color(0xFF140306)],
+      'comments': [
+        {'user': '@neo_fan', 'text': 'Добави още платформи за скачане! 🌋'},
+        {'user': '@kris_dev', 'text': 'Анимациите от Mixamo изглеждат супер плавни.'},
+      ],
+    },
+    {
+      'name': '@cyber_queen',
+      'avatar': '🎨',
+      'title': 'Мултиплейър битки на живо с фенове',
+      'game': 'Sci-Fi Hover Racers',
+      'likes': 32100,
+      'viewers': '25.6K',
+      'isFollowed': false,
+      'bgGradient': [Color(0xFF0B2538), Color(0xFF030E17)],
+      'comments': [
+        {'user': '@pro_gamer', 'text': 'Сканирах QR кода и вече съм в стаята! 🚀'},
+        {'user': '@dani_art', 'text': 'Екип Сини ще победи днес! 💙'},
+      ],
+    },
   ];
 
   final List<Map<String, dynamic>> _topRankedCreators = [
-    {'rank': 1, 'name': 'NeoBuilder_3D', 'points': '142.5K', 'badge': '👑 Златен Шампион', 'color': Color(0xFFFFD600)},
-    {'rank': 2, 'name': 'CyberQueen', 'points': '98.2K', 'badge': '🥈 Сребърен Майстор', 'color': Color(0xFFE0E0E0)},
-    {'rank': 3, 'name': 'LavaDev_Pro', 'points': '74.1K', 'badge': '🥉 Бронзов Титан', 'color': Color(0xFFFF6D00)},
-    {'rank': 4, 'name': 'PixelWizard', 'points': '45.8K', 'badge': '⚡ Топ 10', 'color': AppTheme.sciFiCyan},
-    {'rank': 5, 'name': 'Samurai_Games', 'points': '38.4K', 'badge': '⚡ Топ 10', 'color': AppTheme.laserPink},
+    {'rank': 1, 'name': 'NeoBuilder_3D', 'points': '142.5K', 'badge': '👑 Златен Шампион', 'color': Color(0xFFFFD600), 'isFollowed': false},
+    {'rank': 2, 'name': 'CyberQueen', 'points': '98.2K', 'badge': '🥈 Сребърен Майстор', 'color': Color(0xFFE0E0E0), 'isFollowed': false},
+    {'rank': 3, 'name': 'LavaDev_Pro', 'points': '74.1K', 'badge': '🥉 Бронзов Титан', 'color': Color(0xFFFF6D00), 'isFollowed': false},
+    {'rank': 4, 'name': 'PixelWizard', 'points': '45.8K', 'badge': '⚡ Топ 10', 'color': AppTheme.sciFiCyan, 'isFollowed': false},
+    {'rank': 5, 'name': 'Samurai_Games', 'points': '38.4K', 'badge': '⚡ Топ 10', 'color': AppTheme.laserPink, 'isFollowed': false},
+  ];
+
+  final List<Map<String, dynamic>> _topRankedGifters = [
+    {'rank': 1, 'name': 'Mega_Whale_VIP', 'points': '350.0K 💎', 'badge': '👑 VIP Дарител #1', 'color': Color(0xFFFFD600)},
+    {'rank': 2, 'name': 'Diamond_Dragon', 'points': '210.5K 💎', 'badge': '🥈 VIP Дарител #2', 'color': Color(0xFFE0E0E0)},
+    {'rank': 3, 'name': 'Cyber_Knight', 'points': '125.8K 💎', 'badge': '🥉 VIP Дарител #3', 'color': Color(0xFFFF6D00)},
+    {'rank': 4, 'name': 'Elena_Top', 'points': '89.4K 💎', 'badge': '⚡ Топ Поддръжник', 'color': AppTheme.sciFiCyan},
   ];
 
   @override
@@ -38,10 +91,213 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> with SingleTickerPr
   @override
   void dispose() {
     _tabController.dispose();
+    _streamPageController.dispose();
     super.dispose();
   }
 
-  void _showGiftsSheet() {
+  // 1. Показване на пълен профил на стриймъра
+  void _showStreamerProfileModal(Map<String, dynamic> streamer) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF10121D),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        side: BorderSide(color: AppTheme.laserPink, width: 1),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 76,
+                height: 76,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(colors: [AppTheme.laserPink, AppTheme.sciFiCyan]),
+                  boxShadow: [
+                    BoxShadow(color: AppTheme.laserPink.withValues(alpha: 0.5), blurRadius: 20),
+                  ],
+                ),
+                child: Center(child: Text(streamer['avatar'], style: const TextStyle(fontSize: 36))),
+              ),
+              const SizedBox(height: 10),
+              Text(streamer['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+              Text('🔴 Стриймва на живо: ${streamer['game']}', style: const TextStyle(color: Color(0xFF00E676), fontSize: 12, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildProfileStat('Ниво 45', 'Ранг'),
+                  _buildProfileStat('${streamer['viewers']}', 'Зрители'),
+                  _buildProfileStat('${streamer['likes']}', 'Харесвания'),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: streamer['isFollowed']
+                              ? [const Color(0xFF1E2235), const Color(0xFF1E2235)]
+                              : [AppTheme.laserPink, AppTheme.neonPurple],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: streamer['isFollowed'] ? Border.all(color: const Color(0xFF00E676)) : null,
+                      ),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, padding: const EdgeInsets.symmetric(vertical: 12)),
+                        onPressed: () {
+                          setModalState(() => streamer['isFollowed'] = !streamer['isFollowed']);
+                          setState(() {});
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(streamer['isFollowed'] ? '🎉 Последвахте ${streamer['name']}!' : 'Вече не следвате ${streamer['name']}.')),
+                          );
+                        },
+                        child: Text(
+                          streamer['isFollowed'] ? 'СЛЕДВАШ ✓' : 'ПОСЛЕДВАЙ',
+                          style: TextStyle(color: streamer['isFollowed'] ? const Color(0xFF00E676) : Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [Color(0xFF00E5FF), Color(0xFF00E676)]),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, padding: const EdgeInsets.symmetric(vertical: 12)),
+                        icon: const Icon(Icons.sports_esports, color: Colors.black, size: 18),
+                        label: const Text('ИГРАЙ С НЕГО', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 13)),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('🎮 Свързване към 3D играта на ${streamer['name']}...')),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileStat(String val, String label) {
+    return Column(
+      children: [
+        Text(val, style: const TextStyle(color: AppTheme.sciFiCyan, fontWeight: FontWeight.bold, fontSize: 15)),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+      ],
+    );
+  }
+
+  // 2. Диалогов прозорец за купуване на монети с баланс и история
+  void _buyCoinsPackage(int amount, String price) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF121422),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFFFD600))),
+        title: Row(
+          children: const [
+            Icon(Icons.monetization_on, color: Color(0xFFFFD600)),
+            SizedBox(width: 8),
+            Text('Google Play Зареждане', style: TextStyle(color: Colors.white, fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          'Желаете ли да закупите $amount Монети за $price?',
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отказ', style: TextStyle(color: Colors.grey))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD600)),
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _coins += amount;
+                _coinHistory.insert(0, {
+                  'title': 'Закупени Монети ($price)',
+                  'change': '+$amount',
+                  'date': 'Току-що',
+                  'isAdd': true,
+                });
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('🎉 Успешно закупихте $amount монети! Нов баланс: $_coins')),
+              );
+            },
+            child: const Text('КУПИ СЕГА', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 3. Модален прозорец за История на трансакциите
+  void _showCoinHistoryModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF10121D),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('📜 История на Монетите', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 12),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _coinHistory.length,
+                itemBuilder: (context, index) {
+                  final h = _coinHistory[index];
+                  final bool isAdd = h['isAdd'];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: const Color(0xFF161928), borderRadius: BorderRadius.circular(10)),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(h['title'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                            Text(h['date'], style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                          ],
+                        ),
+                        Text(
+                          '${h['change']} 🪙',
+                          style: TextStyle(color: isAdd ? const Color(0xFF00E676) : const Color(0xFFFF1744), fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 4. Панел с 3D подаръци
+  void _showGiftsSheet(Map<String, dynamic> streamer) {
     final List<Map<String, dynamic>> gifts = [
       {'name': 'Роза', 'cost': 1, 'icon': Icons.local_florist, 'color': Color(0xFFFF1744)},
       {'name': 'Геймпад', 'cost': 10, 'icon': Icons.sports_esports, 'color': AppTheme.sciFiCyan},
@@ -54,12 +310,10 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> with SingleTickerPr
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF10121D),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => Container(
         padding: const EdgeInsets.all(16),
-        height: 300,
+        height: 290,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -82,7 +336,7 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> with SingleTickerPr
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             Expanded(
               child: GridView.builder(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -99,14 +353,20 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> with SingleTickerPr
                       if (_coins >= (gift['cost'] as int)) {
                         setState(() {
                           _coins -= gift['cost'] as int;
-                          _liveComments.add({
+                          streamer['comments'].add({
                             'user': '@Ти',
                             'text': 'Изпрати ${gift['name']}! 🎉',
+                          });
+                          _coinHistory.insert(0, {
+                            'title': 'Подарък: ${gift['name']}',
+                            'change': '-${gift['cost']}',
+                            'date': 'Току-що',
+                            'isAdd': false,
                           });
                         });
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('⚡ 3D Анимация: ${gift['name']} на екрана!')),
+                          SnackBar(content: Text('⚡ 3D Анимация: ${gift['name']} за ${streamer['name']}!')),
                         );
                       } else {
                         Navigator.pop(context);
@@ -122,7 +382,7 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> with SingleTickerPr
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(gift['icon'], color: gift['color'], size: 30),
+                          Icon(gift['icon'], color: gift['color'], size: 28),
                           const SizedBox(height: 4),
                           Text(gift['name'], style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                           Text('🪙 ${gift['cost']}', style: const TextStyle(color: Color(0xFFFFD600), fontSize: 10)),
@@ -168,7 +428,7 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> with SingleTickerPr
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildLiveStreamTab(),
+          _buildLiveStreamSwipeFeed(),
           _buildCoinStoreTab(),
           _buildRankingsTab(),
         ],
@@ -176,139 +436,181 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> with SingleTickerPr
     );
   }
 
-  // 1. ТАБ: НА ЖИВО (FULL TIKTOK LIVE)
-  Widget _buildLiveStreamTab() {
-    return GestureDetector(
-      onTap: () => setState(() => _likesCount += 1),
-      child: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF1E112A), Colors.black],
-              ),
-            ),
-            child: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.gamepad, size: 70, color: AppTheme.sciFiCyan),
-                  SizedBox(height: 12),
-                  Text('3D Gameplay Stream (Google Filament)', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 6),
-                  Text('Докосни екрана за изпращане на сърчица ❤️', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            top: 12,
-            left: 12,
-            right: 12,
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)),
-                  child: Row(
+  // 1. ТАБ: НА ЖИВО С ВЕРТИКАЛЕН СКРОЛ (TIKTOK LIVE MULTI-STREAM)
+  Widget _buildLiveStreamSwipeFeed() {
+    return PageView.builder(
+      controller: _streamPageController,
+      scrollDirection: Axis.vertical,
+      itemCount: _liveStreamers.length,
+      itemBuilder: (context, index) {
+        final streamer = _liveStreamers[index];
+        final List<Map<String, String>> comments = streamer['comments'];
+
+        return GestureDetector(
+          onTap: () => setState(() => streamer['likes'] += 1),
+          child: Stack(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: streamer['bgGradient'],
+                  ),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const CircleAvatar(radius: 14, backgroundColor: AppTheme.laserPink, child: Text('🎮', style: TextStyle(fontSize: 14))),
-                      const SizedBox(width: 6),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
+                      const Icon(Icons.gamepad, size: 75, color: AppTheme.sciFiCyan),
+                      const SizedBox(height: 12),
+                      Text(streamer['title'], textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 6),
+                      Text('🎮 Игра: ${streamer['game']}', style: const TextStyle(color: AppTheme.laserPink, fontSize: 13, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 4),
+                      const Text('Плъзни НАГОРЕ ⬆ за следващ стриймър', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Горен панел: Снимка (клик за профил) + Бутон "Следвай" + Зрители
+              Positioned(
+                top: 12,
+                left: 12,
+                right: 12,
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white12)),
+                      child: Row(
                         children: [
-                          const Text('@host_creator', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
-                          Text('$_likesCount Лайка', style: const TextStyle(color: Colors.grey, fontSize: 9)),
+                          // Клик за отваряне на профил
+                          GestureDetector(
+                            onTap: () => _showStreamerProfileModal(streamer),
+                            child: CircleAvatar(
+                              radius: 15,
+                              backgroundColor: AppTheme.laserPink,
+                              child: Text(streamer['avatar'], style: const TextStyle(fontSize: 15)),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          GestureDetector(
+                            onTap: () => _showStreamerProfileModal(streamer),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(streamer['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                                Text('${streamer['likes']} Лайка', style: const TextStyle(color: Colors.grey, fontSize: 9)),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Работещ бутон Следвай
+                          GestureDetector(
+                            onTap: () {
+                              setState(() => streamer['isFollowed'] = !streamer['isFollowed']);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(streamer['isFollowed'] ? '🎉 Последвахте ${streamer['name']}!' : 'Вече не следвате ${streamer['name']}.')),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: streamer['isFollowed'] ? const Color(0xFF00E676) : AppTheme.laserPink,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                streamer['isFollowed'] ? 'Следваш ✓' : 'Следвай',
+                                style: TextStyle(color: streamer['isFollowed'] ? Colors.black : Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(color: AppTheme.laserPink, borderRadius: BorderRadius.circular(10)),
-                        child: const Text('Следвай', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(14)),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.remove_red_eye, color: Colors.white, size: 14),
-                      SizedBox(width: 4),
-                      Text('18.4K', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            left: 12,
-            right: 12,
-            bottom: 12,
-            child: Column(
-              children: [
-                SizedBox(
-                  height: 120,
-                  child: ListView.builder(
-                    reverse: true,
-                    itemCount: _liveComments.length,
-                    itemBuilder: (context, index) {
-                      final comment = _liveComments[_liveComments.length - 1 - index];
-                      return Container(
-                        margin: const EdgeInsets.symmetric(vertical: 2),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(10)),
-                        child: RichText(
-                          text: TextSpan(
-                            children: [
-                              TextSpan(text: '${comment['user']}: ', style: const TextStyle(color: AppTheme.sciFiCyan, fontWeight: FontWeight.bold, fontSize: 11)),
-                              TextSpan(text: comment['text'], style: const TextStyle(color: Colors.white, fontSize: 11)),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        height: 40,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(20)),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.chat_bubble_outline, color: Colors.grey, size: 16),
-                            SizedBox(width: 6),
-                            Text('Напиши коментар...', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                          ],
-                        ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(14)),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.remove_red_eye, color: Colors.white, size: 14),
+                          const SizedBox(width: 4),
+                          Text(streamer['viewers'], style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    IconButton(icon: const Icon(Icons.share, color: Colors.white, size: 24), onPressed: () {}),
-                    IconButton(icon: const Icon(Icons.card_giftcard, color: AppTheme.laserPink, size: 26), onPressed: _showGiftsSheet),
-                    IconButton(icon: const Icon(Icons.favorite, color: Color(0xFFFF1744), size: 26), onPressed: () => setState(() => _likesCount += 10)),
                   ],
                 ),
-              ],
-            ),
+              ),
+
+              // Долен панел с коментари и бутони
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: 12,
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: 110,
+                      child: ListView.builder(
+                        reverse: true,
+                        itemCount: comments.length,
+                        itemBuilder: (context, cIdx) {
+                          final comment = comments[comments.length - 1 - cIdx];
+                          return Container(
+                            margin: const EdgeInsets.symmetric(vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(10)),
+                            child: RichText(
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(text: '${comment['user']}: ', style: const TextStyle(color: AppTheme.sciFiCyan, fontWeight: FontWeight.bold, fontSize: 11)),
+                                  TextSpan(text: comment['text'], style: const TextStyle(color: Colors.white, fontSize: 11)),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 38,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(20)),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.chat_bubble_outline, color: Colors.grey, size: 15),
+                                SizedBox(width: 6),
+                                Text('Коментирай на живо...', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        IconButton(icon: const Icon(Icons.share, color: Colors.white, size: 22), onPressed: () {}),
+                        IconButton(icon: const Icon(Icons.card_giftcard, color: AppTheme.laserPink, size: 24), onPressed: () => _showGiftsSheet(streamer)),
+                        IconButton(icon: const Icon(Icons.favorite, color: Color(0xFFFF1744), size: 24), onPressed: () => setState(() => streamer['likes'] += 10)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  // 2. ТАБ: МАГАЗИН ЗА МОНЕТИ & ПОРТФЕЙЛ
+  // 2. ТАБ: МОНЕТИ С ИСТОРИЯ И КУПУВАНЕ
   Widget _buildCoinStoreTab() {
     final List<Map<String, dynamic>> coinPacks = [
       {'coins': 100, 'bonus': 0, 'price': '\$0.99', 'color': AppTheme.sciFiCyan},
@@ -346,7 +648,7 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> with SingleTickerPr
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                onPressed: () {},
+                onPressed: _showCoinHistoryModal,
                 child: const Text('История', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
               ),
             ],
@@ -387,12 +689,7 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> with SingleTickerPr
                     backgroundColor: packColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  onPressed: () {
-                    setState(() => _coins += (pack['coins'] as int) + (pack['bonus'] as int));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('🎉 Заредени ${pack['coins']} монети успешно!')),
-                    );
-                  },
+                  onPressed: () => _buyCoinsPackage(pack['coins'] as int, pack['price'] as String),
                   child: Text(pack['price'], style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12)),
                 ),
               ],
@@ -403,70 +700,113 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> with SingleTickerPr
     );
   }
 
-  // 3. ТАБ: РАНКОВЕ & КЛАСАЦИЯ
+  // 3. ТАБ: РАНКОВЕ & ДВЕ КЛАСАЦИИ
   Widget _buildRankingsTab() {
     return ListView(
       padding: const EdgeInsets.all(14),
       children: [
+        // Превключвател: Топ Създатели | Топ Дарители
         Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF121422),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFFFD600).withValues(alpha: 0.5)),
-          ),
-          child: const Row(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(color: const Color(0xFF161928), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white12)),
+          child: Row(
             children: [
-              Text('👑', style: TextStyle(fontSize: 32)),
-              SizedBox(width: 10),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Седмична Класация на Създателите', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                    Text('Топ 10 разработчици печелят реални награди и монети', style: TextStyle(color: Colors.grey, fontSize: 11)),
-                  ],
+                child: GestureDetector(
+                  onTap: () => setState(() => _activeLeaderboardTab = 0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _activeLeaderboardTab == 0 ? AppTheme.laserPink : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Center(child: Text('🏆 Топ Създатели', style: TextStyle(color: Colors.white, fontWeight: _activeLeaderboardTab == 0 ? FontWeight.bold : FontWeight.normal, fontSize: 12))),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _activeLeaderboardTab = 1),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _activeLeaderboardTab == 1 ? const Color(0xFFFFD600) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Center(child: Text('💎 Топ Дарители', style: TextStyle(color: _activeLeaderboardTab == 1 ? Colors.black : Colors.white, fontWeight: _activeLeaderboardTab == 1 ? FontWeight.bold : FontWeight.normal, fontSize: 12))),
+                  ),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        const Text('ТОП СЪЗДАТЕЛИ ТАЗИ СЕДМИЦА', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 10),
-        ..._topRankedCreators.map((creator) {
-          final Color badgeColor = creator['color'];
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF10121D),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(color: badgeColor.withValues(alpha: 0.2), shape: BoxShape.circle),
-                  child: Center(child: Text('#${creator['rank']}', style: TextStyle(color: badgeColor, fontWeight: FontWeight.bold, fontSize: 12))),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(creator['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                      Text(creator['badge'], style: TextStyle(color: badgeColor, fontSize: 11)),
-                    ],
+        const SizedBox(height: 14),
+
+        if (_activeLeaderboardTab == 0) ...[
+          const Text('СЕДМИЧНО КЛАСИРАНЕ НА РАЗРАБОТЧИЦИТЕ', style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          ..._topRankedCreators.map((c) {
+            final Color bColor = c['color'];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: const Color(0xFF10121D), borderRadius: BorderRadius.circular(12), border: Border.all(color: bColor.withValues(alpha: 0.4))),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(color: bColor.withValues(alpha: 0.2), shape: BoxShape.circle),
+                    child: Center(child: Text('#${c['rank']}', style: TextStyle(color: bColor, fontWeight: FontWeight.bold, fontSize: 12))),
                   ),
-                ),
-                Text('💎 ${creator['points']}', style: TextStyle(color: badgeColor, fontWeight: FontWeight.bold, fontSize: 13)),
-              ],
-            ),
-          );
-        }).toList(),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(c['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                        Text(c['badge'], style: TextStyle(color: bColor, fontSize: 10)),
+                      ],
+                    ),
+                  ),
+                  Text('💎 ${c['points']}', style: TextStyle(color: bColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                ],
+              ),
+            );
+          }).toList(),
+        ] else ...[
+          const Text('ТОП ДАРИТЕЛИ & VIP ПОДДРЪЖНИЦИ', style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          ..._topRankedGifters.map((g) {
+            final Color gColor = g['color'];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: const Color(0xFF10121D), borderRadius: BorderRadius.circular(12), border: Border.all(color: gColor.withValues(alpha: 0.4))),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(color: gColor.withValues(alpha: 0.2), shape: BoxShape.circle),
+                    child: Center(child: Text('#${g['rank']}', style: TextStyle(color: gColor, fontWeight: FontWeight.bold, fontSize: 12))),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(g['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                        Text(g['badge'], style: TextStyle(color: gColor, fontSize: 10)),
+                      ],
+                    ),
+                  ),
+                  Text(g['points'], style: TextStyle(color: gColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                ],
+              ),
+            );
+          }).toList(),
+        ],
       ],
     );
   }

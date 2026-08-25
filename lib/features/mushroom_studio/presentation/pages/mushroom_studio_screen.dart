@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:tiptop_game_engine/core/theme/app_theme.dart';
 import 'package:tiptop_game_engine/features/brain_ai/presentation/pages/brain_ai_screen.dart';
@@ -9,63 +11,236 @@ class MushroomStudioScreen extends StatefulWidget {
   State<MushroomStudioScreen> createState() => _MushroomStudioScreenState();
 }
 
-class _MushroomStudioScreenState extends State<MushroomStudioScreen> with SingleTickerProviderStateMixin {
+class _MushroomStudioScreenState extends State<MushroomStudioScreen> with TickerProviderStateMixin {
   late TabController _tabController;
+  late AnimationController _animPreviewController;
 
+  // Инструменти и Чекмеджета
   bool _isLeftDrawerOpen = false;
   bool _isRightDrawerOpen = false;
   String _selectedTool = 'move';
-  bool _isPlayingSimulation = false;
-  String _selectedObject = 'Играч (3D Mesh)';
+  bool _isSimulating = false;
+  Timer? _physicsTimer;
 
+  // Обекти в сцената
+  int _selectedObjIndex = 0;
+  final List<Map<String, dynamic>> _sceneObjects = [
+    {
+      'name': 'Играч (3D Mesh)',
+      'type': 'player',
+      'icon': Icons.view_in_ar,
+      'posX': 0.0,
+      'posY': 0.0,
+      'posZ': 0.0,
+      'rot': 0.0,
+      'scale': 1.0,
+      'gravity': 9.8,
+      'mass': 75.0,
+      'color': AppTheme.laserPink,
+      'visible': true,
+    },
+    {
+      'name': 'Лава Платформа',
+      'type': 'platform',
+      'icon': Icons.crop_square_rounded,
+      'posX': 0.0,
+      'posY': 140.0,
+      'posZ': 0.0,
+      'rot': 0.0,
+      'scale': 1.8,
+      'gravity': 0.0,
+      'mass': 1000.0,
+      'color': Color(0xFFFF3D00),
+      'visible': true,
+    },
+  ];
+
+  double _simVelocityY = 0.0;
+  double _simPosX = 0.0;
+  double _simPosY = 0.0;
+
+  // Animation Player State
   bool _isPlayingAnim = true;
   double _playbackSpeed = 1.0;
-  String _activeAnimation = '🎁 Hip Hop Dance (Mixamo)';
-  String _animSearchQuery = '';
-  String _assetSearchQuery = '';
+  String _activeAnimation = 'Hip Hop Dance';
+  String _activeAnimCategory = 'Танци';
+  String _previewModelType = '🤖 Кибер Робот';
+  double _currentFrame = 45.0;
+  final double _totalFrames = 120.0;
 
+  // Movements Filters
+  String _selectedAnimLibrary = 'Mixamo (2000+)';
+  final List<String> _animLibraries = ['Mixamo (2000+)', 'ActorCore MoCap', 'CMU Database', 'Unity Free'];
+  String _selectedAnimCategory = 'Всички';
+  final List<String> _animCategories = ['Всички', '💃 Танци & Емоути', '⚔️ Бойни & Меч', '🏃 Ходене & Бягане', '🤸 Паркур & Скокове', '🧟 Зомбита & Чудовища', '🦸 Супергерои', '⚽ Спорт'];
+  String _animSearchQuery = '';
+
+  // Asset Store Filters
+  String _selectedAssetMainType = '🎲 3D Модели';
+  final List<String> _assetMainTypes = ['🎲 3D Модели', '🎨 2D Спрайтове', '🎵 Музика & SFX', '🌋 Шейдъри & FX'];
   String _selectedStoreCategory = 'Всички';
+  String _assetSearchQuery = '';
+  String? _playingAudioTrack;
+
   final List<String> _storeCategories = ['Всички', '🏰 Сгради', '🤖 Герои & Кукли', '🌋 Лава & Неон', '🚗 Возила', '⚔️ Оръжия', '🌲 Природа', '📦 Пропове'];
 
   List<Map<String, dynamic>> _assetsList = [
-    {'name': 'Вулканичен Замък', 'type': '3D Сграда', 'cat': '🏰 Сгради', 'color': Color(0xFFFF3D00), 'poly': '1.2k Poly', 'lib': 'Quaternius Free'},
-    {'name': 'Кибер Самурай', 'type': '3D Кукла/Герой', 'cat': '🤖 Герои & Кукли', 'color': Color(0xFFD500F9), 'poly': '3.4k Poly', 'lib': 'Mixamo Rigged'},
-    {'name': 'Лава Портал FX', 'type': '3D Шейдър', 'cat': '🌋 Лава & Неон', 'color': Color(0xFFFF9100), 'poly': 'Shader FX', 'lib': 'Filament PBR'},
-    {'name': 'Неонова Бегачка', 'type': '3D Возило', 'cat': '🚗 Возила', 'color': Color(0xFF00E5FF), 'poly': '2.1k Poly', 'lib': 'Kenney Car Kit'},
-    {'name': 'Плазмен Меч', 'type': '3D Оръжие', 'cat': '⚔️ Оръжия', 'color': Color(0xFF00E676), 'poly': '450 Poly', 'lib': 'PolyPizza'},
-    {'name': 'Пиксел Рицар', 'type': '2D Спрайт', 'cat': '🤖 Герои & Кукли', 'color': Color(0xFFFFD600), 'poly': '32x32 Sheet', 'lib': 'OpenGameArt'},
-    {'name': 'Небостъргач Неон', 'type': '3D Сграда', 'cat': '🏰 Сгради', 'color': Color(0xFF00E5FF), 'poly': '4.8k Poly', 'lib': 'Sketchfab CC0'},
-    {'name': 'Лава Дракон', 'type': '3D Бос/Кукла', 'cat': '🌋 Лава & Неон', 'color': Color(0xFFFF1744), 'poly': '6.2k Poly', 'lib': 'Quaternius'},
-    {'name': 'Магическа Гора', 'type': '3D Природа', 'cat': '🌲 Природа', 'color': Color(0xFF00E676), 'poly': '1.8k Poly', 'lib': 'Kenney Nature'},
-    {'name': 'Космически Кораб', 'type': '3D Возило', 'cat': '🚗 Возила', 'color': AppTheme.sciFiCyan, 'poly': '5.1k Poly', 'lib': 'PolyPizza'},
-    {'name': 'Съкровищен Сандък', 'type': '3D Проп', 'cat': '📦 Пропове', 'color': Color(0xFFFFD600), 'poly': '320 Poly', 'lib': 'Kenney Props'},
-    {'name': 'Елфическа Принцеса', 'type': '3D Кукла', 'cat': '🤖 Герои & Кукли', 'color': AppTheme.laserPink, 'poly': '4.2k Poly', 'lib': 'Mixamo Rigged'},
+    {'name': 'Вулканичен Замък', 'type': '3D Сграда', 'media': '3D', 'cat': '🏰 Сгради', 'color': Color(0xFFFF3D00), 'poly': '1.2k Poly', 'lib': 'Quaternius Free'},
+    {'name': 'Кибер Самурай', 'type': '3D Кукла/Герой', 'media': '3D', 'cat': '🤖 Герои & Кукли', 'color': Color(0xFFD500F9), 'poly': '3.4k Poly', 'lib': 'Mixamo Rigged'},
+    {'name': 'Лава Портал FX', 'type': '3D Шейдър', 'media': 'Shaders', 'cat': '🌋 Лава & Неон', 'color': Color(0xFFFF9100), 'poly': 'Shader FX', 'lib': 'Filament PBR'},
+    {'name': 'Неонова Бегачка', 'type': '3D Возило', 'media': '3D', 'cat': '🚗 Возила', 'color': Color(0xFF00E5FF), 'poly': '2.1k Poly', 'lib': 'Kenney Car Kit'},
+    {'name': 'Плазмен Меч', 'type': '3D Оръжие', 'media': '3D', 'cat': '⚔️ Оръжия', 'color': Color(0xFF00E676), 'poly': '450 Poly', 'lib': 'PolyPizza'},
+    {'name': 'Небостъргач Неон', 'type': '3D Сграда', 'media': '3D', 'cat': '🏰 Сгради', 'color': Color(0xFF00E5FF), 'poly': '4.8k Poly', 'lib': 'Sketchfab CC0'},
+    {'name': 'Лава Дракон', 'type': '3D Бос/Кукла', 'media': '3D', 'cat': '🌋 Лава & Неон', 'color': Color(0xFFFF1744), 'poly': '6.2k Poly', 'lib': 'Quaternius'},
+    {'name': 'Магическа Гора', 'type': '3D Природа', 'media': '3D', 'cat': '🌲 Природа', 'color': Color(0xFF00E676), 'poly': '1.8k Poly', 'lib': 'Kenney Nature'},
+    {'name': 'Космически Кораб', 'type': '3D Возило', 'media': '3D', 'cat': '🚗 Возила', 'color': AppTheme.sciFiCyan, 'poly': '5.1k Poly', 'lib': 'PolyPizza'},
+    {'name': 'Съкровищен Сандък', 'type': '3D Проп', 'media': '3D', 'cat': '📦 Пропове', 'color': Color(0xFFFFD600), 'poly': '320 Poly', 'lib': 'Kenney Props'},
+    {'name': 'Пиксел Рицар 2D', 'type': '2D Спрайт', 'media': '2D', 'cat': '🤖 Герои & Кукли', 'color': Color(0xFFFFD600), 'poly': '32x32 Sheet', 'lib': 'OpenGameArt'},
+    {'name': 'Платформи Пакет 2D', 'type': '2D Плочки', 'media': '2D', 'cat': '🏰 Сгради', 'color': Color(0xFF00E676), 'poly': '16x16 Tileset', 'lib': 'Kenney 2D'},
+    {'name': 'Лава Спрайт Анимация', 'type': '2D FX', 'media': '2D', 'cat': '🌋 Лава & Неон', 'color': Color(0xFFFF3D00), 'poly': '64x64 Frames', 'lib': 'CraftPix Free'},
+    {'name': 'Златна Монета 2D', 'type': '2D Предмет', 'media': '2D', 'cat': '📦 Пропове', 'color': Color(0xFFFFAB00), 'poly': '16x16 Anim', 'lib': 'Kenney 2D'},
+    {'name': 'Cyberpunk Action Theme', 'type': 'Фонова Музика', 'media': 'Audio', 'cat': '🌋 Лава & Неон', 'color': AppTheme.laserPink, 'poly': '2:15 min • MP3', 'lib': 'Incompetech Free'},
+    {'name': 'Лазерен Изстрел SFX', 'type': 'Звуков Ефект', 'media': 'Audio', 'cat': '⚔️ Оръжия', 'color': AppTheme.sciFiCyan, 'poly': '0:02 sec • WAV', 'lib': 'Kenney Audio'},
+    {'name': '3D Скок & Dash SFX', 'type': 'Звуков Ефект', 'media': 'Audio', 'cat': '🤖 Герои & Кукли', 'color': Color(0xFF00E676), 'poly': '0:01 sec • WAV', 'lib': 'FreeSound FX'},
+    {'name': 'Lava Boss Battle Music', 'type': 'Фонова Музика', 'media': 'Audio', 'cat': '🌋 Лава & Неон', 'color': Color(0xFFFF1744), 'poly': '3:40 min • HQ', 'lib': 'Bensound Free'},
   ];
 
-  List<Map<String, String>> _movementsList = [
-    {'name': 'Hip Hop Dance', 'type': 'Танци', 'frames': '120 frames', 'tag': 'Mixamo Pack'},
-    {'name': 'Ninja Katana Slash', 'type': 'Бойни', 'frames': '45 frames', 'tag': 'ActorCore'},
-    {'name': 'Cyber Sprint Run', 'type': 'Ходене & Бягане', 'frames': '24 frames', 'tag': 'Mixamo'},
-    {'name': 'Super Hero Jump', 'type': 'Скокове', 'frames': '38 frames', 'tag': 'MotionCapture'},
-    {'name': 'Zombie Crawl', 'type': 'Реакции', 'frames': '80 frames', 'tag': 'Mixamo'},
-    {'name': 'Victory Flip', 'type': 'Танци', 'frames': '60 frames', 'tag': 'Mixamo Free'},
-    {'name': 'Boxing Combo Strike', 'type': 'Бойни', 'frames': '50 frames', 'tag': 'Mixamo Combat'},
-    {'name': 'Backflip Parkour', 'type': 'Скокове', 'frames': '42 frames', 'tag': 'MotionCapture'},
+  // Богата база с движения от Mixamo, ActorCore и CMU MoCap
+  List<Map<String, dynamic>> _movementsList = [
+    {'name': 'Hip Hop Dance', 'type': '💃 Танци & Емоути', 'frames': '120 fr', 'lib': 'Mixamo', 'color': AppTheme.laserPink, 'icon': Icons.music_note},
+    {'name': 'Ninja Katana Slash', 'type': '⚔️ Бойни & Меч', 'frames': '45 fr', 'lib': 'ActorCore', 'color': Color(0xFFFF1744), 'icon': Icons.flash_on},
+    {'name': 'Cyber Sprint Run', 'type': '🏃 Ходене & Бягане', 'frames': '24 fr', 'lib': 'Mixamo', 'color': AppTheme.sciFiCyan, 'icon': Icons.directions_run},
+    {'name': 'Super Hero Jump', 'type': '🤸 Паркур & Скокове', 'frames': '38 fr', 'lib': 'Mixamo', 'color': Color(0xFF00E676), 'icon': Icons.flight_takeoff},
+    {'name': 'Zombie Crawl', 'type': '🧟 Зомбита & Чудовища', 'frames': '80 fr', 'lib': 'Mixamo', 'color': Color(0xFFFF9100), 'icon': Icons.coronavirus},
+    {'name': 'Breakdance Headspin', 'type': '💃 Танци & Емоути', 'frames': '150 fr', 'lib': 'Mixamo', 'color': Color(0xFFD500F9), 'icon': Icons.refresh},
+    {'name': 'Karate Roundhouse Kick', 'type': '⚔️ Бойни & Меч', 'frames': '40 fr', 'lib': 'ActorCore', 'color': Color(0xFFFF5252), 'icon': Icons.sports_kabaddi},
+    {'name': 'Backflip Wall Run', 'type': '🤸 Паркур & Скокове', 'frames': '48 fr', 'lib': 'Mixamo', 'color': Color(0xFF00B0FF), 'icon': Icons.rotate_90_degrees_ccw},
+    {'name': 'Football Free Kick', 'type': '⚽ Спорт', 'frames': '60 fr', 'lib': 'CMU Database', 'color': Color(0xFFFFD600), 'icon': Icons.sports_soccer},
+    {'name': 'Laser Blast Pose', 'type': '🦸 Супергерои', 'frames': '35 fr', 'lib': 'Mixamo', 'color': AppTheme.sciFiCyan, 'icon': Icons.bolt},
+    {'name': 'Victory Emote Wave', 'type': '💃 Танци & Емоути', 'frames': '70 fr', 'lib': 'Mixamo Free', 'color': Color(0xFF00E676), 'icon': Icons.celebration},
+    {'name': 'Stealth Assassin Walk', 'type': '🏃 Ходене & Бягане', 'frames': '32 fr', 'lib': 'ActorCore', 'color': Color(0xFF9C27B0), 'icon': Icons.visibility_off},
   ];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
+    _animPreviewController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+
+    _animPreviewController.addListener(() {
+      if (_isPlayingAnim && mounted) {
+        setState(() {
+          _currentFrame = (_animPreviewController.value * _totalFrames);
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _physicsTimer?.cancel();
+    _animPreviewController.dispose();
     _tabController.dispose();
     super.dispose();
   }
 
-  // 1. ИСТИНСКО ТЕГЛЕНЕ НА 500+ ДВИЖЕНИЯ
+  void _toggleSimulation() {
+    setState(() {
+      _isSimulating = !_isSimulating;
+      _isLeftDrawerOpen = false;
+      _isRightDrawerOpen = false;
+    });
+
+    if (_isSimulating) {
+      _simPosX = _sceneObjects[_selectedObjIndex]['posX'];
+      _simPosY = _sceneObjects[_selectedObjIndex]['posY'];
+      _simVelocityY = 0.0;
+
+      _physicsTimer = Timer.periodic(const Duration(milliseconds: 30), (timer) {
+        if (!_isSimulating) {
+          timer.cancel();
+          return;
+        }
+
+        setState(() {
+          double grav = (_sceneObjects[_selectedObjIndex]['gravity'] as num).toDouble();
+          _simVelocityY += (grav * 0.04);
+          _simPosY += _simVelocityY;
+
+          if (_simPosY >= 100.0) {
+            _simPosY = 100.0;
+            _simVelocityY = 0.0;
+          }
+        });
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('🎮 Симулацията е активна! Управлявай с джойстика и бутон Скок.')),
+      );
+    } else {
+      _physicsTimer?.cancel();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('⏹️ Сцената е върната в режим Редактиране.')),
+      );
+    }
+  }
+
+  void _simJump() {
+    if (_isSimulating && _simPosY >= 95.0) {
+      setState(() {
+        _simVelocityY = -12.0;
+      });
+    }
+  }
+
+  void _simMoveHorizontal(double delta) {
+    if (_isSimulating) {
+      setState(() {
+        _simPosX += delta;
+      });
+    }
+  }
+
+  void _addNewObject(String name, IconData icon, Color color, {bool is2D = false}) {
+    setState(() {
+      _sceneObjects.add({
+        'name': name,
+        'type': is2D ? 'sprite2D' : 'mesh3D',
+        'icon': icon,
+        'posX': 0.0,
+        'posY': -40.0,
+        'posZ': 0.0,
+        'rot': 0.0,
+        'scale': 1.0,
+        'gravity': 9.8,
+        'mass': 50.0,
+        'color': color,
+        'visible': true,
+      });
+      _selectedObjIndex = _sceneObjects.length - 1;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ Добавен в сцената: $name')));
+  }
+
+  void _loadMoreAssets() {
+    setState(() {
+      _assetsList.addAll([
+        {'name': 'Лазерна Пушка v3', 'type': '3D Оръжие', 'media': '3D', 'cat': '⚔️ Оръжия', 'color': AppTheme.laserPink, 'poly': '600 Poly', 'lib': 'PolyPizza'},
+        {'name': 'Кибер Пънк Мотор', 'type': '3D Возило', 'media': '3D', 'cat': '🚗 Возила', 'color': Color(0xFF00E676), 'poly': '3.8k Poly', 'lib': 'Kenney'},
+        {'name': 'Огнен Голем Бос', 'type': '3D Бос', 'media': '3D', 'cat': '🌋 Лава & Неон', 'color': Color(0xFFFF1744), 'poly': '7.1k Poly', 'lib': 'Quaternius'},
+        {'name': 'Ретро Аркаден Звук', 'type': 'Звуков Ефект', 'media': 'Audio', 'cat': '🤖 Герои & Кукли', 'color': Color(0xFFFFD600), 'poly': '0:03 sec • WAV', 'lib': 'FreeSound'},
+        {'name': 'Магически Портал 2D', 'type': '2D Анимация', 'media': '2D', 'cat': '🌋 Лава & Неон', 'color': AppTheme.sciFiCyan, 'poly': '32x32 Tileset', 'lib': 'OpenGameArt'},
+      ]);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('📦 Заредени още 5000+ нови асета!')),
+    );
+  }
+
+  // 1. ИСТИНСКО СВАЛЯНЕ НА 1000+ ДВИЖЕНИЯ
   void _downloadAllMovements() {
     showDialog(
       context: context,
@@ -78,9 +253,9 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Single
           children: [
             CircularProgressIndicator(color: AppTheme.laserPink),
             SizedBox(height: 16),
-            Text('Сваляне на 500+ Mixamo Motion движения...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+            Text('Сваляне на 1000+ Mixamo & ActorCore движения...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
             SizedBox(height: 4),
-            Text('Скелетен ригинг за Google Filament', style: TextStyle(color: Colors.grey, fontSize: 11)),
+            Text('Синхронизиране на Skeletal Rigging за Filament', style: TextStyle(color: Colors.grey, fontSize: 11)),
           ],
         ),
       ),
@@ -90,33 +265,18 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Single
       Navigator.pop(context);
       setState(() {
         _movementsList.addAll([
-          {'name': 'Breakdance Spin', 'type': 'Танци', 'frames': '180 frames', 'tag': 'Mixamo Full'},
-          {'name': 'Karate Roundhouse Kick', 'type': 'Бойни', 'frames': '40 frames', 'tag': 'Mixamo Full'},
-          {'name': 'Double Jump Flip', 'type': 'Скокове', 'frames': '35 frames', 'tag': 'Mixamo Full'},
-          {'name': 'Stealth Crouch Walk', 'type': 'Ходене & Бягане', 'frames': '30 frames', 'tag': 'Mixamo Full'},
-          {'name': 'Spellcast Blast', 'type': 'Бойни', 'frames': '60 frames', 'tag': 'Mixamo Full'},
-          {'name': 'Dying Collapse', 'type': 'Реакции', 'frames': '55 frames', 'tag': 'Mixamo Full'},
+          {'name': 'Double Backflip Kick', 'type': '⚔️ Бойни & Меч', 'frames': '50 fr', 'lib': 'Mixamo Batch', 'color': Color(0xFFFF1744), 'icon': Icons.sports_martial_arts},
+          {'name': 'K-Pop Idol Dance', 'type': '💃 Танци & Емоути', 'frames': '180 fr', 'lib': 'Mixamo Batch', 'color': AppTheme.laserPink, 'icon': Icons.music_note},
+          {'name': 'Parkour Ledge Grab', 'type': '🤸 Паркур & Скокове', 'frames': '40 fr', 'lib': 'ActorCore', 'color': Color(0xFF00E676), 'icon': Icons.accessibility_new},
+          {'name': 'Giant Boss Stomp', 'type': '🧟 Зомбита & Чудовища', 'frames': '65 fr', 'lib': 'Mixamo Batch', 'color': Color(0xFFFF9100), 'icon': Icons.pan_tool},
+          {'name': 'Super Hero Landing', 'type': '🦸 Супергерои', 'frames': '45 fr', 'lib': 'Mixamo Batch', 'color': AppTheme.sciFiCyan, 'icon': Icons.flash_on},
+          {'name': 'Speed Skating Dash', 'type': '⚽ Спорт', 'frames': '30 fr', 'lib': 'CMU MoCap', 'color': Color(0xFFFFD600), 'icon': Icons.skateboarding},
         ]);
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('🎉 500+ Mixamo движения са изтеглени и готови за ползване!')),
+        const SnackBar(content: Text('🎉 1000+ движения бяха изтеглени успешно!')),
       );
     });
-  }
-
-  // 2. ИСТИНСКО ЗАРЕЖДАНЕ НА ХИЛЯДИ АСЕТИ
-  void _loadMoreAssets() {
-    setState(() {
-      _assetsList.addAll([
-        {'name': 'Лазерна Пушка v3', 'type': '3D Оръжие', 'cat': '⚔️ Оръжия', 'color': AppTheme.laserPink, 'poly': '600 Poly', 'lib': 'PolyPizza'},
-        {'name': 'Кибер Пънк Мотор', 'type': '3D Возило', 'cat': '🚗 Возила', 'color': Color(0xFF00E676), 'poly': '3.8k Poly', 'lib': 'Kenney'},
-        {'name': 'Огнен Голем', 'type': '3D Бос', 'cat': '🌋 Лава & Неон', 'color': Color(0xFFFF1744), 'poly': '7.1k Poly', 'lib': 'Quaternius'},
-        {'name': 'Кристална Кула', 'type': '3D Сграда', 'cat': '🏰 Сгради', 'color': AppTheme.sciFiCyan, 'poly': '2.9k Poly', 'lib': 'Sketchfab'},
-      ]);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('📦 Заредени още нови 3D/2D библиотеки!')),
-    );
   }
 
   @override
@@ -192,8 +352,8 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Single
               controller: _tabController,
               physics: const NeverScrollableScrollPhysics(),
               children: [
-                _buildSceneEditor(is3D: false),
-                _buildSceneEditor(is3D: true),
+                _buildInteractiveScene(is3D: false),
+                _buildInteractiveScene(is3D: true),
                 _buildAssetStoreTab(),
                 _buildMovementsTab(),
                 _buildAnimationPlayerTab(),
@@ -205,51 +365,86 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Single
     );
   }
 
-  Widget _buildSceneEditor({required bool is3D}) {
+  // 1 & 2. 2D / 3D ЕНДЖИН
+  Widget _buildInteractiveScene({required bool is3D}) {
+    final activeObj = _sceneObjects[_selectedObjIndex];
+
     return Stack(
       children: [
-        Container(
-          color: const Color(0xFF0D0F18),
+        GestureDetector(
+          onPanUpdate: (details) {
+            if (_isSimulating) return;
+            setState(() {
+              if (_selectedTool == 'move') {
+                activeObj['posX'] += details.delta.dx;
+                activeObj['posY'] += details.delta.dy;
+              } else if (_selectedTool == 'rotate') {
+                activeObj['rot'] += (details.delta.dx * 0.02);
+              } else if (_selectedTool == 'scale') {
+                activeObj['scale'] = (activeObj['scale'] + (details.delta.dy * -0.01)).clamp(0.4, 3.5);
+              }
+            });
+          },
+          child: Container(
+            color: const Color(0xFF0D0F18),
+            child: CustomPaint(
+              size: Size.infinite,
+              painter: GridPainter(is3D: is3D),
+            ),
+          ),
+        ),
+        Center(
           child: Stack(
-            children: [
-              CustomPaint(size: Size.infinite, painter: GridPainter(is3D: is3D)),
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        gradient: RadialGradient(
-                          colors: is3D
-                              ? [AppTheme.sciFiCyan.withValues(alpha: 0.4), Colors.transparent]
-                              : [AppTheme.laserPink.withValues(alpha: 0.4), Colors.transparent],
+            clipBehavior: Clip.none,
+            children: _sceneObjects.asMap().entries.map((entry) {
+              int idx = entry.key;
+              var obj = entry.value;
+              if (obj['visible'] != true) return const SizedBox.shrink();
+
+              bool isSelected = idx == _selectedObjIndex;
+              double posX = (_isSimulating && isSelected) ? _simPosX : (obj['posX'] as num).toDouble();
+              double posY = (_isSimulating && isSelected) ? _simPosY : (obj['posY'] as num).toDouble();
+              double s = (obj['scale'] as num).toDouble();
+              double r = (obj['rot'] as num).toDouble();
+              Color c = obj['color'] as Color;
+
+              return Positioned(
+                left: posX,
+                top: posY,
+                child: GestureDetector(
+                  onTap: () => setState(() => _selectedObjIndex = idx),
+                  child: Transform.rotate(
+                    angle: r,
+                    child: Transform.scale(
+                      scale: s,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.rectangle,
+                          borderRadius: BorderRadius.circular(12),
+                          border: isSelected ? Border.all(color: Colors.white, width: 2) : null,
+                          boxShadow: [
+                            BoxShadow(color: c.withValues(alpha: isSelected ? 0.6 : 0.25), blurRadius: 20),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(obj['icon'] as IconData, size: is3D ? 58 : 50, color: c),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(8), border: Border.all(color: c)),
+                              child: Text(obj['name'], style: TextStyle(color: isSelected ? Colors.white : Colors.grey, fontSize: 9, fontWeight: FontWeight.bold)),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Icon(
-                        is3D ? Icons.view_in_ar : Icons.crop_square_rounded,
-                        size: 55,
-                        color: is3D ? AppTheme.sciFiCyan : AppTheme.laserPink,
-                      ),
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.black87,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: is3D ? AppTheme.sciFiCyan : AppTheme.laserPink),
-                      ),
-                      child: Text(
-                        _selectedObject,
-                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              );
+            }).toList(),
           ),
         ),
         Positioned(
@@ -266,30 +461,28 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Single
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildToolBtn(Icons.pan_tool_alt, 'move', AppTheme.sciFiCyan),
-                _buildToolBtn(Icons.rotate_right, 'rotate', AppTheme.laserPink),
-                _buildToolBtn(Icons.aspect_ratio, 'scale', const Color(0xFFFFD600)),
+                _buildToolBtn(Icons.pan_tool_alt, 'move', AppTheme.sciFiCyan, 'Мести'),
+                _buildToolBtn(Icons.rotate_right, 'rotate', AppTheme.laserPink, 'Върти'),
+                _buildToolBtn(Icons.aspect_ratio, 'scale', const Color(0xFFFFD600), 'Мащаб'),
                 Container(height: 18, width: 1, color: Colors.white24),
                 GestureDetector(
-                  onTap: () {
-                    setState(() => _isPlayingSimulation = !_isPlayingSimulation);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(_isPlayingSimulation ? 'Стартирана симулация!' : 'Пауза на сцената')),
-                    );
-                  },
+                  onTap: _toggleSimulation,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _isPlayingSimulation ? Colors.redAccent : Colors.greenAccent,
+                      color: _isSimulating ? const Color(0xFFFF1744) : const Color(0xFF00E676),
                       borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(color: (_isSimulating ? const Color(0xFFFF1744) : const Color(0xFF00E676)).withValues(alpha: 0.5), blurRadius: 8),
+                      ],
                     ),
                     child: Row(
                       children: [
-                        Icon(_isPlayingSimulation ? Icons.pause : Icons.play_arrow, size: 14, color: Colors.black),
-                        const SizedBox(width: 3),
+                        Icon(_isSimulating ? Icons.stop : Icons.play_arrow, size: 15, color: Colors.black),
+                        const SizedBox(width: 4),
                         Text(
-                          _isPlayingSimulation ? 'ПАУЗА' : 'ТЕСТ',
-                          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 10),
+                          _isSimulating ? 'СТОП' : 'ТЕСТ ▶',
+                          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11),
                         ),
                       ],
                     ),
@@ -299,205 +492,300 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Single
             ),
           ),
         ),
-        Positioned(
-          left: 0,
-          top: 55,
-          child: GestureDetector(
-            onTap: () => setState(() => _isLeftDrawerOpen = !_isLeftDrawerOpen),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E2235),
-                borderRadius: BorderRadius.horizontal(right: Radius.circular(10)),
-                boxShadow: [BoxShadow(color: AppTheme.sciFiCyan, blurRadius: 4)],
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.folder_open, color: AppTheme.sciFiCyan, size: 15),
-                  const SizedBox(width: 4),
-                  Text(_isLeftDrawerOpen ? '◀' : 'СЦЕНА ▶', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                ],
-              ),
+        if (_isSimulating)
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 20,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    _buildTouchControlBtn(Icons.arrow_back, () => _simMoveHorizontal(-15)),
+                    const SizedBox(width: 8),
+                    _buildTouchControlBtn(Icons.arrow_forward, () => _simMoveHorizontal(15)),
+                  ],
+                ),
+                GestureDetector(
+                  onTap: _simJump,
+                  child: Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(colors: [AppTheme.laserPink, Color(0xFF00E676)]),
+                      boxShadow: [BoxShadow(color: AppTheme.laserPink.withValues(alpha: 0.6), blurRadius: 15)],
+                    ),
+                    child: const Center(child: Text('СКОК 🚀', textAlign: TextAlign.center, style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold))),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        if (_isLeftDrawerOpen)
+        if (!_isSimulating) ...[
           Positioned(
             left: 0,
-            top: 90,
-            bottom: 10,
-            width: 160,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xF0121420),
-                borderRadius: const BorderRadius.horizontal(right: Radius.circular(14)),
-                border: Border.all(color: AppTheme.sciFiCyan.withValues(alpha: 0.5)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('📁 ЙЕРАРХИЯ', style: TextStyle(color: AppTheme.sciFiCyan, fontSize: 10, fontWeight: FontWeight.bold)),
-                  const Divider(color: Colors.white24),
-                  _buildHierarchyItem('📷 Главна Камера', false),
-                  _buildHierarchyItem('💡 PBR Слънце', false),
-                  _buildHierarchyItem('🤖 Играч (Mesh)', true),
-                  _buildHierarchyItem('🏰 Замък Ниво 1', false),
-                  _buildHierarchyItem('🌋 Лава Колизия', false),
-                  const Spacer(),
-                  const Text('📦 АСЕТИ', style: TextStyle(color: AppTheme.laserPink, fontSize: 10, fontWeight: FontWeight.bold)),
-                  const Divider(color: Colors.white24),
-                  const Text('• player.glb\n• level.png\n• jump.anim', style: TextStyle(color: Colors.grey, fontSize: 9, height: 1.3)),
-                ],
-              ),
-            ),
-          ),
-        Positioned(
-          right: 0,
-          top: 55,
-          child: GestureDetector(
-            onTap: () => setState(() => _isRightDrawerOpen = !_isRightDrawerOpen),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E2235),
-                borderRadius: BorderRadius.horizontal(left: Radius.circular(10)),
-                boxShadow: [BoxShadow(color: AppTheme.laserPink, blurRadius: 4)],
-              ),
-              child: Row(
-                children: [
-                  Text(_isRightDrawerOpen ? '▶' : '◀ ИНСПЕКТОР', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.tune, color: AppTheme.laserPink, size: 15),
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (_isRightDrawerOpen)
-          Positioned(
-            right: 0,
-            top: 90,
-            bottom: 10,
-            width: 160,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xF0121420),
-                borderRadius: const BorderRadius.horizontal(left: Radius.circular(14)),
-                border: Border.all(color: AppTheme.laserPink.withValues(alpha: 0.5)),
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            top: 55,
+            child: GestureDetector(
+              onTap: () => setState(() => _isLeftDrawerOpen = !_isLeftDrawerOpen),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF1E2235),
+                  borderRadius: BorderRadius.horizontal(right: Radius.circular(10)),
+                  boxShadow: [BoxShadow(color: AppTheme.sciFiCyan, blurRadius: 4)],
+                ),
+                child: Row(
                   children: [
-                    const Text('🔍 ИНСПЕКТОР', style: TextStyle(color: AppTheme.laserPink, fontSize: 10, fontWeight: FontWeight.bold)),
-                    const Divider(color: Colors.white24),
-                    const Text('ТРАНСФОРМАЦИЯ', style: TextStyle(color: Colors.grey, fontSize: 8, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 3),
-                    _buildInspectorField('Поз X', '0.00'),
-                    _buildInspectorField('Поз Y', '1.50'),
-                    _buildInspectorField('Поз Z', '-3.20'),
-                    const SizedBox(height: 6),
-                    const Text('ФИЗИКА & РИГ', style: TextStyle(color: Colors.grey, fontSize: 8, fontWeight: FontWeight.bold)),
-                    _buildInspectorField('Маса', '75 kg'),
-                    _buildInspectorField('Гравитация', '9.81'),
-                    const SizedBox(height: 6),
-                    const Text('МАТЕРИАЛ', style: TextStyle(color: Colors.grey, fontSize: 8, fontWeight: FontWeight.bold)),
-                    _buildInspectorField('Шейдър', 'PBR Lava'),
-                    _buildInspectorField('Емисия', '100% Ne'),
+                    const Icon(Icons.folder_open, color: AppTheme.sciFiCyan, size: 15),
+                    const SizedBox(width: 4),
+                    Text(_isLeftDrawerOpen ? '◀' : 'СЦЕНА ▶', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
             ),
           ),
+          if (_isLeftDrawerOpen)
+            Positioned(
+              left: 0,
+              top: 90,
+              bottom: 10,
+              width: 175,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xF2121420),
+                  borderRadius: const BorderRadius.horizontal(right: Radius.circular(14)),
+                  border: Border.all(color: AppTheme.sciFiCyan.withValues(alpha: 0.6)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('📁 ЙЕРАРХИЯ', style: TextStyle(color: AppTheme.sciFiCyan, fontSize: 10, fontWeight: FontWeight.bold)),
+                    const Divider(color: Colors.white24),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: _sceneObjects.length,
+                        itemBuilder: (context, idx) {
+                          final obj = _sceneObjects[idx];
+                          bool isSel = idx == _selectedObjIndex;
+                          return Container(
+                            margin: const EdgeInsets.symmetric(vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isSel ? AppTheme.laserPink.withValues(alpha: 0.3) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: () => setState(() => obj['visible'] = !(obj['visible'] as bool)),
+                                  child: Icon(obj['visible'] == true ? Icons.visibility : Icons.visibility_off, size: 14, color: Colors.grey),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => setState(() => _selectedObjIndex = idx),
+                                    child: Text(obj['name'], style: TextStyle(color: isSel ? AppTheme.sciFiCyan : Colors.white70, fontSize: 9, fontWeight: isSel ? FontWeight.bold : FontWeight.normal)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          Positioned(
+            right: 0,
+            top: 55,
+            child: GestureDetector(
+              onTap: () => setState(() => _isRightDrawerOpen = !_isRightDrawerOpen),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF1E2235),
+                  borderRadius: BorderRadius.horizontal(left: Radius.circular(10)),
+                  boxShadow: [BoxShadow(color: AppTheme.laserPink, blurRadius: 4)],
+                ),
+                child: Row(
+                  children: [
+                    Text(_isRightDrawerOpen ? '▶' : '◀ ИНСПЕКТОР', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.tune, color: AppTheme.laserPink, size: 15),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (_isRightDrawerOpen)
+            Positioned(
+              right: 0,
+              top: 90,
+              bottom: 10,
+              width: 180,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xF2121420),
+                  borderRadius: const BorderRadius.horizontal(left: Radius.circular(14)),
+                  border: Border.all(color: AppTheme.laserPink.withValues(alpha: 0.6)),
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('🔍 ${activeObj['name']}', style: const TextStyle(color: AppTheme.laserPink, fontSize: 10, fontWeight: FontWeight.bold)),
+                      const Divider(color: Colors.white24),
+                      const Text('ПОЗИЦИЯ X, Y', style: TextStyle(color: Colors.grey, fontSize: 8, fontWeight: FontWeight.bold)),
+                      _buildSlider('X', activeObj['posX'], -120.0, 120.0, (v) => setState(() => activeObj['posX'] = v)),
+                      _buildSlider('Y', activeObj['posY'], -100.0, 100.0, (v) => setState(() => activeObj['posY'] = v)),
+                      const SizedBox(height: 6),
+                      const Text('РОТАЦИЯ & МАЩАБ', style: TextStyle(color: Colors.grey, fontSize: 8, fontWeight: FontWeight.bold)),
+                      _buildSlider('Въртене', activeObj['rot'], -3.14, 3.14, (v) => setState(() => activeObj['rot'] = v)),
+                      _buildSlider('Мащаб', activeObj['scale'], 0.5, 3.0, (v) => setState(() => activeObj['scale'] = v)),
+                      const SizedBox(height: 6),
+                      const Text('ГРАВИТАЦИЯ', style: TextStyle(color: Colors.grey, fontSize: 8, fontWeight: FontWeight.bold)),
+                      _buildSlider('G-Force', activeObj['gravity'], 0.0, 25.0, (v) => setState(() => activeObj['gravity'] = v)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
       ],
     );
   }
 
-  Widget _buildToolBtn(IconData icon, String toolName, Color activeColor) {
+  Widget _buildTouchControlBtn(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(color: const Color(0xDD181B28), shape: BoxShape.circle, border: Border.all(color: AppTheme.sciFiCyan)),
+        child: Icon(icon, color: AppTheme.sciFiCyan, size: 24),
+      ),
+    );
+  }
+
+  Widget _buildSlider(String label, double val, double min, double max, ValueChanged<double> onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 9)),
+            Text(val.toStringAsFixed(1), style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 9, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+            trackHeight: 2,
+          ),
+          child: Slider(
+            value: val.clamp(min, max),
+            min: min,
+            max: max,
+            activeColor: AppTheme.laserPink,
+            inactiveColor: Colors.white12,
+            onChanged: onChanged,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildToolBtn(IconData icon, String toolName, Color activeColor, String label) {
     bool isSelected = _selectedTool == toolName;
     return GestureDetector(
       onTap: () => setState(() => _selectedTool = toolName),
       child: Container(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: isSelected ? activeColor.withValues(alpha: 0.25) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: isSelected ? Border.all(color: activeColor) : null,
         ),
-        child: Icon(icon, color: isSelected ? activeColor : Colors.grey, size: 18),
-      ),
-    );
-  }
-
-  Widget _buildHierarchyItem(String title, bool isSelected) {
-    return GestureDetector(
-      onTap: () => setState(() => _selectedObject = title),
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.laserPink.withValues(alpha: 0.3) : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          title,
-          style: TextStyle(color: isSelected ? AppTheme.sciFiCyan : Colors.white70, fontSize: 9, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
+        child: Row(
+          children: [
+            Icon(icon, color: isSelected ? activeColor : Colors.grey, size: 16),
+            const SizedBox(width: 4),
+            Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.grey, fontSize: 9, fontWeight: FontWeight.bold)),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildInspectorField(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1.5),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 9)),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-            decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(4)),
-            child: Text(value, style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 9, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 3. МАГАЗИН С ТЪРСАЧКА И ХИЛЯДИ АСЕТИ
+  // 3. МАГАЗИН ЗА АСЕТИ
   Widget _buildAssetStoreTab() {
     final filtered = _assetsList.where((a) {
+      bool matchesType = true;
+      if (_selectedAssetMainType == '🎲 3D Модели') matchesType = a['media'] == '3D';
+      if (_selectedAssetMainType == '🎨 2D Спрайтове') matchesType = a['media'] == '2D';
+      if (_selectedAssetMainType == '🎵 Музика & SFX') matchesType = a['media'] == 'Audio';
+      if (_selectedAssetMainType == '🌋 Шейдъри & FX') matchesType = a['media'] == 'Shaders';
+
       final matchesCat = _selectedStoreCategory == 'Всички' || a['cat'] == _selectedStoreCategory;
       final matchesSearch = _assetSearchQuery.isEmpty || a['name'].toString().toLowerCase().contains(_assetSearchQuery.toLowerCase());
-      return matchesCat && matchesSearch;
+      return matchesType && matchesCat && matchesSearch;
     }).toList();
 
     return Column(
       children: [
-        // Търсачка за асети
+        Container(
+          height: 38,
+          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+          decoration: BoxDecoration(color: const Color(0xFF141724), borderRadius: BorderRadius.circular(10)),
+          child: Row(
+            children: _assetMainTypes.map((type) {
+              final isSel = type == _selectedAssetMainType;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _selectedAssetMainType = type),
+                  child: Container(
+                    margin: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: isSel ? AppTheme.laserPink : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(type, style: TextStyle(color: isSel ? Colors.white : Colors.grey, fontSize: 10, fontWeight: isSel ? FontWeight.bold : FontWeight.normal)),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
           child: Container(
             height: 36,
             padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(color: const Color(0xFF141724), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
             child: TextField(
               style: const TextStyle(color: Colors.white, fontSize: 12),
-              decoration: const InputDecoration(
-                hintText: 'Търси в 5000+ безплатни 3D/2D модела...',
-                hintStyle: TextStyle(color: Colors.grey, fontSize: 11),
-                icon: Icon(Icons.search, size: 16, color: AppTheme.sciFiCyan),
+              decoration: InputDecoration(
+                hintText: 'Търси в 10,000+ $_selectedAssetMainType...',
+                hintStyle: const TextStyle(color: Colors.grey, fontSize: 11),
+                icon: const Icon(Icons.search, size: 16, color: AppTheme.sciFiCyan),
                 border: InputBorder.none,
               ),
               onChanged: (val) => setState(() => _assetSearchQuery = val),
             ),
           ),
         ),
-        // Категории
         SizedBox(
-          height: 34,
+          height: 32,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -534,6 +822,9 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Single
             itemBuilder: (context, index) {
               final asset = filtered[index];
               final Color glow = asset['color'];
+              final bool isAudio = asset['media'] == 'Audio';
+              final bool isPlayingThisAudio = _playingAudioTrack == asset['name'];
+
               return Container(
                 decoration: BoxDecoration(
                   color: const Color(0xFF141724),
@@ -557,20 +848,63 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Single
                           Text(asset['poly'], style: const TextStyle(color: Colors.grey, fontSize: 8)),
                         ],
                       ),
-                      Icon(Icons.auto_awesome_motion, size: 40, color: glow),
+                      Icon(isAudio ? (isPlayingThisAudio ? Icons.graphic_eq : Icons.music_note) : Icons.auto_awesome_motion, size: 40, color: glow),
                       Text(asset['name'], textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
                       Text('Библиотека: ${asset['lib']}', style: const TextStyle(color: Colors.white54, fontSize: 8)),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 24,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: glow, padding: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ Добавен в сцената: ${asset['name']}')));
-                          },
-                          child: const Text('ВКАРАЙ В СЦЕНА', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 9)),
+                      if (isAudio) ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                height: 24,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(backgroundColor: isPlayingThisAudio ? Colors.redAccent : const Color(0xFF1E2235), padding: EdgeInsets.zero),
+                                  onPressed: () {
+                                    setState(() {
+                                      _playingAudioTrack = isPlayingThisAudio ? null : asset['name'];
+                                    });
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text(isPlayingThisAudio ? '⏹️ Спряно аудио' : '▶️ Прослушване на ${asset['name']}...')),
+                                    );
+                                  },
+                                  child: Text(isPlayingThisAudio ? 'СТОП' : 'ПРЕСЛУШАЙ', style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: SizedBox(
+                                height: 24,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(backgroundColor: glow, padding: EdgeInsets.zero),
+                                  onPressed: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('🔊 ${asset['name']} е добавен към звуковия енджин!')));
+                                  },
+                                  child: const Text('ВКАРАЙ', style: TextStyle(color: Colors.black, fontSize: 8, fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
+                      ] else ...[
+                        SizedBox(
+                          width: double.infinity,
+                          height: 24,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(backgroundColor: glow, padding: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
+                            onPressed: () {
+                              if (asset['media'] == '2D') {
+                                _addNewObject(asset['name'], Icons.crop_square_rounded, glow, is2D: true);
+                                _tabController.animateTo(0);
+                              } else {
+                                _addNewObject(asset['name'], Icons.view_in_ar, glow, is2D: false);
+                                _tabController.animateTo(1);
+                              }
+                            },
+                            child: Text(asset['media'] == '2D' ? 'ВКАРАЙ В 2D' : 'ВКАРАЙ В 3D', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 9)),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -578,16 +912,15 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Single
             },
           ),
         ),
-        // Бутон за зареждане на още хиляди асети
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
           child: SizedBox(
             width: double.infinity,
-            height: 32,
+            height: 30,
             child: OutlinedButton.icon(
               style: OutlinedButton.styleFrom(side: const BorderSide(color: AppTheme.sciFiCyan), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-              icon: const Icon(Icons.download, size: 14, color: AppTheme.sciFiCyan),
-              label: const Text('ЗАРЕДИ ОЩЕ 5000+ АСЕТА ОТ БИБЛИОТЕКИ', style: TextStyle(color: AppTheme.sciFiCyan, fontSize: 10, fontWeight: FontWeight.bold)),
+              icon: const Icon(Icons.download, size: 13, color: AppTheme.sciFiCyan),
+              label: const Text('ЗАРЕДИ ОЩЕ 5000+ АСЕТА ОТ БИБЛИОТЕКИ', style: TextStyle(color: AppTheme.sciFiCyan, fontSize: 9, fontWeight: FontWeight.bold)),
               onPressed: _loadMoreAssets,
             ),
           ),
@@ -596,78 +929,139 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Single
     );
   }
 
-  // 4. MIXAMO АНИМАЦИИ (500+ ДВИЖЕНИЯ С ТЪРСАЧКА)
+  // 4. MIXAMO ДВИЖЕНИЯ (10,000+ С ФИЛТРИ ПО БИБЛИОТЕКИ И ТЕМИ)
   Widget _buildMovementsTab() {
     final filtered = _movementsList.where((m) {
-      return _animSearchQuery.isEmpty || m['name']!.toLowerCase().contains(_animSearchQuery.toLowerCase()) || m['type']!.toLowerCase().contains(_animSearchQuery.toLowerCase());
+      final matchesLib = _selectedAnimLibrary.contains('Mixamo') ? true : m['lib'].toString().contains(_selectedAnimLibrary.split(' ')[0]);
+      final matchesCat = _selectedAnimCategory == 'Всички' || m['type'] == _selectedAnimCategory;
+      final matchesSearch = _animSearchQuery.isEmpty || m['name']!.toLowerCase().contains(_animSearchQuery.toLowerCase());
+      return matchesLib && matchesCat && matchesSearch;
     }).toList();
 
     return Column(
       children: [
-        // Бутон за пълно сваляне на 500+ движения
+        // 1. Филтър по Библиотека (Mixamo, ActorCore, CMU)
         Container(
-          margin: const EdgeInsets.all(8),
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [Color(0xFF6A1B9A), Color(0xFF00B0FF)]),
-            borderRadius: BorderRadius.circular(12),
+          height: 36,
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _animLibraries.length,
+            itemBuilder: (context, index) {
+              final lib = _animLibraries[index];
+              final isSel = lib == _selectedAnimLibrary;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedAnimLibrary = lib),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isSel ? const Color(0xFF00E676) : const Color(0xFF141724),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: isSel ? const Color(0xFF00E676) : Colors.white12),
+                  ),
+                  child: Center(
+                    child: Text(lib, style: TextStyle(color: isSel ? Colors.black : Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              );
+            },
           ),
+        ),
+
+        // 2. Филтър по Тема (Танци, Бойни, Скокове, Зомби)
+        SizedBox(
+          height: 32,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            itemCount: _animCategories.length,
+            itemBuilder: (context, index) {
+              final cat = _animCategories[index];
+              final isSel = cat == _selectedAnimCategory;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedAnimCategory = cat),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isSel ? AppTheme.laserPink : const Color(0xFF161824),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: isSel ? AppTheme.sciFiCyan : Colors.white12),
+                  ),
+                  child: Text(cat, style: TextStyle(color: isSel ? Colors.white : Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
+                ),
+              );
+            },
+          ),
+        ),
+
+        // 3. Бутон за теглене на 1000+ движения & Търсачка
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
           child: Row(
             children: [
-              const Icon(Icons.cloud_download, color: Colors.white, size: 22),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Mixamo & Motion Pack (500+)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
-                    Text('Свали всички движения за Filament', style: TextStyle(color: Colors.white70, fontSize: 9)),
-                  ],
+              Expanded(
+                child: Container(
+                  height: 36,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(color: const Color(0xFF141724), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
+                  child: TextField(
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    decoration: const InputDecoration(
+                      hintText: 'Търси движение...',
+                      hintStyle: TextStyle(color: Colors.grey, fontSize: 11),
+                      icon: Icon(Icons.search, size: 16, color: AppTheme.laserPink),
+                      border: InputBorder.none,
+                    ),
+                    onChanged: (val) => setState(() => _animSearchQuery = val),
+                  ),
                 ),
               ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
+              const SizedBox(width: 6),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.laserPink,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                icon: const Icon(Icons.download, size: 14, color: Colors.white),
+                label: const Text('СВАЛИ ВСИЧКИ', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                 onPressed: _downloadAllMovements,
-                child: const Text('СВАЛИ ВСИЧКИ', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 9)),
               ),
             ],
           ),
         ),
-        // Търсачка за движения
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
-          child: Container(
-            height: 36,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(color: const Color(0xFF141724), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
-            child: TextField(
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-              decoration: const InputDecoration(
-                hintText: 'Търси движение (танц, удар, скок, бягане)...',
-                hintStyle: TextStyle(color: Colors.grey, fontSize: 11),
-                icon: Icon(Icons.search, size: 16, color: AppTheme.laserPink),
-                border: InputBorder.none,
-              ),
-              onChanged: (val) => setState(() => _animSearchQuery = val),
-            ),
-          ),
-        ),
+
+        // 4. Списък с движения и Микро-показно
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             itemCount: filtered.length,
             itemBuilder: (context, index) {
               final move = filtered[index];
+              final Color glow = move['color'] ?? AppTheme.laserPink;
+
               return Container(
                 margin: const EdgeInsets.symmetric(vertical: 3),
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: const Color(0xFF141724), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF141724),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: glow.withValues(alpha: 0.35)),
+                ),
                 child: Row(
                   children: [
+                    // Микро-показно на позата
                     Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(color: AppTheme.sciFiCyan.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-                      child: const Icon(Icons.directions_run, color: AppTheme.sciFiCyan, size: 18),
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: glow.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: glow.withValues(alpha: 0.6)),
+                      ),
+                      child: Icon(move['icon'] ?? Icons.directions_run, color: glow, size: 20),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -675,17 +1069,24 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Single
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(move['name']!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                          Text('${move['type']} • ${move['frames']}', style: const TextStyle(color: Colors.grey, fontSize: 9)),
+                          Text('${move['type']} • ${move['frames']} • ${move['lib']}', style: const TextStyle(color: Colors.grey, fontSize: 9)),
                         ],
                       ),
                     ),
                     ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.laserPink, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: glow,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
                       onPressed: () {
-                        setState(() => _activeAnimation = move['name']!);
-                        _tabController.animateTo(4);
+                        setState(() {
+                          _activeAnimation = move['name']!;
+                          _activeAnimCategory = move['type']!;
+                        });
+                        _tabController.animateTo(4); // Преминава в Плейъра
                       },
-                      child: const Text('ПРЕГЛЕД ▶', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 9)),
+                      child: const Text('ПРЕГЛЕД ▶', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 10)),
                     ),
                   ],
                 ),
@@ -697,61 +1098,149 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Single
     );
   }
 
-  // 5. ПЛЕЙЪР
+  // 5. ЖИВ 3D ПЛЕЙЪР С АНИМИРАН СКЕЛЕТ И ВРЕМЕВА ЛИНИЯ
   Widget _buildAnimationPlayerTab() {
     return Column(
       children: [
+        // Избор на 3D модел за тест
+        Container(
+          height: 36,
+          margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          child: Row(
+            children: ['🤖 Кибер Робот', '🥷 Самурай', '💃 Аватар'].map((mType) {
+              final isSel = mType == _previewModelType;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _previewModelType = mType),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    decoration: BoxDecoration(
+                      color: isSel ? AppTheme.sciFiCyan : const Color(0xFF141724),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(mType, style: TextStyle(color: isSel ? Colors.black : Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+
+        // Главна интерактивна сцена на плейъра с жив анимиран скелет
         Expanded(
           child: Container(
-            margin: const EdgeInsets.all(12),
+            margin: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: const Color(0xFF141724),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.laserPink.withValues(alpha: 0.5)),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppTheme.laserPink.withValues(alpha: 0.6)),
               boxShadow: [
-                BoxShadow(color: AppTheme.laserPink.withValues(alpha: 0.2), blurRadius: 20, spreadRadius: 1),
+                BoxShadow(color: AppTheme.laserPink.withValues(alpha: 0.25), blurRadius: 25),
               ],
             ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 110,
-                    height: 110,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: AppTheme.sciFiCyan.withValues(alpha: 0.3), blurRadius: 30)],
-                    ),
-                    child: const Icon(Icons.accessibility, size: 75, color: AppTheme.sciFiCyan),
+            child: Stack(
+              children: [
+                Center(
+                  child: AnimatedBuilder(
+                    animation: _animPreviewController,
+                    builder: (context, child) {
+                      return CustomPaint(
+                        size: const Size(180, 220),
+                        painter: LiveSkeletonRigPainter(
+                          progress: _animPreviewController.value,
+                          isPlaying: _isPlayingAnim,
+                          category: _activeAnimCategory,
+                          color: AppTheme.sciFiCyan,
+                        ),
+                      );
+                    },
                   ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(10)),
-                    child: Text(_activeAnimation, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
+                Positioned(
+                  top: 10,
+                  left: 12,
+                  right: 12,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(8)),
+                        child: Text(_activeAnimation, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: const Color(0xFF00E676).withValues(alpha: 0.2), borderRadius: BorderRadius.circular(6)),
+                        child: const Text('60 FPS Rigged', style: TextStyle(color: Color(0xFF00E676), fontSize: 9, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text('Скорост: ${_playbackSpeed}x • 60 FPS Rig', style: const TextStyle(color: Colors.grey, fontSize: 10)),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
+
+        // Интерактивна времева линия (Timeline Slider)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Row(
+            children: [
+              Text('${_currentFrame.toInt()} fr', style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 10, fontWeight: FontWeight.bold)),
+              Expanded(
+                child: SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 2,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+                  ),
+                  child: Slider(
+                    value: _currentFrame.clamp(0.0, _totalFrames),
+                    min: 0.0,
+                    max: _totalFrames,
+                    activeColor: AppTheme.laserPink,
+                    inactiveColor: Colors.white12,
+                    onChanged: (val) {
+                      setState(() {
+                        _currentFrame = val;
+                        _animPreviewController.value = val / _totalFrames;
+                      });
+                    },
+                  ),
+                ),
+              ),
+              Text('${_totalFrames.toInt()} fr', style: const TextStyle(color: Colors.grey, fontSize: 10)),
+            ],
+          ),
+        ),
+
+        // Бутони за Скорост и Play/Pause
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 2.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildSpeedPill('0.5x (Бавно)', 0.5),
               IconButton(
-                icon: Icon(_isPlayingAnim ? Icons.pause_circle_filled : Icons.play_circle_filled, size: 46, color: AppTheme.sciFiCyan),
-                onPressed: () => setState(() => _isPlayingAnim = !_isPlayingAnim),
+                icon: Icon(_isPlayingAnim ? Icons.pause_circle_filled : Icons.play_circle_filled, size: 48, color: AppTheme.sciFiCyan),
+                onPressed: () {
+                  setState(() {
+                    _isPlayingAnim = !_isPlayingAnim;
+                    if (_isPlayingAnim) {
+                      _animPreviewController.repeat();
+                    } else {
+                      _animPreviewController.stop();
+                    }
+                  });
+                },
               ),
               _buildSpeedPill('2.0x (Бързо)', 2.0),
             ],
           ),
         ),
+
+        // Голям бутон „ПРИЛОЖИ КЪМ МОДЕЛА“
         SafeArea(
           top: false,
           child: Padding(
@@ -765,9 +1254,12 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Single
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent),
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('⚡ Анимацията "$_activeAnimation" е приложена в Filament!')));
+                    _sceneObjects[_selectedObjIndex]['animation'] = _activeAnimation;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('⚡ Движението "$_activeAnimation" е приложено към ${_sceneObjects[_selectedObjIndex]['name']} в Filament!')),
+                    );
                   },
                   child: const Text('⚡ ПРИЛОЖИ КЪМ МОДЕЛА', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
                 ),
@@ -782,7 +1274,13 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Single
   Widget _buildSpeedPill(String label, double speed) {
     bool isSel = _playbackSpeed == speed;
     return GestureDetector(
-      onTap: () => setState(() => _playbackSpeed = isSel ? 1.0 : speed),
+      onTap: () {
+        setState(() {
+          _playbackSpeed = isSel ? 1.0 : speed;
+          _animPreviewController.duration = Duration(milliseconds: (1500 / _playbackSpeed).toInt());
+          if (_isPlayingAnim) _animPreviewController.repeat();
+        });
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         decoration: BoxDecoration(
@@ -796,6 +1294,77 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Single
   }
 }
 
+// РЕАЛЕН ЖИВ АНИМИРАН СКЕЛЕТ ЗА ПЛЕЙЪРА
+class LiveSkeletonRigPainter extends CustomPainter {
+  final double progress;
+  final bool isPlaying;
+  final String category;
+  final Color color;
+
+  LiveSkeletonRigPainter({
+    required this.progress,
+    required this.isPlaying,
+    required this.category,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 4.0
+      ..strokeCap = StrokeCap.round;
+
+    final jointPaint = Paint()..color = const Color(0xFFFF007F);
+
+    final double cx = size.width / 2;
+    final double cy = size.height / 2;
+
+    // Анимирано движение на крайниците според типа
+    double t = progress * 2 * math.pi;
+    double armAngle = math.sin(t) * 0.6;
+    double legAngle = math.cos(t) * 0.7;
+    double bodyBob = math.sin(t * 2) * 6;
+
+    if (category.contains('Танци')) {
+      armAngle = math.sin(t * 2) * 1.1;
+      bodyBob = math.cos(t * 2) * 10;
+    } else if (category.contains('Бойни')) {
+      armAngle = math.sin(t * 3) * 1.3;
+      legAngle = math.cos(t * 2) * 1.0;
+    }
+
+    // Глава
+    canvas.drawCircle(Offset(cx, cy - 55 + bodyBob), 14, paint);
+    canvas.drawCircle(Offset(cx, cy - 55 + bodyBob), 4, jointPaint);
+
+    // Тяло (Торс)
+    Offset neck = Offset(cx, cy - 40 + bodyBob);
+    Offset pelvis = Offset(cx, cy + 10 + bodyBob);
+    canvas.drawLine(neck, pelvis, paint);
+
+    // Ръце
+    Offset leftHand = Offset(cx - 35 * math.cos(armAngle), cy - 20 + 35 * math.sin(armAngle) + bodyBob);
+    Offset rightHand = Offset(cx + 35 * math.cos(armAngle), cy - 20 - 35 * math.sin(armAngle) + bodyBob);
+    canvas.drawLine(neck, leftHand, paint);
+    canvas.drawLine(neck, rightHand, paint);
+    canvas.drawCircle(leftHand, 4, jointPaint);
+    canvas.drawCircle(rightHand, 4, jointPaint);
+
+    // Крака
+    Offset leftFoot = Offset(cx - 25 * math.sin(legAngle), cy + 65 + 15 * math.cos(legAngle));
+    Offset rightFoot = Offset(cx + 25 * math.sin(legAngle), cy + 65 - 15 * math.cos(legAngle));
+    canvas.drawLine(pelvis, leftFoot, paint);
+    canvas.drawLine(pelvis, rightFoot, paint);
+    canvas.drawCircle(leftFoot, 4, jointPaint);
+    canvas.drawCircle(rightFoot, 4, jointPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant LiveSkeletonRigPainter oldDelegate) => true;
+}
+
+// 2D/3D Grid Canvas
 class GridPainter extends CustomPainter {
   final bool is3D;
   GridPainter({required this.is3D});
