@@ -12,6 +12,7 @@ class MushroomStudioScreen extends StatefulWidget {
 class _MushroomStudioScreenState extends State<MushroomStudioScreen> with TickerProviderStateMixin {
   late TabController _tabController;
   late AnimationController _animPreviewController;
+  late AnimationController _fx2DController;
 
   // 3D Камера и Терен
   double _camYaw = 0.6;
@@ -19,14 +20,28 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Ticker
   double _camZoom = 1.0;
   String _selected3DTool = 'orbit';
 
-  // 2D Редактор инструменти
-  String _selected2DTool = 'brush';
-  final List<Offset> _tiles2D = [
-    const Offset(0, 3), const Offset(1, 3), const Offset(2, 3),
-    const Offset(3, 3), const Offset(4, 3), const Offset(2, 1),
+  // 2D Редактор
+  String _selected2DTool = 'tile_grass';
+  bool _is2DSimulating = false;
+
+  final List<Map<String, dynamic>> _level2DGrid = [
+    {'pos': const Offset(0, 4), 'type': 'grass'},
+    {'pos': const Offset(1, 4), 'type': 'grass'},
+    {'pos': const Offset(2, 4), 'type': 'grass'},
+    {'pos': const Offset(3, 4), 'type': 'grass'},
+    {'pos': const Offset(4, 4), 'type': 'grass'},
+    {'pos': const Offset(5, 4), 'type': 'grass'},
+    {'pos': const Offset(6, 4), 'type': 'grass'},
+    {'pos': const Offset(2, 2), 'type': 'platform'},
+    {'pos': const Offset(3, 2), 'type': 'platform'},
+    {'pos': const Offset(2, 1), 'type': 'coin'},
+    {'pos': const Offset(3, 1), 'type': 'coin'},
+    {'pos': const Offset(5, 3), 'type': 'enemy'},
+    {'pos': const Offset(1, 1), 'type': 'light'},
   ];
-  final List<Offset> _coins2D = [const Offset(2, 0), const Offset(4, 2)];
-  final List<Offset> _enemies2D = [const Offset(3, 2)];
+
+  double _simPlayerX = 40.0;
+  double _simPlayerY = 120.0;
 
   // 3D Обекти в сцената
   int _selected3DObjIndex = 0;
@@ -37,20 +52,21 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Ticker
     {'name': '🧱 Неон Блок 2', 'x': 70.0, 'y': -10.0, 'z': 40.0, 'size': 30.0, 'color': Color(0xFF00E676), 'type': 'block'},
   ];
 
-  // Аниматор
+  // Аниматор и Магазин
   bool _isPlayingAnim = true;
   double _playbackSpeed = 1.0;
   String _activeAnimation = 'Hip Hop Dance';
   String _activeAnimCategory = 'Танци';
   String _animSearchQuery = '';
+  String _assetSearchQuery = '';
+  String _selectedAssetMainType = '🎲 3D Модели';
+  String? _playingAudioTrack;
+
   final List<String> _animLibraries = ['Mixamo (2000+)', 'ActorCore MoCap', 'CMU Database', 'Unity Free'];
   String _selectedAnimLibrary = 'Mixamo (2000+)';
-
-  // Магазин за асети
-  String _selectedAssetMainType = '🎲 3D Модели';
   final List<String> _assetMainTypes = ['🎲 3D Модели', '🎨 2D Спрайтове', '🎵 Музика & SFX', '🌋 Шейдъри & FX'];
-  String _assetSearchQuery = '';
-  String? _playingAudioTrack;
+  final List<String> _storeCategories = ['Всички', '🏰 Сгради', '🤖 Герои & Кукли', '🌋 Лава & Неон', '🚗 Возила', '⚔️ Оръжия', '🌲 Природа', '📦 Пропове'];
+  String _selectedStoreCategory = 'Всички';
   late List<Map<String, dynamic>> _assetsList;
 
   final List<Map<String, dynamic>> _movementsList = [
@@ -66,134 +82,243 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Ticker
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
-    _animPreviewController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
-
-    // Генерация на стотици реални асети
+    _animPreviewController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat();
+    _fx2DController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..repeat(reverse: true);
     _assetsList = _generateMassiveAssetCatalog();
   }
 
   @override
   void dispose() {
     _animPreviewController.dispose();
+    _fx2DController.dispose();
     _tabController.dispose();
     super.dispose();
   }
 
-  // ГЕНЕРАТОР НА СТОТИЦИ АСЕТИ ОТ ВСИЧКИ БИБЛИОТЕКИ
+  void _toggle2DSimulation() {
+    setState(() {
+      _is2DSimulating = !_is2DSimulating;
+    });
+
+    if (_is2DSimulating) {
+      _simPlayerX = 40.0;
+      _simPlayerY = 120.0;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('🎮 Стартирана 2D Godot CharacterBody2D симулация!')),
+      );
+    }
+  }
+
+  void _sim2DJump() {
+    if (_is2DSimulating) {
+      setState(() {
+        _simPlayerY = (_simPlayerY == 120.0) ? 70.0 : 120.0;
+      });
+    }
+  }
+
+  void _sim2DMove(double dx) {
+    if (_is2DSimulating) {
+      setState(() {
+        _simPlayerX = (_simPlayerX + dx).clamp(10.0, 320.0);
+      });
+    }
+  }
+
+  // БАЗА ДАННИ С РЕАЛНИ ВИЗУАЛНИ ИЗОБРАЖЕНИЯ (RENDER PREVIEWS)
   static List<Map<String, dynamic>> _generateMassiveAssetCatalog() {
     List<Map<String, dynamic>> list = [];
 
-    // 1. 3D Модели (PolyPizza, Quaternius, Sketchfab, Kenney)
-    final List<String> themes3D = [
-      'Кибер', 'Вулканичен', 'Средновековен', 'Космически', 'Неонов',
-      'Елфически', 'Зомби', 'Пустинен', 'Подводен', 'Магически',
-      'Аркаден', 'Нинджа', 'Роботизиран', 'Лазерен', 'Титаниев'
-    ];
-    final List<Map<String, dynamic>> types3D = [
-      {'name': 'Замък', 'cat': '🏰 Сгради', 'color': Color(0xFFFF3D00), 'poly': '1.8k Poly', 'lib': 'Quaternius Free'},
-      {'name': 'Кула', 'cat': '🏰 Сгради', 'color': Color(0xFF00E5FF), 'poly': '1.2k Poly', 'lib': 'Sketchfab CC0'},
-      {'name': 'Храм', 'cat': '🏰 Сгради', 'color': Color(0xFFFFD600), 'poly': '2.4k Poly', 'lib': 'PolyPizza'},
-      {'name': 'Герой', 'cat': '🤖 Герои & Кукли', 'color': Color(0xFFD500F9), 'poly': '3.5k Poly', 'lib': 'Mixamo Rigged'},
-      {'name': 'Самурай', 'cat': '🤖 Герои & Кукли', 'color': Color(0xFFFF1744), 'poly': '4.1k Poly', 'lib': 'Quaternius'},
-      {'name': 'Дракон', 'cat': '🤖 Герои & Кукли', 'color': Color(0xFF00E676), 'poly': '5.8k Poly', 'lib': 'PolyPizza'},
-      {'name': 'Болид', 'cat': '🚗 Возила', 'color': Color(0xFF00E5FF), 'poly': '2.3k Poly', 'lib': 'Kenney Cars'},
-      {'name': 'Ховърборд', 'cat': '🚗 Возила', 'color': Color(0xFFFF007F), 'poly': '1.1k Poly', 'lib': 'PolyPizza'},
-      {'name': 'Меч', 'cat': '⚔️ Оръжия', 'color': Color(0xFF00E676), 'poly': '450 Poly', 'lib': 'PolyPizza'},
-      {'name': 'Бластер', 'cat': '⚔️ Оръжия', 'color': Color(0xFF00E5FF), 'poly': '800 Poly', 'lib': 'Kenney Weapons'},
-      {'name': 'Дърво', 'cat': '🌲 Природа', 'color': Color(0xFF00E676), 'poly': '900 Poly', 'lib': 'Kenney Nature'},
-      {'name': 'Скала', 'cat': '🌲 Природа', 'color': Color(0xFFFF9100), 'poly': '700 Poly', 'lib': 'PolyPizza'},
-      {'name': 'Сандък', 'cat': '📦 Пропове', 'color': Color(0xFFFFD600), 'poly': '320 Poly', 'lib': 'Kenney Props'},
-      {'name': 'Портал FX', 'cat': '🌋 Лава & Неон', 'color': Color(0xFFFF3D00), 'poly': 'Shader FX', 'lib': 'Filament PBR'},
-    ];
-
-    for (var t in themes3D) {
-      for (var item in types3D) {
-        list.add({
-          'name': '$t ${item['name']}',
-          'type': '3D ${item['name']}',
-          'media': '3D',
-          'cat': item['cat'],
-          'color': item['color'],
-          'poly': item['poly'],
-          'lib': item['lib'],
-        });
-      }
-    }
-
-    // 2. 2D Спрайтове (Kenney 2D, OpenGameArt, CraftPix)
-    final List<String> themes2D = [
-      'Пиксел', 'Ретро 8-Bit', 'Неон 2D', 'Фентъзи', 'Кибер 2D',
-      'Аркаден', 'Джънгъл', 'Лава 2D', 'Космически 2D', 'Леден'
-    ];
-    final List<Map<String, dynamic>> types2D = [
-      {'name': 'Рицар', 'cat': '🤖 Герои & Кукли', 'color': Color(0xFFFFD600), 'poly': '32x32 Sheet', 'lib': 'OpenGameArt'},
-      {'name': 'Магьосник', 'cat': '🤖 Герои & Кукли', 'color': Color(0xFFD500F9), 'poly': '32x32 Sheet', 'lib': 'CraftPix'},
-      {'name': 'Платформа Плочки', 'cat': '🏰 Сгради', 'color': Color(0xFF00E676), 'poly': '16x16 Tileset', 'lib': 'Kenney 2D'},
-      {'name': 'Монета Анимация', 'cat': '📦 Пропове', 'color': Color(0xFFFFD600), 'poly': '16x16 Anim', 'lib': 'Kenney 2D'},
-      {'name': 'Шипове Капан', 'cat': '⚔️ Оръжия', 'color': Color(0xFFFF1744), 'poly': '16x16 Sprite', 'lib': 'OpenGameArt'},
-      {'name': 'Лава Анимация FX', 'cat': '🌋 Лава & Неон', 'color': Color(0xFFFF3D00), 'poly': '64x64 Frames', 'lib': 'CraftPix Free'},
-      {'name': 'Летящ Враг', 'cat': '🤖 Герои & Кукли', 'color': Color(0xFFFF1744), 'poly': '32x32 Sheet', 'lib': 'Kenney 2D'},
-      {'name': 'Колекционерско Сърце', 'cat': '📦 Пропове', 'color': Color(0xFFFF007F), 'poly': '16x16 Sprite', 'lib': 'OpenGameArt'},
-    ];
-
-    for (var t in themes2D) {
-      for (var item in types2D) {
-        list.add({
-          'name': '$t ${item['name']}',
-          'type': '2D Спрайт',
-          'media': '2D',
-          'cat': item['cat'],
-          'color': item['color'],
-          'poly': item['poly'],
-          'lib': item['lib'],
-        });
-      }
-    }
-
-    // 3. Аудио и Звукови Ефекти (Incompetech, Kenney Audio, FreeSound)
-    final List<String> audioThemes = [
-      'Cyberpunk', 'Epic Battle', 'Lava Dungeon', 'Retro Arcade', 'Sci-Fi Ambient',
-      'Synthwave Night', 'Hero Victory', 'Dark Mystery', '8-Bit Jump', 'Laser Strike'
-    ];
-    final List<Map<String, dynamic>> audioTypes = [
-      {'name': 'Theme Track', 'type': 'Фонова Музика', 'color': AppTheme.laserPink, 'poly': '2:30 min • MP3', 'lib': 'Incompetech Free'},
-      {'name': 'Battle Action OST', 'type': 'Фонова Музика', 'color': Color(0xFFFF1744), 'poly': '3:15 min • HQ', 'lib': 'Bensound Free'},
-      {'name': 'Laser Blast SFX', 'type': 'Звуков Ефект', 'color': AppTheme.sciFiCyan, 'poly': '0:02 sec • WAV', 'lib': 'Kenney Audio'},
-      {'name': 'Jump & Dash SFX', 'type': 'Звуков Ефект', 'color': Color(0xFF00E676), 'poly': '0:01 sec • WAV', 'lib': 'FreeSound FX'},
-      {'name': 'Coin Pickup SFX', 'type': 'Звуков Ефект', 'color': Color(0xFFFFD600), 'poly': '0:01 sec • WAV', 'lib': 'Kenney Audio'},
-      {'name': 'Explosion FX', 'type': 'Звуков Ефект', 'color': Color(0xFFFF3D00), 'poly': '0:03 sec • WAV', 'lib': 'FreeSound FX'},
-    ];
-
-    for (var t in audioThemes) {
-      for (var item in audioTypes) {
-        list.add({
-          'name': '$t ${item['name']}',
-          'type': item['type'],
-          'media': 'Audio',
-          'cat': '🌋 Лава & Неон',
-          'color': item['color'],
-          'poly': item['poly'],
-          'lib': item['lib'],
-        });
-      }
-    }
-
-    // 4. Шейдъри и Ефекти
-    final List<String> shaderThemes = ['Lava Volcanic', 'Neon Hologram', 'Cyber Shield', 'Water Wave', 'Plasma Portal', 'Fire Particle'];
-    for (var s in shaderThemes) {
-      list.add({
-        'name': '$s PBR Shader',
-        'type': '3D Шейдър FX',
-        'media': 'Shaders',
+    final List<Map<String, dynamic>> real3DModels = [
+      {
+        'name': 'Вулканичен Замък 3D',
+        'type': '3D Сграда',
+        'media': '3D',
+        'cat': '🏰 Сгради',
+        'color': Color(0xFFFF3D00),
+        'poly': '1.8k Poly',
+        'lib': 'Quaternius Free',
+        'img': 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&q=80',
+        'icon': Icons.castle,
+      },
+      {
+        'name': 'Кибер Самурай 3D',
+        'type': '3D Герой',
+        'media': '3D',
+        'cat': '🤖 Герои & Кукли',
+        'color': Color(0xFFD500F9),
+        'poly': '3.5k Poly',
+        'lib': 'Mixamo Rigged',
+        'img': 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=300&q=80',
+        'icon': Icons.accessibility_new,
+      },
+      {
+        'name': 'Неонов Болид GT',
+        'type': '3D Возило',
+        'media': '3D',
+        'cat': '🚗 Возила',
+        'color': Color(0xFF00E5FF),
+        'poly': '2.3k Poly',
+        'lib': 'Kenney Cars',
+        'img': 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=300&q=80',
+        'icon': Icons.directions_car,
+      },
+      {
+        'name': 'Плазмен Меч FX',
+        'type': '3D Оръжие',
+        'media': '3D',
+        'cat': '⚔️ Оръжия',
+        'color': Color(0xFF00E676),
+        'poly': '450 Poly',
+        'lib': 'PolyPizza',
+        'img': 'https://images.unsplash.com/photo-1589241062272-c0a000072dfa?w=300&q=80',
+        'icon': Icons.flash_on,
+      },
+      {
+        'name': 'Лава Дракон Бос',
+        'type': '3D Бос/Кукла',
+        'media': '3D',
         'cat': '🌋 Лава & Неон',
-        'color': Color(0xFFFF9100),
-        'poly': 'Filament GLSL',
-        'lib': 'Google Filament PBR',
-      });
-    }
+        'color': Color(0xFFFF1744),
+        'poly': '6.2k Poly',
+        'lib': 'Quaternius',
+        'img': 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=300&q=80',
+        'icon': Icons.stream,
+      },
+      {
+        'name': 'Космическа Совалка',
+        'type': '3D Возило',
+        'media': '3D',
+        'cat': '🚗 Возила',
+        'color': AppTheme.sciFiCyan,
+        'poly': '5.1k Poly',
+        'lib': 'PolyPizza',
+        'img': 'https://images.unsplash.com/photo-1517976487588-34861614742f?w=300&q=80',
+        'icon': Icons.rocket_launch,
+      },
+      {
+        'name': 'Магическа Гора',
+        'type': '3D Природа',
+        'media': '3D',
+        'cat': '🌲 Природа',
+        'color': Color(0xFF00E676),
+        'poly': '1.8k Poly',
+        'lib': 'Kenney Nature',
+        'img': 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=300&q=80',
+        'icon': Icons.park,
+      },
+      {
+        'name': 'Златен Сандък Проп',
+        'type': '3D Проп',
+        'media': '3D',
+        'cat': '📦 Пропове',
+        'color': Color(0xFFFFD600),
+        'poly': '320 Poly',
+        'lib': 'Kenney Props',
+        'img': 'https://images.unsplash.com/photo-1512353087810-25dfcd100962?w=300&q=80',
+        'icon': Icons.inventory_2,
+      },
+    ];
+
+    list.addAll(real3DModels);
+
+    final List<Map<String, dynamic>> real2DSprites = [
+      {
+        'name': 'Пиксел Рицар 2D',
+        'type': '2D Спрайт',
+        'media': '2D',
+        'cat': '🤖 Герои & Кукли',
+        'color': Color(0xFFFFD600),
+        'poly': '32x32 Sheet',
+        'lib': 'OpenGameArt',
+        'img': 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=300&q=80',
+        'icon': Icons.shield,
+      },
+      {
+        'name': 'Платформи Плочки 2D',
+        'type': '2D Плочки',
+        'media': '2D',
+        'cat': '🏰 Сгради',
+        'color': Color(0xFF00E676),
+        'poly': '16x16 Tileset',
+        'lib': 'Kenney 2D',
+        'img': 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&q=80',
+        'icon': Icons.grid_on,
+      },
+      {
+        'name': 'Лава Спрайт FX',
+        'type': '2D FX',
+        'media': '2D',
+        'cat': '🌋 Лава & Неон',
+        'color': Color(0xFFFF3D00),
+        'poly': '64x64 Frames',
+        'lib': 'CraftPix Free',
+        'img': 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=300&q=80',
+        'icon': Icons.local_fire_department,
+      },
+      {
+        'name': 'Златна Монета 2D',
+        'type': '2D Предмет',
+        'media': '2D',
+        'cat': '📦 Пропове',
+        'color': Color(0xFFFFAB00),
+        'poly': '16x16 Anim',
+        'lib': 'Kenney 2D',
+        'img': 'https://images.unsplash.com/photo-1621416894569-0f39ed31d247?w=300&q=80',
+        'icon': Icons.monetization_on,
+      },
+    ];
+
+    list.addAll(real2DSprites);
+
+    final List<Map<String, dynamic>> realAudioTracks = [
+      {
+        'name': 'Cyberpunk Action OST',
+        'type': 'Фонова Музика',
+        'media': 'Audio',
+        'cat': '🌋 Лава & Неон',
+        'color': AppTheme.laserPink,
+        'poly': '2:15 min • MP3',
+        'lib': 'Incompetech Free',
+        'img': 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&q=80',
+        'icon': Icons.music_note,
+      },
+      {
+        'name': 'Лазерен Бластер SFX',
+        'type': 'Звуков Ефект',
+        'media': 'Audio',
+        'cat': '⚔️ Оръжия',
+        'color': AppTheme.sciFiCyan,
+        'poly': '0:02 sec • WAV',
+        'lib': 'Kenney Audio',
+        'img': 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80',
+        'icon': Icons.volume_up,
+      },
+      {
+        'name': '3D Скок & Dash SFX',
+        'type': 'Звуков Ефект',
+        'media': 'Audio',
+        'cat': '🤖 Герои & Кукли',
+        'color': Color(0xFF00E676),
+        'poly': '0:01 sec • WAV',
+        'lib': 'FreeSound FX',
+        'img': 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&q=80',
+        'icon': Icons.graphic_eq,
+      },
+      {
+        'name': 'Lava Boss Battle Music',
+        'type': 'Фонова Музика',
+        'media': 'Audio',
+        'cat': '🌋 Лава & Неон',
+        'color': Color(0xFFFF1744),
+        'poly': '3:40 min • HQ',
+        'lib': 'Bensound Free',
+        'img': 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=300&q=80',
+        'icon': Icons.music_note,
+      },
+    ];
+
+    list.addAll(realAudioTracks);
 
     return list;
   }
@@ -201,14 +326,32 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Ticker
   void _loadMoreAssetsBatch() {
     setState(() {
       _assetsList.addAll([
-        {'name': 'Титаниев Мех Бос', 'type': '3D Бос', 'media': '3D', 'color': AppTheme.laserPink, 'poly': '8.2k Poly', 'lib': 'PolyPizza'},
-        {'name': 'Неонов Дрифт Автомобил', 'type': '3D Возило', 'media': '3D', 'color': Color(0xFF00E676), 'poly': '4.1k Poly', 'lib': 'Kenney Cars'},
-        {'name': 'Епичен Драконов Рев SFX', 'type': 'Звуков Ефект', 'media': 'Audio', 'color': Color(0xFFFF1744), 'poly': '0:04 sec • WAV', 'lib': 'FreeSound'},
-        {'name': 'Пиксел Космически Кораб 2D', 'type': '2D Спрайт', 'media': '2D', 'color': AppTheme.sciFiCyan, 'poly': '32x32 Sheet', 'lib': 'OpenGameArt'},
+        {
+          'name': 'Титаниев Мех Бос 3D',
+          'type': '3D Бос',
+          'media': '3D',
+          'cat': '🤖 Герои & Кукли',
+          'color': AppTheme.laserPink,
+          'poly': '8.2k Poly',
+          'lib': 'PolyPizza',
+          'img': 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=300&q=80',
+          'icon': Icons.smart_toy,
+        },
+        {
+          'name': 'Кибер Дрифт Мотор',
+          'type': '3D Возило',
+          'media': '3D',
+          'cat': '🚗 Возила',
+          'color': Color(0xFF00E676),
+          'poly': '4.1k Poly',
+          'lib': 'Kenney Cars',
+          'img': 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=300&q=80',
+          'icon': Icons.two_wheeler,
+        },
       ]);
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('📦 Заредени още нови 3D/2D/Аудио библиотеки!')),
+      const SnackBar(content: Text('📦 Заредени още нови 3D/2D библиотеки с реални изображения!')),
     );
   }
 
@@ -237,7 +380,7 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Ticker
                 labelPadding: const EdgeInsets.symmetric(horizontal: 16),
                 labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                 tabs: const [
-                  Tab(text: '2D Студио'),
+                  Tab(text: '2D Godot Студио'),
                   Tab(text: '3D Терен & Сцена'),
                   Tab(text: 'Магазин'),
                   Tab(text: 'Движения'),
@@ -251,7 +394,7 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Ticker
               controller: _tabController,
               physics: const NeverScrollableScrollPhysics(),
               children: [
-                _build2DLevelEditor(),
+                _buildSmartGodot2DStudio(),
                 _build3DPerspectiveWorld(),
                 _buildAssetStoreTab(),
                 _buildMovementsTab(),
@@ -264,7 +407,194 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Ticker
     );
   }
 
-  // 1. 3D ПЕРСПЕКТИВЕН СВЯТ
+  // 1. 2D GODOT STUDIO
+  Widget _buildSmartGodot2DStudio() {
+    return Stack(
+      children: [
+        Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              color: const Color(0xFF10121D),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _build2DQuickTool(Icons.crop_square, 'tile_grass', const Color(0xFF00E676), 'Земя'),
+                  _build2DQuickTool(Icons.monetization_on, 'coin', const Color(0xFFFFD600), 'Монета'),
+                  _build2DQuickTool(Icons.pest_control, 'enemy', const Color(0xFFFF1744), 'Враг'),
+                  _build2DQuickTool(Icons.lightbulb, 'light', AppTheme.sciFiCyan, '2D Светлина'),
+                  _build2DQuickTool(Icons.cleaning_services, 'erase', Colors.grey, 'Изтрий'),
+                  Container(height: 18, width: 1, color: Colors.white24),
+                  GestureDetector(
+                    onTap: _toggle2DSimulation,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: _is2DSimulating ? const Color(0xFFFF1744) : const Color(0xFF00E676),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(_is2DSimulating ? Icons.stop : Icons.play_arrow, size: 14, color: Colors.black),
+                          const SizedBox(width: 3),
+                          Text(_is2DSimulating ? 'СТОП' : 'ТЕСТ 2D', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 10)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Container(
+                color: const Color(0xFF090B14),
+                child: GestureDetector(
+                  onTapDown: (details) {
+                    if (_is2DSimulating) return;
+                    final local = details.localPosition;
+                    int col = (local.dx / 36).floor();
+                    int row = ((local.dy - 40) / 36).floor();
+                    final pos = Offset(col.toDouble(), row.toDouble());
+
+                    setState(() {
+                      if (_selected2DTool == 'erase') {
+                        _level2DGrid.removeWhere((e) => e['pos'] == pos);
+                      } else {
+                        _level2DGrid.removeWhere((e) => e['pos'] == pos);
+                        _level2DGrid.add({'pos': pos, 'type': _selected2DTool.replaceAll('tile_', '')});
+                      }
+                    });
+                  },
+                  child: AnimatedBuilder(
+                    animation: _fx2DController,
+                    builder: (context, child) {
+                      return CustomPaint(
+                        size: Size.infinite,
+                        painter: Godot2DCanvasPainter(
+                          elements: _level2DGrid,
+                          enableShadows: true,
+                          lightColor: AppTheme.sciFiCyan,
+                          pulseValue: _fx2DController.value,
+                          isSimulating: _is2DSimulating,
+                          playerPos: Offset(_simPlayerX, _simPlayerY),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+            if (!_is2DSimulating)
+              Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF10121D),
+                  border: Border(top: BorderSide(color: Color(0xFF222638))),
+                ),
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    _buildPaletteChip('🟩 Трева Платформа', 'tile_grass', const Color(0xFF00E676)),
+                    _buildPaletteChip('🟫 Скала / Земя', 'tile_dirt', const Color(0xFF8D6E63)),
+                    _buildPaletteChip('🪙 Златна Монета', 'coin', const Color(0xFFFFD600)),
+                    _buildPaletteChip('👾 Патрулиращ Враг', 'enemy', const Color(0xFFFF1744)),
+                    _buildPaletteChip('💡 Неон Фенер 2D', 'light', AppTheme.sciFiCyan),
+                    _buildPaletteChip('🌋 Лава Зона FX', 'lava', const Color(0xFFFF3D00)),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        if (_is2DSimulating)
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 20,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    _build2DTouchBtn(Icons.arrow_back, () => _sim2DMove(-20)),
+                    const SizedBox(width: 10),
+                    _build2DTouchBtn(Icons.arrow_forward, () => _sim2DMove(20)),
+                  ],
+                ),
+                GestureDetector(
+                  onTap: _sim2DJump,
+                  child: Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(colors: [Color(0xFF00E676), Color(0xFF00E5FF)]),
+                      boxShadow: [BoxShadow(color: const Color(0xFF00E676).withValues(alpha: 0.6), blurRadius: 15)],
+                    ),
+                    child: const Center(child: Text('СКОК 🚀', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold))),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _build2DQuickTool(IconData icon, String tool, Color c, String label) {
+    bool isSel = _selected2DTool == tool;
+    return GestureDetector(
+      onTap: () => setState(() => _selected2DTool = tool),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSel ? c.withValues(alpha: 0.25) : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          border: isSel ? Border.all(color: c) : null,
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 14, color: isSel ? c : Colors.grey),
+            const SizedBox(width: 3),
+            Text(label, style: TextStyle(color: isSel ? Colors.white : Colors.grey, fontSize: 9, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaletteChip(String label, String tool, Color c) {
+    bool isSel = _selected2DTool == tool;
+    return GestureDetector(
+      onTap: () => setState(() => _selected2DTool = tool),
+      child: Container(
+        margin: const EdgeInsets.only(right: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSel ? c.withValues(alpha: 0.25) : const Color(0xFF181B28),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isSel ? c : Colors.white12),
+        ),
+        child: Center(
+          child: Text(label, style: TextStyle(color: isSel ? Colors.white : Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
+        ),
+      ),
+    );
+  }
+
+  Widget _build2DTouchBtn(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(color: const Color(0xDD181B28), shape: BoxShape.circle, border: Border.all(color: const Color(0xFF00E676))),
+        child: Icon(icon, color: const Color(0xFF00E676), size: 22),
+      ),
+    );
+  }
+
+  // 2. 3D ПЕРСПЕКТИВЕН СВЯТ
   Widget _build3DPerspectiveWorld() {
     return Stack(
       children: [
@@ -377,92 +707,6 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Ticker
     );
   }
 
-  // 2. 2D LEVEL DESIGNER
-  Widget _build2DLevelEditor() {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          color: const Color(0xFF10121D),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _build2DToolBtn(Icons.edit, 'brush', const Color(0xFF00E676), 'Плочка'),
-              _build2DToolBtn(Icons.monetization_on, 'coin', const Color(0xFFFFD600), 'Монета'),
-              _build2DToolBtn(Icons.pest_control, 'enemy', const Color(0xFFFF1744), 'Враг'),
-              _build2DToolBtn(Icons.cleaning_services, 'erase', Colors.grey, 'Изтрий'),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.laserPink, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
-                icon: const Icon(Icons.play_arrow, size: 16, color: Colors.white),
-                label: const Text('ТЕСТ 2D', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('🎮 Стартирана 2D симулация!')));
-                },
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: Container(
-            color: const Color(0xFF090B12),
-            child: GestureDetector(
-              onTapDown: (details) {
-                final local = details.localPosition;
-                int col = (local.dx / 40).floor();
-                int row = ((local.dy - 60) / 40).floor();
-                final pos = Offset(col.toDouble(), row.toDouble());
-
-                setState(() {
-                  if (_selected2DTool == 'brush') {
-                    if (!_tiles2D.contains(pos)) _tiles2D.add(pos);
-                  } else if (_selected2DTool == 'coin') {
-                    if (!_coins2D.contains(pos)) _coins2D.add(pos);
-                  } else if (_selected2DTool == 'enemy') {
-                    if (!_enemies2D.contains(pos)) _enemies2D.add(pos);
-                  } else if (_selected2DTool == 'erase') {
-                    _tiles2D.remove(pos);
-                    _coins2D.remove(pos);
-                    _enemies2D.remove(pos);
-                  }
-                });
-              },
-              child: CustomPaint(
-                size: Size.infinite,
-                painter: Real2DLevelPainter(
-                  tiles: _tiles2D,
-                  coins: _coins2D,
-                  enemies: _enemies2D,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _build2DToolBtn(IconData icon, String tool, Color c, String label) {
-    bool isSel = _selected2DTool == tool;
-    return GestureDetector(
-      onTap: () => setState(() => _selected2DTool = tool),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSel ? c.withValues(alpha: 0.25) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: isSel ? Border.all(color: c) : null,
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 16, color: isSel ? c : Colors.grey),
-            const SizedBox(width: 4),
-            Text(label, style: TextStyle(color: isSel ? Colors.white : Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildStudioToolBtn(IconData icon, String tool, Color c, String label, VoidCallback onTap) {
     bool isSel = _selected3DTool == tool;
     return GestureDetector(
@@ -485,7 +729,7 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Ticker
     );
   }
 
-  // 3. МАГАЗИН АСЕТИ СЪС СТОТИЦИ МОДЕЛИ И МУЗИКА
+  // 3. МАГАЗИН АСЕТИ С РЕАЛНИ ИЗОБРАЖЕНИЯ (RENDER THUMBNAILS)
   Widget _buildAssetStoreTab() {
     final filtered = _assetsList.where((a) {
       bool matchesType = true;
@@ -494,8 +738,9 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Ticker
       if (_selectedAssetMainType == '🎵 Музика & SFX') matchesType = a['media'] == 'Audio';
       if (_selectedAssetMainType == '🌋 Шейдъри & FX') matchesType = a['media'] == 'Shaders';
 
+      final matchesCat = _selectedStoreCategory == 'Всички' || a['cat'] == _selectedStoreCategory;
       final matchesSearch = _assetSearchQuery.isEmpty || a['name'].toString().toLowerCase().contains(_assetSearchQuery.toLowerCase());
-      return matchesType && matchesSearch;
+      return matchesType && matchesCat && matchesSearch;
     }).toList();
 
     return Column(
@@ -543,12 +788,37 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Ticker
             ),
           ),
         ),
+        SizedBox(
+          height: 32,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            itemCount: _storeCategories.length,
+            itemBuilder: (context, index) {
+              final cat = _storeCategories[index];
+              final isSel = cat == _selectedStoreCategory;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedStoreCategory = cat),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isSel ? AppTheme.laserPink : const Color(0xFF161824),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: isSel ? AppTheme.sciFiCyan : Colors.white12),
+                  ),
+                  child: Text(cat, style: TextStyle(color: isSel ? Colors.white : Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
+                ),
+              );
+            },
+          ),
+        ),
         Expanded(
           child: GridView.builder(
             padding: const EdgeInsets.all(8),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 0.84,
+              childAspectRatio: 0.72,
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
             ),
@@ -557,6 +827,7 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Ticker
               final asset = filtered[index];
               final Color glow = asset['color'];
               final bool isAudio = asset['media'] == 'Audio';
+              final bool is2D = asset['media'] == '2D';
               final bool isPlayingThisAudio = _playingAudioTrack == asset['name'];
 
               return Container(
@@ -582,9 +853,63 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Ticker
                           Text(asset['poly'], style: const TextStyle(color: Colors.grey, fontSize: 8)),
                         ],
                       ),
-                      Icon(isAudio ? (isPlayingThisAudio ? Icons.graphic_eq : Icons.music_note) : Icons.view_in_ar, size: 40, color: glow),
-                      Text(asset['name'], textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
-                      Text('Библиотека: ${asset['lib']}', style: const TextStyle(color: Colors.white54, fontSize: 8)),
+                      
+                      // РЕАЛНО ИЗОБРАЖЕНИЕ НА АСЕТА (RENDER THUMBNAIL)
+                      Container(
+                        height: 95,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          color: const Color(0xFF0E101A),
+                          border: Border.all(color: glow.withValues(alpha: 0.3)),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(9),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.network(
+                                asset['img'] ?? '',
+                                fit: BoxFit.cover,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Center(
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: glow),
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: glow.withValues(alpha: 0.1),
+                                    child: Center(
+                                      child: Icon(asset['icon'] ?? Icons.view_in_ar, size: 36, color: glow),
+                                    ),
+                                  );
+                                },
+                              ),
+                              if (isAudio)
+                                Center(
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: glow),
+                                    ),
+                                    child: Icon(isPlayingThisAudio ? Icons.graphic_eq : Icons.play_arrow, size: 22, color: glow),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      Text(asset['name'], textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text('Библиотека: ${asset['lib']}', style: const TextStyle(color: Colors.white54, fontSize: 8), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      
                       if (isAudio) ...[
                         Row(
                           children: [
@@ -627,7 +952,7 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Ticker
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(backgroundColor: glow, padding: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
                             onPressed: () {
-                              if (asset['media'] == '2D') {
+                              if (is2D) {
                                 _tabController.animateTo(0);
                               } else {
                                 setState(() {
@@ -646,7 +971,7 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Ticker
                               }
                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ Вкаран в сцената: ${asset['name']}')));
                             },
-                            child: Text(asset['media'] == '2D' ? 'ВКАРАЙ В 2D' : 'ВКАРАЙ В 3D', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 9)),
+                            child: Text(is2D ? 'ВКАРАЙ В 2D' : 'ВКАРАЙ В 3D', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 9)),
                           ),
                         ),
                       ],
@@ -887,6 +1212,86 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> with Ticker
   }
 }
 
+// 2D Godot Canvas Painter
+class Godot2DCanvasPainter extends CustomPainter {
+  final List<Map<String, dynamic>> elements;
+  final bool enableShadows;
+  final Color lightColor;
+  final double pulseValue;
+  final bool isSimulating;
+  final Offset playerPos;
+
+  Godot2DCanvasPainter({
+    required this.elements,
+    required this.enableShadows,
+    required this.lightColor,
+    required this.pulseValue,
+    required this.isSimulating,
+    required this.playerPos,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const double s = 36.0;
+
+    final gridPaint = Paint()..color = const Color(0xFF181C2E)..strokeWidth = 1.0;
+    for (double x = 0; x < size.width; x += s) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
+    }
+    for (double y = 0; y < size.height; y += s) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+
+    for (var el in elements) {
+      if (el['type'] == 'light') {
+        Offset center = Offset(el['pos'].dx * s + s / 2, el['pos'].dy * s + 40 + s / 2);
+        double rad = 70.0 + (pulseValue * 15.0);
+
+        final lightGlow = Paint()
+          ..shader = RadialGradient(
+            colors: [lightColor.withValues(alpha: 0.35), Colors.transparent],
+          ).createShader(Rect.fromCircle(center: center, radius: rad));
+
+        canvas.drawCircle(center, rad, lightGlow);
+      }
+    }
+
+    for (var el in elements) {
+      Offset pos = el['pos'];
+      String type = el['type'];
+      Rect r = Rect.fromLTWH(pos.dx * s, (pos.dy * s) + 40, s, s);
+
+      if (type == 'grass') {
+        final grassPaint = Paint()..color = const Color(0xFF00E676)..style = PaintingStyle.fill;
+        canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(6)), grassPaint);
+      } else if (type == 'dirt') {
+        final dirtPaint = Paint()..color = const Color(0xFF8D6E63)..style = PaintingStyle.fill;
+        canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(6)), dirtPaint);
+      } else if (type == 'coin') {
+        final coinPaint = Paint()..color = const Color(0xFFFFD600)..style = PaintingStyle.fill;
+        canvas.drawCircle(Offset(pos.dx * s + s / 2, pos.dy * s + 40 + s / 2), 9, coinPaint);
+      } else if (type == 'enemy') {
+        final enemyPaint = Paint()..color = const Color(0xFFFF1744)..style = PaintingStyle.fill;
+        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(pos.dx * s + 4, pos.dy * s + 44, s - 8, s - 8), const Radius.circular(8)), enemyPaint);
+      } else if (type == 'lava') {
+        final lavaPaint = Paint()..color = const Color(0xFFFF3D00)..style = PaintingStyle.fill;
+        canvas.drawRect(r, lavaPaint);
+      } else if (type == 'light') {
+        final lightBulb = Paint()..color = lightColor..style = PaintingStyle.fill;
+        canvas.drawCircle(Offset(pos.dx * s + s / 2, pos.dy * s + 40 + s / 2), 7, lightBulb);
+      }
+    }
+
+    if (isSimulating) {
+      final playerPaint = Paint()..color = AppTheme.laserPink..style = PaintingStyle.fill;
+      canvas.drawCircle(playerPos, 14, playerPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant Godot2DCanvasPainter oldDelegate) => true;
+}
+
 // 3D Перспективен World Painter
 class Real3DWorldPainter extends CustomPainter {
   final double yaw;
@@ -1001,55 +1406,6 @@ class Real3DWorldPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant Real3DWorldPainter oldDelegate) => true;
-}
-
-// 2D Level Painter
-class Real2DLevelPainter extends CustomPainter {
-  final List<Offset> tiles;
-  final List<Offset> coins;
-  final List<Offset> enemies;
-
-  Real2DLevelPainter({
-    required this.tiles,
-    required this.coins,
-    required this.enemies,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final gridPaint = Paint()..color = Colors.white10..strokeWidth = 1.0;
-    final tilePaint = Paint()..color = const Color(0xFF00E676)..style = PaintingStyle.fill;
-    final tileBorder = Paint()..color = Colors.white..strokeWidth = 1.5..style = PaintingStyle.stroke;
-    final coinPaint = Paint()..color = const Color(0xFFFFD600)..style = PaintingStyle.fill;
-    final enemyPaint = Paint()..color = const Color(0xFFFF1744)..style = PaintingStyle.fill;
-
-    const double s = 40.0;
-
-    for (double x = 0; x < size.width; x += s) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
-    }
-    for (double y = 0; y < size.height; y += s) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
-    }
-
-    for (var pos in tiles) {
-      Rect r = Rect.fromLTWH(pos.dx * s, (pos.dy * s) + 60, s, s);
-      canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(6)), tilePaint);
-      canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(6)), tileBorder);
-    }
-
-    for (var pos in coins) {
-      canvas.drawCircle(Offset(pos.dx * s + s / 2, pos.dy * s + 60 + s / 2), 10, coinPaint);
-    }
-
-    for (var pos in enemies) {
-      Rect r = Rect.fromLTWH(pos.dx * s + 6, (pos.dy * s) + 66, s - 12, s - 12);
-      canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(8)), enemyPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant Real2DLevelPainter oldDelegate) => true;
 }
 
 // Live Skeleton Rig Painter
