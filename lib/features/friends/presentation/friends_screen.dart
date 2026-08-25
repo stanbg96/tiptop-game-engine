@@ -45,32 +45,35 @@ class _FriendsScreenState extends State<FriendsScreen> {
       context: context,
       backgroundColor: const Color(0xFF10121D),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('📸 Добави към Твоето Стори', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const CircleAvatar(backgroundColor: AppTheme.laserPink, child: Icon(Icons.videocam, color: Colors.white)),
-              title: const Text('Запиши 3D Геймплей Клип', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-              subtitle: const Text('Сподели 15-секундно стори от твоята игра', style: TextStyle(color: Colors.grey, fontSize: 11)),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('🎬 Записът на 3D стори е стартиран!')));
-              },
-            ),
-            ListTile(
-              leading: const CircleAvatar(backgroundColor: AppTheme.sciFiCyan, child: Icon(Icons.photo_camera, color: Colors.black)),
-              title: const Text('Направи Скрийншот на Сцената', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-              subtitle: const Text('Снимай нива и герои от Filament Studio', style: TextStyle(color: Colors.grey, fontSize: 11)),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📸 Скрийншотът е добавен към твоето стори!')));
-              },
-            ),
-          ],
+      builder: (context) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('📸 Добави към Твоето Стори', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const CircleAvatar(backgroundColor: AppTheme.laserPink, child: Icon(Icons.videocam, color: Colors.white)),
+                title: const Text('Запиши 3D Геймплей Клип', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: const Text('Сподели 15-секундно стори от твоята игра', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('🎬 Записът на 3D стори е стартиран!')));
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(backgroundColor: AppTheme.sciFiCyan, child: Icon(Icons.photo_camera, color: Colors.black)),
+                title: const Text('Направи Скрийншот на Сцената', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: const Text('Снимай нива и герои от Filament Studio', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📸 Скрийншотът е добавен към твоето стори!')));
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -82,44 +85,47 @@ class _FriendsScreenState extends State<FriendsScreen> {
       context: context,
       backgroundColor: const Color(0xFF10121D),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(radius: 36, backgroundColor: friend['color'], child: Text(friend['avatar'], style: const TextStyle(fontSize: 36))),
-            const SizedBox(height: 10),
-            Text(friend['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-            Text('Любима игра: ${friend['game'] ?? "Няма"}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.laserPink, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                    icon: const Icon(Icons.chat_bubble_outline, size: 18, color: Colors.white),
-                    label: const Text('ЧАТ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('💬 Отваряне на чат с ${friend['name']}...')));
-                    },
+      builder: (context) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(radius: 36, backgroundColor: friend['color'], child: Text(friend['avatar'], style: const TextStyle(fontSize: 36))),
+              const SizedBox(height: 10),
+              Text(friend['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+              Text('Любима игра: ${friend['game'] ?? "Няма"}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.laserPink, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                      icon: const Icon(Icons.chat_bubble_outline, size: 18, color: Colors.white),
+                      label: const Text('ЧАТ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('💬 Отваряне на чат с ${friend['name']}...')));
+                      },
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.sciFiCyan, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                    icon: const Icon(Icons.sports_esports, size: 18, color: Colors.black),
-                    label: const Text('ПОКАНИ', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('⚡ Изпратена мултиплейър покана до ${friend['name']}!')));
-                    },
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.sciFiCyan, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                      icon: const Icon(Icons.sports_esports, size: 18, color: Colors.black),
+                      label: const Text('ПОКАНИ', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('⚡ Изпратена мултиплейър покана до ${friend['name']}!')));
+                      },
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -138,115 +144,132 @@ class _FriendsScreenState extends State<FriendsScreen> {
       isScrollControlled: true,
       backgroundColor: const Color(0xFF10121D),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Container(
-          height: 480,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Center(child: Text('🔍 Намери Приятели & Създатели', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))),
-              const SizedBox(height: 14),
-              Container(
-                height: 40,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(color: const Color(0xFF181B28), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
-                child: const TextField(
-                  style: TextStyle(color: Colors.white, fontSize: 13),
-                  decoration: InputDecoration(hintText: 'Търси по @потребителско име...', hintStyle: TextStyle(color: Colors.grey, fontSize: 12), icon: Icon(Icons.search, size: 18, color: AppTheme.sciFiCyan), border: InputBorder.none),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text('ПРЕПОРЪЧАНИ СЪЗДАТЕЛИ', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: suggestions.length,
-                  itemBuilder: (context, index) {
-                    final s = suggestions[index];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: const Color(0xFF161928), borderRadius: BorderRadius.circular(12)),
-                      child: Row(
-                        children: [
-                          CircleAvatar(backgroundColor: AppTheme.laserPink.withValues(alpha: 0.2), child: Text(s['avatar'], style: const TextStyle(fontSize: 18))),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Text(s['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                              Text(s['games'], style: const TextStyle(color: Colors.grey, fontSize: 11)),
-                            ]),
+      builder: (context) => SafeArea(
+        top: false,
+        child: StatefulBuilder(
+          builder: (context, setModalState) => Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              top: 16,
+              left: 16,
+              right: 16,
+            ),
+            child: SizedBox(
+              height: 480,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Center(child: Text('🔍 Намери Приятели & Създатели', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))),
+                  const SizedBox(height: 14),
+                  Container(
+                    height: 40,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(color: const Color(0xFF181B28), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
+                    child: const TextField(
+                      style: TextStyle(color: Colors.white, fontSize: 13),
+                      decoration: InputDecoration(hintText: 'Търси по @потребителско име...', hintStyle: TextStyle(color: Colors.grey, fontSize: 12), icon: Icon(Icons.search, size: 18, color: AppTheme.sciFiCyan), border: InputBorder.none),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('ПРЕПОРЪЧАНИ СЪЗДАТЕЛИ', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: suggestions.length,
+                      itemBuilder: (context, index) {
+                        final s = suggestions[index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(color: const Color(0xFF161928), borderRadius: BorderRadius.circular(12)),
+                          child: Row(
+                            children: [
+                              CircleAvatar(backgroundColor: AppTheme.laserPink.withValues(alpha: 0.2), child: Text(s['avatar'], style: const TextStyle(fontSize: 18))),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                  Text(s['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                                  Text(s['games'], style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                                ]),
+                              ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: s['isAdded'] ? const Color(0xFF1E2235) : const Color(0xFF00E676),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                onPressed: () {
+                                  setModalState(() => s['isAdded'] = !s['isAdded']);
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s['isAdded'] ? '🎉 Добавихте ${s['name']} като приятел!' : 'Премахнат.')));
+                                },
+                                child: Text(s['isAdded'] ? 'ДОБАВЕН ✓' : '+ ДОБАВИ', style: TextStyle(color: s['isAdded'] ? const Color(0xFF00E676) : Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
+                              ),
+                            ],
                           ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: s['isAdded'] ? const Color(0xFF1E2235) : const Color(0xFF00E676),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            onPressed: () {
-                              setModalState(() => s['isAdded'] = !s['isAdded']);
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s['isAdded'] ? '🎉 Добавихте ${s['name']} като приятел!' : 'Премахнат.')));
-                            },
-                            child: Text(s['isAdded'] ? 'ДОБАВЕН ✓' : '+ ДОБАВИ', style: TextStyle(color: s['isAdded'] ? const Color(0xFF00E676) : Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  // 4. Скенер за QR Код
+  // 4. Скенер за QR Код (ПОВДИГНАТ)
   void _showQrScannerModal() {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF10121D),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('📷 Скенер за TipTop QR Код', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 14),
-            Container(
-              width: 180,
-              height: 180,
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.laserPink, width: 2),
-                boxShadow: [BoxShadow(color: AppTheme.laserPink.withValues(alpha: 0.3), blurRadius: 15)],
-              ),
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.qr_code_scanner, size: 80, color: AppTheme.sciFiCyan),
-                    SizedBox(height: 8),
-                    Text('Насочи камерата към QR код', style: TextStyle(color: Colors.grey, fontSize: 10)),
-                  ],
+      builder: (context) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('📷 Скенер за TipTop QR Код', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 14),
+              Container(
+                width: 170,
+                height: 170,
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.laserPink, width: 2),
+                  boxShadow: [BoxShadow(color: AppTheme.laserPink.withValues(alpha: 0.3), blurRadius: 15)],
+                ),
+                child: const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.qr_code_scanner, size: 75, color: AppTheme.sciFiCyan),
+                      SizedBox(height: 6),
+                      Text('Насочи камерата към QR код', style: TextStyle(color: Colors.grey, fontSize: 10)),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF161928), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-              icon: const Icon(Icons.photo_library, color: AppTheme.sciFiCyan, size: 16),
-              label: const Text('СКАНИРАЙ ОТ ГАЛЕРИЯТА', style: TextStyle(color: Colors.white, fontSize: 12)),
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📷 Избиране на QR код от галерията...')));
-              },
-            ),
-          ],
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                height: 42,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF161928), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Colors.white12))),
+                  icon: const Icon(Icons.photo_library, color: AppTheme.sciFiCyan, size: 18),
+                  label: const Text('СКАНИРАЙ ОТ ГАЛЕРИЯТА', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📷 Избиране на QR код от галерията...')));
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -266,51 +289,119 @@ class _FriendsScreenState extends State<FriendsScreen> {
       isScrollControlled: true,
       backgroundColor: const Color(0xFF10121D),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Container(
-          height: 440,
-          padding: const EdgeInsets.all(16),
+      builder: (context) => SafeArea(
+        top: false,
+        child: StatefulBuilder(
+          builder: (context, setModalState) => Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              top: 16,
+              left: 16,
+              right: 16,
+            ),
+            child: SizedBox(
+              height: 440,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Center(child: Text('📱 Покани Приятели от Контакти', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))),
+                  const SizedBox(height: 14),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: contacts.length,
+                      itemBuilder: (context, index) {
+                        final c = contacts[index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(color: const Color(0xFF161928), borderRadius: BorderRadius.circular(12)),
+                          child: Row(
+                            children: [
+                              CircleAvatar(backgroundColor: const Color(0xFF00E676).withValues(alpha: 0.2), child: Text(c['name'].toString().substring(0, 1), style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold))),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                  Text(c['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                                  Text(c['phone'], style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                                ]),
+                              ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: c['isInvited'] ? const Color(0xFF1E2235) : const Color(0xFF00E676),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                onPressed: () {
+                                  setModalState(() => c['isInvited'] = true);
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('📩 Изпратена покана до ${c['name']}!')));
+                                },
+                                child: Text(c['isInvited'] ? 'ИЗПРАТЕНА ✓' : 'ПОКАНИ', style: TextStyle(color: c['isInvited'] ? const Color(0xFF00E676) : Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 6. Сподели Профил (ПОВДИГНАТ)
+  void _showShareProfileModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF10121D),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (context) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Center(child: Text('📱 Покани Приятели от Контакти', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))),
-              const SizedBox(height: 14),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: contacts.length,
-                  itemBuilder: (context, index) {
-                    final c = contacts[index];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: const Color(0xFF161928), borderRadius: BorderRadius.circular(12)),
-                      child: Row(
-                        children: [
-                          CircleAvatar(backgroundColor: const Color(0xFF00E676).withValues(alpha: 0.2), child: Text(c['name'].toString().substring(0, 1), style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold))),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Text(c['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                              Text(c['phone'], style: const TextStyle(color: Colors.grey, fontSize: 11)),
-                            ]),
-                          ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: c['isInvited'] ? const Color(0xFF1E2235) : const Color(0xFF00E676),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            onPressed: () {
-                              setModalState(() => c['isInvited'] = true);
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('📩 Изпратена покана до ${c['name']}!')));
-                            },
-                            child: Text(c['isInvited'] ? 'ИЗПРАТЕНА ✓' : 'ПОКАНИ', style: TextStyle(color: c['isInvited'] ? const Color(0xFF00E676) : Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+              const Text('👑 Твоят TipTop Профилен QR Код', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+                child: const Icon(Icons.qr_code, size: 120, color: Colors.black),
+              ),
+              const SizedBox(height: 10),
+              const Text('@cyber_creator', style: TextStyle(color: AppTheme.laserPink, fontWeight: FontWeight.bold, fontSize: 15)),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.sciFiCyan, padding: const EdgeInsets.symmetric(vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                      icon: const Icon(Icons.link, color: Colors.black, size: 16),
+                      label: const Text('КОПИРАЙ ЛИНК', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📋 Профилният линк е копиран!')));
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.laserPink, padding: const EdgeInsets.symmetric(vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                      icon: const Icon(Icons.share, color: Colors.white, size: 16),
+                      label: const Text('СПОДЕЛИ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✉️ Изпратено през WhatsApp/Telegram!')));
+                      },
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -319,110 +410,63 @@ class _FriendsScreenState extends State<FriendsScreen> {
     );
   }
 
-  // 6. Сподели Профил
-  void _showShareProfileModal() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF10121D),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('👑 Твоят TipTop Профилен QR Код', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
-              child: const Icon(Icons.qr_code, size: 120, color: Colors.black),
-            ),
-            const SizedBox(height: 12),
-            const Text('@cyber_creator', style: TextStyle(color: AppTheme.laserPink, fontWeight: FontWeight.bold, fontSize: 15)),
-            const SizedBox(height: 14),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.sciFiCyan, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                  icon: const Icon(Icons.link, color: Colors.black, size: 16),
-                  label: const Text('КОПИРАЙ ЛИНК', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📋 Профилният линк е копиран!')));
-                  },
-                ),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.laserPink, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                  icon: const Icon(Icons.share, color: Colors.white, size: 16),
-                  label: const Text('СПОДЕЛИ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✉️ Изпратено през WhatsApp/Telegram!')));
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 7. 3D Game Launcher за бутона „ИГРАЙ СЕГА“
+  // 7. 3D Game Launcher (ПОВДИГНАТ)
   void _showLaunchGameModal(Map<String, dynamic> item) {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF10121D),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22)), side: BorderSide(color: Color(0xFF00E676))),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.gamepad, color: Color(0xFF00E676), size: 30),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(item['title'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                    Text('Създадена от ${item['user']} • ${item['tag']}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
-                  ]),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF181B28), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: const BorderSide(color: Colors.white24))),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('🎮 Стартиране на ${item['title']} в Соло режим...')));
-                    },
-                    child: const Text('🎮 ИГРАЙ СОЛО', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+      builder: (context) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.gamepad, color: Color(0xFF00E676), size: 30),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(item['title'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text('Създадена от ${item['user']} • ${item['tag']}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                    ]),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF00E676), Color(0xFF00E5FF)]), borderRadius: BorderRadius.circular(10)),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
                     child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, padding: const EdgeInsets.symmetric(vertical: 12)),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF181B28), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: const BorderSide(color: Colors.white24))),
                       onPressed: () {
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('⚡ Отворена мултиплейър стая за ${item['title']}! QR кодът е активен.')));
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('🎮 Стартиране на ${item['title']} в Соло режим...')));
                       },
-                      child: const Text('⚡ МУЛТИПЛЕЙЪР QR', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12)),
+                      child: const Text('🎮 ИГРАЙ СОЛО', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF00E676), Color(0xFF00E5FF)]), borderRadius: BorderRadius.circular(10)),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, padding: const EdgeInsets.symmetric(vertical: 12)),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('⚡ Отворена мултиплейър стая за ${item['title']}! QR кодът е активен.')));
+                        },
+                        child: const Text('⚡ МУЛТИПЛЕЙЪР QR', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

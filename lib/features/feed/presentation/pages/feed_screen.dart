@@ -19,7 +19,7 @@ class _FeedScreenState extends State<FeedScreen> with TickerProviderStateMixin {
     {
       'title': 'Cyberpunk Neon Runner 3D',
       'creator': '@neon_builder',
-      'likes': 1420,
+      'likes': 1421,
       'isLiked': false,
       'commentsCount': 89,
       'shares': 45,
@@ -49,7 +49,6 @@ class _FeedScreenState extends State<FeedScreen> with TickerProviderStateMixin {
     },
   ];
 
-  // Double Tap to Like
   void _handleDoubleTapLike(int index) {
     setState(() {
       if (!_gameFeed[index]['isLiked']) {
@@ -64,7 +63,6 @@ class _FeedScreenState extends State<FeedScreen> with TickerProviderStateMixin {
     });
   }
 
-  // Comments Bottom Sheet
   void _showCommentsModal(int index) {
     final commentController = TextEditingController();
     final game = _gameFeed[index];
@@ -78,75 +76,76 @@ class _FeedScreenState extends State<FeedScreen> with TickerProviderStateMixin {
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
         side: BorderSide(color: AppTheme.sciFiCyan, width: 1),
       ),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            top: 12,
-            left: 14,
-            right: 14,
-          ),
-          child: SizedBox(
-            height: 480,
-            child: Column(
-              children: [
-                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${game['commentsCount']} коментара',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.grey, size: 20),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const Divider(color: Colors.white12),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: comments.length,
-                    itemBuilder: (context, cIndex) {
-                      final c = comments[cIndex];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            CircleAvatar(
-                              radius: 16,
-                              backgroundColor: AppTheme.laserPink.withValues(alpha: 0.2),
-                              child: Text(c['user'].toString().substring(1, 2).toUpperCase(), style: const TextStyle(color: AppTheme.laserPink, fontWeight: FontWeight.bold, fontSize: 12)),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (context) => SafeArea(
+        top: false,
+        child: StatefulBuilder(
+          builder: (context, setModalState) => Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+              top: 12,
+              left: 14,
+              right: 14,
+            ),
+            child: SizedBox(
+              height: 480,
+              child: Column(
+                children: [
+                  Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${game['commentsCount']} коментара',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.grey, size: 20),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Colors.white12),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: comments.length,
+                      itemBuilder: (context, cIndex) {
+                        final c = comments[cIndex];
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundColor: AppTheme.laserPink.withValues(alpha: 0.2),
+                                child: Text(c['user'].toString().substring(1, 2).toUpperCase(), style: const TextStyle(color: AppTheme.laserPink, fontWeight: FontWeight.bold, fontSize: 12)),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(c['user'], style: const TextStyle(color: AppTheme.sciFiCyan, fontWeight: FontWeight.bold, fontSize: 12)),
+                                    const SizedBox(height: 2),
+                                    Text(c['text'], style: const TextStyle(color: Colors.white, fontSize: 13)),
+                                  ],
+                                ),
+                              ),
+                              Column(
                                 children: [
-                                  Text(c['user'], style: const TextStyle(color: AppTheme.sciFiCyan, fontWeight: FontWeight.bold, fontSize: 12)),
-                                  const SizedBox(height: 2),
-                                  Text(c['text'], style: const TextStyle(color: Colors.white, fontSize: 13)),
+                                  const Icon(Icons.favorite_border, size: 16, color: Colors.grey),
+                                  Text('${c['likes']}', style: const TextStyle(color: Colors.grey, fontSize: 10)),
                                 ],
                               ),
-                            ),
-                            Column(
-                              children: [
-                                const Icon(Icons.favorite_border, size: 16, color: Colors.grey),
-                                Text('${c['likes']}', style: const TextStyle(color: Colors.grey, fontSize: 10)),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                ),
-                SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6.0),
                     child: Row(
                       children: [
                         Expanded(
@@ -182,8 +181,8 @@ class _FeedScreenState extends State<FeedScreen> with TickerProviderStateMixin {
                       ],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -191,7 +190,6 @@ class _FeedScreenState extends State<FeedScreen> with TickerProviderStateMixin {
     );
   }
 
-  // Share Sheet
   void _showShareModal(int index) {
     final game = _gameFeed[index];
     showModalBottomSheet(
@@ -201,41 +199,44 @@ class _FeedScreenState extends State<FeedScreen> with TickerProviderStateMixin {
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
         side: BorderSide(color: AppTheme.laserPink, width: 1),
       ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Center(child: Text('Сподели с приятели', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15))),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildShareIcon(Icons.link, 'Копирай', AppTheme.sciFiCyan, () {
-                  Navigator.pop(context);
-                  setState(() => game['shares'] += 1);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📋 Връзката към играта е копирана!')));
-                }),
-                _buildShareIcon(Icons.chat, 'В Чат', AppTheme.laserPink, () {
-                  Navigator.pop(context);
-                  setState(() => game['shares'] += 1);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✉️ Играта е изпратена в TipTop чата!')));
-                }),
-                _buildShareIcon(Icons.qr_code_2, 'QR Код', const Color(0xFF00E676), () {
-                  Navigator.pop(context);
-                  setState(() => game['shares'] += 1);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📷 QR кодът за мултиплейър е генериран!')));
-                }),
-                _buildShareIcon(Icons.download_for_offline, 'Свали APK', const Color(0xFFFFD600), () {
-                  Navigator.pop(context);
-                  setState(() => game['shares'] += 1);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📦 Стартирано сваляне на APK пакета...')));
-                }),
-              ],
-            ),
-            const SizedBox(height: 12),
-          ],
+      builder: (context) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Center(child: Text('Сподели с приятели', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15))),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildShareIcon(Icons.link, 'Копирай', AppTheme.sciFiCyan, () {
+                    Navigator.pop(context);
+                    setState(() => game['shares'] += 1);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📋 Връзката към играта е копирана!')));
+                  }),
+                  _buildShareIcon(Icons.chat, 'В Чат', AppTheme.laserPink, () {
+                    Navigator.pop(context);
+                    setState(() => game['shares'] += 1);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✉️ Играта е изпратена в TipTop чата!')));
+                  }),
+                  _buildShareIcon(Icons.qr_code_2, 'QR Код', const Color(0xFF00E676), () {
+                    Navigator.pop(context);
+                    setState(() => game['shares'] += 1);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📷 QR кодът за мултиплейър е генериран!')));
+                  }),
+                  _buildShareIcon(Icons.download_for_offline, 'Свали APK', const Color(0xFFFFD600), () {
+                    Navigator.pop(context);
+                    setState(() => game['shares'] += 1);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📦 Стартирано сваляне на APK пакета...')));
+                  }),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
@@ -258,53 +259,56 @@ class _FeedScreenState extends State<FeedScreen> with TickerProviderStateMixin {
     );
   }
 
-  // Creator Profile Modal
+  // ПОВДИГНАТ ПРОЗОРЕЦ ЗА ПРОФИЛ НА СЪЗДАТЕЛЯ (С ДОПЪЛНИТЕЛЕН SAFEAREA ОТСТЪП)
   void _showCreatorProfileModal(String creator) {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF10121D),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AppTheme.laserPink, width: 2), color: const Color(0xFF1E1035)),
-              child: const Icon(Icons.person, size: 40, color: Colors.white),
-            ),
-            const SizedBox(height: 10),
-            Text(creator, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-            const SizedBox(height: 4),
-            const Text('3D Game Creator & Level Designer', style: TextStyle(color: Colors.grey, fontSize: 12)),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: const [
-                Column(children: [Text('12', style: TextStyle(color: AppTheme.sciFiCyan, fontWeight: FontWeight.bold, fontSize: 16)), Text('Игри', style: TextStyle(color: Colors.grey, fontSize: 11))]),
-                Column(children: [Text('14.8K', style: TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 16)), Text('Последователи', style: TextStyle(color: Colors.grey, fontSize: 11))]),
-                Column(children: [Text('95.2K', style: TextStyle(color: AppTheme.laserPink, fontWeight: FontWeight.bold, fontSize: 16)), Text('Харесвания', style: TextStyle(color: Colors.grey, fontSize: 11))]),
-              ],
-            ),
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              height: 42,
-              child: Container(
-                decoration: BoxDecoration(gradient: const LinearGradient(colors: [AppTheme.laserPink, AppTheme.neonPurple]), borderRadius: BorderRadius.circular(10)),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('🎉 Вие последвахте $creator!')));
-                  },
-                  child: const Text('ПОСЛЕДВАЙ СЪЗДАТЕЛЯ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+      builder: (context) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AppTheme.laserPink, width: 2), color: const Color(0xFF1E1035)),
+                child: const Icon(Icons.person, size: 42, color: Colors.white),
+              ),
+              const SizedBox(height: 10),
+              Text(creator, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+              const SizedBox(height: 4),
+              const Text('3D Game Creator & Level Designer', style: TextStyle(color: Colors.grey, fontSize: 12)),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: const [
+                  Column(children: [Text('12', style: TextStyle(color: AppTheme.sciFiCyan, fontWeight: FontWeight.bold, fontSize: 16)), Text('Игри', style: TextStyle(color: Colors.grey, fontSize: 11))]),
+                  Column(children: [Text('14.8K', style: TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 16)), Text('Последователи', style: TextStyle(color: Colors.grey, fontSize: 11))]),
+                  Column(children: [Text('95.2K', style: TextStyle(color: AppTheme.laserPink, fontWeight: FontWeight.bold, fontSize: 16)), Text('Харесвания', style: TextStyle(color: Colors.grey, fontSize: 11))]),
+                ],
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: Container(
+                  decoration: BoxDecoration(gradient: const LinearGradient(colors: [AppTheme.laserPink, AppTheme.neonPurple]), borderRadius: BorderRadius.circular(12)),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('🎉 Вие последвахте $creator!')));
+                    },
+                    child: const Text('ПОСЛЕДВАЙ СЪЗДАТЕЛЯ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -410,7 +414,6 @@ class _FeedScreenState extends State<FeedScreen> with TickerProviderStateMixin {
           },
         ),
 
-        // Double Tap Burst Heart
         if (_showHeartAnim)
           Center(
             child: TweenAnimationBuilder<double>(
@@ -423,14 +426,13 @@ class _FeedScreenState extends State<FeedScreen> with TickerProviderStateMixin {
             ),
           ),
 
-        // TOP HEADER: 🔴 LIVE (ВЛЯВО) | СЛЕДВАНИ & ЗА ТЕБ (В СРЕДАТА) | 🧠 AI (ВДЯСНО)
+        // TOP HEADER: 🔴 LIVE | СЛЕДВАНИ & ЗА ТЕБ | 🧠 AI
         SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // 1. 🔴 LIVE БУТОН (ВЛЯВО)
                 GestureDetector(
                   onTap: () {
                     Navigator.push(
@@ -456,8 +458,6 @@ class _FeedScreenState extends State<FeedScreen> with TickerProviderStateMixin {
                     ),
                   ),
                 ),
-
-                // 2. СЛЕДВАНИ | ЗА ТЕБ (В СРЕДАТА)
                 const Row(
                   children: [
                     Text('Следвани', style: TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.w600)),
@@ -465,8 +465,6 @@ class _FeedScreenState extends State<FeedScreen> with TickerProviderStateMixin {
                     Text('За Теб', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                   ],
                 ),
-
-                // 3. 🧠 AI МОЗЪК БУТОН (ВДЯСНО)
                 GestureDetector(
                   onTap: () {
                     Navigator.push(

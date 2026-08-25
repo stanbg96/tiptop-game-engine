@@ -11,7 +11,6 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // Профилни данни с възможност за реална промяна
   String _username = '@cyber_creator';
   String _displayName = 'Cyber Game Developer';
   String _bio = '🎮 Създавам 3D светове с Google Filament & AI\n⚡ Сканирай QR кода ми за мултиплейър битки!';
@@ -19,6 +18,13 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   int _followingCount = 142;
   String _followersCount = '8.5K';
   String _likesCount = '42.1K';
+
+  // Настройки състояния
+  bool _isPublicProfile = true;
+  bool _allowComments = true;
+  bool _allowMultiplayerInvites = true;
+  bool _notifyLikes = true;
+  bool _notifyComments = true;
 
   final List<Map<String, dynamic>> _myGames = [
     {'title': 'Cyberpunk Neon Runner 3D', 'views': '24.5K', 'likes': '1.4K', 'icon': Icons.gamepad, 'color': AppTheme.laserPink},
@@ -56,125 +62,101 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     super.dispose();
   }
 
-  // 1. РЕДАКТИРАНЕ НА ПРОФИЛ
-  void _showEditProfileModal() {
-    final nameCtrl = TextEditingController(text: _displayName);
-    final userCtrl = TextEditingController(text: _username);
-    final bioCtrl = TextEditingController(text: _bio);
-    String tempAvatar = _avatarEmoji;
-
+  // 1. ИСТИНСКИ ПРОФИЛЕН QR МОДАЛ
+  void _showProfileQrModal() {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       backgroundColor: const Color(0xFF10121D),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 20, left: 20, right: 20, top: 16),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Center(child: Text('✏️ Редактирай Профил', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))),
-                const SizedBox(height: 16),
-                const Text('ИЗБЕРИ АВАТАР', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: ['👑', '🎮', '🥷', '🤖', '🐉', '🎨'].map((emoji) {
-                    final isSel = emoji == tempAvatar;
-                    return GestureDetector(
-                      onTap: () => setModalState(() => tempAvatar = emoji),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isSel ? AppTheme.laserPink.withValues(alpha: 0.3) : const Color(0xFF181B28),
-                          border: Border.all(color: isSel ? AppTheme.laserPink : Colors.transparent, width: 2),
-                        ),
-                        child: Text(emoji, style: const TextStyle(fontSize: 24)),
-                      ),
-                    );
-                  }).toList(),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        side: BorderSide(color: AppTheme.laserPink, width: 1.2),
+      ),
+      builder: (context) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('👑 Твоят TipTop Профилен QR Код', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: AppTheme.laserPink.withValues(alpha: 0.5), blurRadius: 20)],
                 ),
-                const SizedBox(height: 14),
-                const Text('ИМЕ', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(color: const Color(0xFF181B28), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
-                  child: TextField(controller: nameCtrl, style: const TextStyle(color: Colors.white, fontSize: 13), decoration: const InputDecoration(border: InputBorder.none)),
-                ),
-                const SizedBox(height: 10),
-                const Text('ПОТРЕБИТЕЛСКО ИМЕ (@username)', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(color: const Color(0xFF181B28), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
-                  child: TextField(controller: userCtrl, style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 13), decoration: const InputDecoration(border: InputBorder.none)),
-                ),
-                const SizedBox(height: 10),
-                const Text('АВТОБИОГРАФИЯ (BIO)', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(color: const Color(0xFF181B28), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
-                  child: TextField(controller: bioCtrl, maxLines: 2, style: const TextStyle(color: Colors.white, fontSize: 12), decoration: const InputDecoration(border: InputBorder.none)),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 44,
-                  child: Container(
-                    decoration: BoxDecoration(gradient: const LinearGradient(colors: [AppTheme.laserPink, AppTheme.neonPurple]), borderRadius: BorderRadius.circular(12)),
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent),
+                child: const Icon(Icons.qr_code_2, size: 140, color: Colors.black),
+              ),
+              const SizedBox(height: 12),
+              Text(_username, style: const TextStyle(color: AppTheme.laserPink, fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 4),
+              const Text('Сканирай за директно отваряне на профила и игрите', style: TextStyle(color: Colors.grey, fontSize: 11)),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.sciFiCyan, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                      icon: const Icon(Icons.copy, color: Colors.black, size: 16),
+                      label: const Text('КОПИРАЙ ЛИНК', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
                       onPressed: () {
-                        setState(() {
-                          _displayName = nameCtrl.text.trim().isNotEmpty ? nameCtrl.text.trim() : _displayName;
-                          _username = userCtrl.text.trim().isNotEmpty ? userCtrl.text.trim() : _username;
-                          _bio = bioCtrl.text.trim().isNotEmpty ? bioCtrl.text.trim() : _bio;
-                          _avatarEmoji = tempAvatar;
-                        });
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('🎉 Профилът е обновен успешно!')));
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📋 Профилният линк е копиран!')));
                       },
-                      child: const Text('ЗАПАЗИ ПРОМЕНИТЕ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(gradient: const LinearGradient(colors: [AppTheme.laserPink, AppTheme.neonPurple]), borderRadius: BorderRadius.circular(10)),
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, padding: const EdgeInsets.symmetric(vertical: 12)),
+                        icon: const Icon(Icons.share, color: Colors.white, size: 16),
+                        label: const Text('СПОДЕЛИ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✉️ Профилът е споделен успешно!')));
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  // 2. НАСТРОЙКИ НА ПРОФИЛА (МЕНЮ ☰)
+  // 2. НАСТРОЙКИ & ПОВЕРИТЕЛНОСТ (ПОВДИГНАТ С РАБОТЕЩИ МЕНЮТА)
   void _showSettingsModal() {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF10121D),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('⚙️ Настройки & Поверителност', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 12),
-            _buildSettingsTile(Icons.account_circle, 'Управление на Акаунта', () {}),
-            _buildSettingsTile(Icons.lock, 'Поверителност на Игрите', () {}),
-            _buildSettingsTile(Icons.notifications, 'Известия за Коментари и Лайкове', () {}),
-            _buildSettingsTile(Icons.analytics, 'Анализи и Статистика на Игрите', () {}),
-            const Divider(color: Colors.white12),
-            _buildSettingsTile(Icons.logout, 'Изход от Профила', () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('👋 Успешен изход от профила.')));
-            }, isDestructive: true),
-          ],
+      builder: (context) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 36),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('⚙️ Настройки & Поверителност', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 12),
+              _buildSettingsTile(Icons.account_circle, 'Управление на Акаунта', _showAccountManagementModal),
+              _buildSettingsTile(Icons.lock, 'Поверителност на Игрите', _showPrivacySettingsModal),
+              _buildSettingsTile(Icons.notifications, 'Известия за Коментари и Лайкове', _showNotificationSettingsModal),
+              _buildSettingsTile(Icons.analytics, 'Анализи и Статистика на Игрите', _showGameAnalyticsModal),
+              const Divider(color: Colors.white12),
+              _buildSettingsTile(Icons.logout, 'Изход от Профила', () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('👋 Успешен изход от профила.')));
+              }, isDestructive: true),
+            ],
+          ),
         ),
       ),
     );
@@ -189,7 +171,277 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     );
   }
 
-  // 3. ПОКАЗВАНЕ НА СПИСЪК СЛЕДВАНИ
+  // ПОДМЕНЮ: УПРАВЛЕНИЕ НА АКАУНТА
+  void _showAccountManagementModal() {
+    Navigator.pop(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF10121D),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (context) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('👤 Управление на Акаунта', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 14),
+              const Text('Имейл адрес: stanbg96@gmail.com', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              const SizedBox(height: 6),
+              const Text('Статус: 🟢 Верифициран разработчик в TipTop', style: TextStyle(color: Color(0xFF00E676), fontSize: 12, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                height: 40,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(side: const BorderSide(color: AppTheme.sciFiCyan)),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('🔑 Линк за смяна на парола е изпратен на имейла!')));
+                  },
+                  child: const Text('СМЕНИ ПАРОЛА', style: TextStyle(color: AppTheme.sciFiCyan, fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ПОДМЕНЮ: ПОВЕРИТЕЛНОСТ
+  void _showPrivacySettingsModal() {
+    Navigator.pop(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF10121D),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (context) => SafeArea(
+        top: false,
+        child: StatefulBuilder(
+          builder: (context, setModalState) => Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('🔒 Поверителност на Игрите', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 10),
+                SwitchListTile(
+                  title: const Text('Публичен Профил', style: TextStyle(color: Colors.white, fontSize: 13)),
+                  subtitle: const Text('Всички геймъри могат да виждат качените игри', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                  value: _isPublicProfile,
+                  activeThumbColor: Color(0xFF00E676),
+                  onChanged: (val) => setModalState(() => _isPublicProfile = val),
+                ),
+                SwitchListTile(
+                  title: const Text('Разреши Коментари', style: TextStyle(color: Colors.white, fontSize: 13)),
+                  value: _allowComments,
+                  activeThumbColor: AppTheme.laserPink,
+                  onChanged: (val) => setModalState(() => _allowComments = val),
+                ),
+                SwitchListTile(
+                  title: const Text('Мултиплейър Покани от Всички', style: TextStyle(color: Colors.white, fontSize: 13)),
+                  value: _allowMultiplayerInvites,
+                  activeThumbColor: AppTheme.sciFiCyan,
+                  onChanged: (val) => setModalState(() => _allowMultiplayerInvites = val),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ПОДМЕНЮ: ИЗВЕСТИЯ
+  void _showNotificationSettingsModal() {
+    Navigator.pop(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF10121D),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (context) => SafeArea(
+        top: false,
+        child: StatefulBuilder(
+          builder: (context, setModalState) => Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('🔔 Известия', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 10),
+                SwitchListTile(
+                  title: const Text('Известия за Харесвания', style: TextStyle(color: Colors.white, fontSize: 13)),
+                  value: _notifyLikes,
+                  activeThumbColor: AppTheme.laserPink,
+                  onChanged: (val) => setModalState(() => _notifyLikes = val),
+                ),
+                SwitchListTile(
+                  title: const Text('Известия за Нови Коментари', style: TextStyle(color: Colors.white, fontSize: 13)),
+                  value: _notifyComments,
+                  activeThumbColor: AppTheme.sciFiCyan,
+                  onChanged: (val) => setModalState(() => _notifyComments = val),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ПОДМЕНЮ: АНАЛИЗИ И СТАТИСТИКА
+  void _showGameAnalyticsModal() {
+    Navigator.pop(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF10121D),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (context) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('📊 Анализи на Твоите 3D Игри', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildAnalyticsCard('245.8K', 'Общо Гледания', AppTheme.sciFiCyan),
+                  _buildAnalyticsCard('42.1K', 'Общо Лайкове', AppTheme.laserPink),
+                  _buildAnalyticsCard('850 🪙', 'Спечелени Монети', Color(0xFFFFD600)),
+                ],
+              ),
+              const SizedBox(height: 14),
+              const Text('🏆 Най-играна игра: Cyberpunk Neon Runner 3D (60 FPS)', style: TextStyle(color: Color(0xFF00E676), fontSize: 12, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnalyticsCard(String val, String label, Color c) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: const Color(0xFF161928), borderRadius: BorderRadius.circular(12), border: Border.all(color: c.withValues(alpha: 0.5))),
+      child: Column(
+        children: [
+          Text(val, style: TextStyle(color: c, fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 4),
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 10)),
+        ],
+      ),
+    );
+  }
+
+  // РЕДАКТИРАНЕ НА ПРОФИЛ
+  void _showEditProfileModal() {
+    final nameCtrl = TextEditingController(text: _displayName);
+    final userCtrl = TextEditingController(text: _username);
+    final bioCtrl = TextEditingController(text: _bio);
+    String tempAvatar = _avatarEmoji;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF10121D),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => SafeArea(
+        top: false,
+        child: StatefulBuilder(
+          builder: (context, setModalState) => Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 20, left: 20, right: 20, top: 16),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Center(child: Text('✏️ Редактирай Профил', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))),
+                  const SizedBox(height: 16),
+                  const Text('ИЗБЕРИ АВАТАР', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: ['👑', '🎮', '🥷', '🤖', '🐉', '🎨'].map((emoji) {
+                      final isSel = emoji == tempAvatar;
+                      return GestureDetector(
+                        onTap: () => setModalState(() => tempAvatar = emoji),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isSel ? AppTheme.laserPink.withValues(alpha: 0.3) : const Color(0xFF181B28),
+                            border: Border.all(color: isSel ? AppTheme.laserPink : Colors.transparent, width: 2),
+                          ),
+                          child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text('ИМЕ', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(color: const Color(0xFF181B28), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
+                    child: TextField(controller: nameCtrl, style: const TextStyle(color: Colors.white, fontSize: 13), decoration: const InputDecoration(border: InputBorder.none)),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text('ПОТРЕБИТЕЛСКО ИМЕ (@username)', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(color: const Color(0xFF181B28), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
+                    child: TextField(controller: userCtrl, style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 13), decoration: const InputDecoration(border: InputBorder.none)),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text('АВТОБИОГРАФИЯ (BIO)', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(color: const Color(0xFF181B28), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
+                    child: TextField(controller: bioCtrl, maxLines: 2, style: const TextStyle(color: Colors.white, fontSize: 12), decoration: const InputDecoration(border: InputBorder.none)),
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 44,
+                    child: Container(
+                      decoration: BoxDecoration(gradient: const LinearGradient(colors: [AppTheme.laserPink, AppTheme.neonPurple]), borderRadius: BorderRadius.circular(12)),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent),
+                        onPressed: () {
+                          setState(() {
+                            _displayName = nameCtrl.text.trim().isNotEmpty ? nameCtrl.text.trim() : _displayName;
+                            _username = userCtrl.text.trim().isNotEmpty ? userCtrl.text.trim() : _username;
+                            _bio = bioCtrl.text.trim().isNotEmpty ? bioCtrl.text.trim() : _bio;
+                            _avatarEmoji = tempAvatar;
+                          });
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('🎉 Профилът е обновен успешно!')));
+                        },
+                        child: const Text('ЗАПАЗИ ПРОМЕНИТЕ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ПОКАЗВАНЕ НА СПИСЪК СЛЕДВАНИ
   void _showFollowingListModal() {
     final List<Map<String, dynamic>> following = [
       {'name': '@Alex_3D', 'badge': '🌋 Lava Creator', 'avatar': '🎮'},
@@ -201,89 +453,103 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       context: context,
       backgroundColor: const Color(0xFF10121D),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('👥 Следвани Създатели ($_followingCount)', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 12),
-            ...following.map((f) => Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: const Color(0xFF161928), borderRadius: BorderRadius.circular(10)),
-              child: Row(
-                children: [
-                  CircleAvatar(backgroundColor: AppTheme.laserPink.withValues(alpha: 0.2), child: Text(f['avatar'], style: const TextStyle(fontSize: 18))),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(f['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                      Text(f['badge'], style: const TextStyle(color: Colors.grey, fontSize: 11)),
-                    ]),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E2235), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                    onPressed: () {},
-                    child: const Text('СЛЕДВАШ ✓', style: TextStyle(color: Color(0xFF00E676), fontSize: 10, fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-            )).toList(),
-          ],
+      builder: (context) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 36),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('👥 Следвани Създатели ($_followingCount)', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 12),
+              ...following.map((f) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: const Color(0xFF161928), borderRadius: BorderRadius.circular(10)),
+                child: Row(
+                  children: [
+                    CircleAvatar(backgroundColor: AppTheme.laserPink.withValues(alpha: 0.2), child: Text(f['avatar'], style: const TextStyle(fontSize: 18))),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(f['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                        Text(f['badge'], style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                      ]),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E2235), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                      onPressed: () {},
+                      child: const Text('СЛЕДВАШ ✓', style: TextStyle(color: Color(0xFF00E676), fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              )).toList(),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // 4. ДЕТАЙЛИ ЗА ИГРА
+  // ДЕТАЙЛИ ЗА ИГРА (ПОВДИГНАТ С 36PX BOTTOM PADDING)
   void _showGameLauncherModal(Map<String, dynamic> game) {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF10121D),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22)), side: BorderSide(color: AppTheme.laserPink)),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(game['icon'] ?? Icons.gamepad, size: 48, color: game['color'] ?? AppTheme.laserPink),
-            const SizedBox(height: 10),
-            Text(game['title'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
-            Text('Статистика: 👁️ ${game['views'] ?? "10K"} гледания • ❤️ ${game['likes'] ?? "1K"} харесвания', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF181B28), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: const BorderSide(color: Colors.white24))),
-                    icon: const Icon(Icons.edit, size: 16, color: AppTheme.sciFiCyan),
-                    label: const Text('РЕДАКТИРАЙ', style: TextStyle(color: Colors.white, fontSize: 12)),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('🍄 Отваряне на ${game['title']} в Студиото на Гъбичката...')));
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(gradient: const LinearGradient(colors: [AppTheme.laserPink, Color(0xFF00E676)]), borderRadius: BorderRadius.circular(10)),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        side: BorderSide(color: AppTheme.laserPink),
+      ),
+      builder: (context) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 36),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(game['icon'] ?? Icons.gamepad, size: 46, color: game['color'] ?? AppTheme.laserPink),
+              const SizedBox(height: 10),
+              Text(game['title'], textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
+              const SizedBox(height: 4),
+              Text('Статистика: 👁️ ${game['views'] ?? "10K"} гледания • ❤️ ${game['likes'] ?? "1K"} харесвания', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
                     child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, padding: const EdgeInsets.symmetric(vertical: 12)),
-                      icon: const Icon(Icons.play_arrow, size: 18, color: Colors.black),
-                      label: const Text('ИГРАЙ СЕГА', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF181B28),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: const BorderSide(color: Colors.white24)),
+                      ),
+                      icon: const Icon(Icons.edit, size: 16, color: AppTheme.sciFiCyan),
+                      label: const Text('РЕДАКТИРАЙ', style: TextStyle(color: Colors.white, fontSize: 11)),
                       onPressed: () {
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('🎮 Стартиране на ${game['title']} в Filament 3D...')));
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('🍄 Отваряне на ${game['title']} в Студиото на Гъбичката...')));
                       },
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(gradient: const LinearGradient(colors: [AppTheme.laserPink, Color(0xFF00E676)]), borderRadius: BorderRadius.circular(10)),
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, padding: const EdgeInsets.symmetric(vertical: 12)),
+                        icon: const Icon(Icons.play_arrow, size: 18, color: Colors.black),
+                        label: const Text('ИГРАЙ СЕГА', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12)),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('🎮 Стартиране на ${game['title']} в Filament 3D...')));
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -302,9 +568,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           IconButton(
             icon: const Icon(Icons.qr_code_2, color: AppTheme.laserPink),
             tooltip: 'Профилен QR',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('📷 Твоят TipTop QR код за профил: $_username')));
-            },
+            onPressed: _showProfileQrModal,
           ),
           IconButton(
             icon: const Icon(Icons.menu, color: AppTheme.sciFiCyan),
@@ -319,7 +583,6 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
             child: Column(
               children: [
                 const SizedBox(height: 12),
-                // Профилен аватар
                 Container(
                   width: 86,
                   height: 86,
@@ -340,7 +603,6 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                 Text(_displayName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 14),
 
-                // Броячи: Следвани | Последователи | Харесвания
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -364,7 +626,6 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                 ),
                 const SizedBox(height: 14),
 
-                // Бутони Редактирай и Сподели
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -384,16 +645,13 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                       decoration: BoxDecoration(color: const Color(0xFF161928), borderRadius: BorderRadius.circular(10), border: Border.all(color: AppTheme.sciFiCyan.withValues(alpha: 0.5))),
                       child: IconButton(
                         icon: const Icon(Icons.share_outlined, color: AppTheme.sciFiCyan, size: 20),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('📋 Профилният линк за $_username е копиран!')));
-                        },
+                        onPressed: _showProfileQrModal,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
 
-                // Автобиография (BIO)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 28.0),
                   child: Text(
@@ -406,7 +664,6 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
               ],
             ),
           ),
-          // 4-те Таба (Игри, Снимки, Запазени, Харесани)
           SliverPersistentHeader(
             pinned: true,
             delegate: _SliverAppBarDelegate(

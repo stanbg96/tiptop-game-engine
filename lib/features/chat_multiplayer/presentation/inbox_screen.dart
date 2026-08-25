@@ -69,7 +69,6 @@ class _InboxScreenState extends State<InboxScreen> {
     },
   ];
 
-  // 1. Отваряне на пълен чат екран
   void _openChatDetail(Map<String, dynamic> chat) {
     Navigator.push(
       context,
@@ -79,7 +78,7 @@ class _InboxScreenState extends State<InboxScreen> {
     ).then((_) => setState(() {}));
   }
 
-  // 2. Модален прозорец за Облачен Експорт
+  // 1. ОБЛАЧЕН ЕКСПОРТ (ПОВДИГНАТ С ДОПЪЛНИТЕЛЕН SAFEAREA ОТСТЪП)
   void _showCloudExportModal() {
     String selectedPlatform = 'Android (.APK)';
     String selectedGame = 'Cyberpunk Neon Runner 3D';
@@ -92,93 +91,101 @@ class _InboxScreenState extends State<InboxScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
         side: BorderSide(color: AppTheme.sciFiCyan, width: 1.2),
       ),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: const [
-                  Icon(Icons.cloud_upload, color: AppTheme.sciFiCyan, size: 24),
-                  SizedBox(width: 10),
-                  Text('Облачен Експорт на Игра', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Text('ИЗБЕРИ ИГРА ЗА КОМПИЛАЦИЯ', style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(color: const Color(0xFF181B28), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: selectedGame,
-                    isExpanded: true,
-                    dropdownColor: const Color(0xFF181B28),
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                    items: ['Cyberpunk Neon Runner 3D', 'Lava Volcano Arena 3D', 'Medieval Castle Defense 2D']
-                        .map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
-                    onChanged: (val) => setModalState(() => selectedGame = val!),
+      builder: (context) => SafeArea(
+        top: false,
+        child: StatefulBuilder(
+          builder: (context, setModalState) => Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              top: 16,
+              left: 20,
+              right: 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: const [
+                    Icon(Icons.cloud_upload, color: AppTheme.sciFiCyan, size: 24),
+                    SizedBox(width: 10),
+                    Text('Облачен Експорт на Игра', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text('ИЗБЕРИ ИГРА ЗА КОМПИЛАЦИЯ', style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(color: const Color(0xFF181B28), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedGame,
+                      isExpanded: true,
+                      dropdownColor: const Color(0xFF181B28),
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      items: ['Cyberpunk Neon Runner 3D', 'Lava Volcano Arena 3D', 'Medieval Castle Defense 2D']
+                          .map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                      onChanged: (val) => setModalState(() => selectedGame = val!),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              const Text('ИЗБЕРИ ПЛАТФОРМА', style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 6),
-              Row(
-                children: ['Android (.APK)', 'Windows (.EXE)', 'iOS (.IPA)'].map((plat) {
-                  final isSel = plat == selectedPlatform;
-                  return Expanded(
-                    child: GestureDetector(
-                      onTap: () => setModalState(() => selectedPlatform = plat),
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 6),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isSel ? AppTheme.sciFiCyan : const Color(0xFF181B28),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: isSel ? AppTheme.sciFiCyan : Colors.white12),
-                        ),
-                        child: Center(
-                          child: Text(plat, style: TextStyle(color: isSel ? Colors.black : Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 14),
+                const Text('ИЗБЕРИ ПЛАТФОРМА', style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                Row(
+                  children: ['Android (.APK)', 'Windows (.EXE)', 'iOS (.IPA)'].map((plat) {
+                    final isSel = plat == selectedPlatform;
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () => setModalState(() => selectedPlatform = plat),
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isSel ? AppTheme.sciFiCyan : const Color(0xFF181B28),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: isSel ? AppTheme.sciFiCyan : Colors.white12),
+                          ),
+                          child: Center(
+                            child: Text(plat, style: TextStyle(color: isSel ? Colors.black : Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
                         ),
                       ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFF00E5FF), Color(0xFF00E676)]),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 44,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Color(0xFF00E5FF), Color(0xFF00E676)]),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent),
-                    icon: const Icon(Icons.bolt, color: Colors.black, size: 18),
-                    label: const Text('СТАРТИРАЙ ОБЛАЧЕН БИЛД', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12)),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('🚀 Стартирана $selectedPlatform компилация за $selectedGame! TipTop Bot ще изпрати QR код.')),
-                      );
-                    },
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent),
+                      icon: const Icon(Icons.bolt, color: Colors.black, size: 18),
+                      label: const Text('СТАРТИРАЙ ОБЛАЧЕН БИЛД', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12)),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('🚀 Стартирана $selectedPlatform компилация за $selectedGame! TipTop Bot ще изпрати QR код.')),
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  // 3. Модален прозорец за Мултиплейър QR Генератор
+  // 2. МУЛТИПЛЕЙЪР QR ГЕНЕРАТОР (ПОВДИГНАТ С ДОПЪЛНИТЕЛЕН SAFEAREA ОТСТЪП)
   void _showMultiplayerQrModal() {
     showModalBottomSheet(
       context: context,
@@ -187,56 +194,59 @@ class _InboxScreenState extends State<InboxScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
         side: BorderSide(color: Color(0xFF00E676), width: 1.2),
       ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('⚡ Мултиплейър Стая (QR Покани)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [BoxShadow(color: const Color(0xFF00E676).withValues(alpha: 0.4), blurRadius: 15)],
-              ),
-              child: const Icon(Icons.qr_code_scanner, size: 120, color: Colors.black),
-            ),
-            const SizedBox(height: 10),
-            const Text('Код на стая: #8841-TipTop (2-8 Играчи)', style: TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 13)),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF181B28), padding: const EdgeInsets.symmetric(vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: const BorderSide(color: Colors.white24))),
-                    icon: const Icon(Icons.copy, color: Colors.white, size: 16),
-                    label: const Text('КОПИРАЙ ЛИНК', style: TextStyle(color: Colors.white, fontSize: 11)),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📋 Линкът за стаята е копиран!')));
-                    },
-                  ),
+      builder: (context) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('⚡ Мултиплейър Стая (QR Покани)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [BoxShadow(color: const Color(0xFF00E676).withValues(alpha: 0.4), blurRadius: 15)],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF00E676), Color(0xFF00B0FF)]), borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.qr_code_scanner, size: 120, color: Colors.black),
+              ),
+              const SizedBox(height: 10),
+              const Text('Код на стая: #8841-TipTop (2-8 Играчи)', style: TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
                     child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, padding: const EdgeInsets.symmetric(vertical: 10)),
-                      icon: const Icon(Icons.send, color: Colors.black, size: 16),
-                      label: const Text('ИЗПРАТИ В ЧАТ', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF181B28), padding: const EdgeInsets.symmetric(vertical: 11), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: const BorderSide(color: Colors.white24))),
+                      icon: const Icon(Icons.copy, color: Colors.white, size: 16),
+                      label: const Text('КОПИРАЙ ЛИНК', style: TextStyle(color: Colors.white, fontSize: 11)),
                       onPressed: () {
                         Navigator.pop(context);
-                        _openChatDetail(_chats[0]);
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📋 Линкът за стаята е копиран!')));
                       },
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF00E676), Color(0xFF00B0FF)]), borderRadius: BorderRadius.circular(10)),
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, padding: const EdgeInsets.symmetric(vertical: 11)),
+                        icon: const Icon(Icons.send, color: Colors.black, size: 16),
+                        label: const Text('ИЗПРАТИ В ЧАТ', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _openChatDetail(_chats[0]);
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -329,7 +339,6 @@ class _InboxScreenState extends State<InboxScreen> {
   }
 }
 
-// 4. ПЪЛЕН ЧАТ ЕКРАН ЗА ДИРЕКТНИ СЪОБЩЕНИЯ С ПРИЯТЕЛИ (TIKTOK / DISCORD STYLE)
 class ChatDetailScreen extends StatefulWidget {
   final Map<String, dynamic> chat;
   const ChatDetailScreen({Key? key, required this.chat}) : super(key: key);
@@ -541,10 +550,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ),
           ),
 
-          // Долна лента за въвеждане на съобщения + бързи бутони
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(10.0),
+              padding: const EdgeInsets.fromLTRB(10, 4, 10, 12),
               child: Row(
                 children: [
                   IconButton(
