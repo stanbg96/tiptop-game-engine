@@ -9,24 +9,30 @@ class InboxScreen extends StatefulWidget {
 }
 
 class _InboxScreenState extends State<InboxScreen> {
-  final List<Map<String, String>> _chats = [
+  final List<Map<String, dynamic>> _chats = [
     {
       'name': 'Alex_Gamer',
-      'msg': 'Прати ми QR кода за 3D мултиплейър стаята ти!',
+      'msg': '⚡ Изпрати ти покана за мултиплейър стая #8841-Lava!',
       'time': '2 мин',
       'avatar': '🎮',
+      'isRoom': true,
+      'color': Color(0xFF00E676),
     },
     {
       'name': 'Sarah_3D_Art',
-      'msg': 'Харесах новата ти лазерна състезателна писта!',
+      'msg': 'Харесах новия ти 3D модел на Кибер Дракон!',
       'time': '1 ч',
       'avatar': '🎨',
+      'isRoom': false,
+      'color': AppTheme.laserPink,
     },
     {
-      'name': 'Cloud Build Bot',
-      'msg': 'Твоята TipTop APK компилация е готова за изтегляне.',
+      'name': 'TipTop Cloud Bot',
+      'msg': '📦 Твоята APK компилация е готова. Свали с QR код.',
       'time': '3 ч',
       'avatar': '🤖',
+      'isRoom': false,
+      'color': AppTheme.sciFiCyan,
     },
   ];
 
@@ -34,14 +40,14 @@ class _InboxScreenState extends State<InboxScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF121422),
+        backgroundColor: const Color(0xFF10121D),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppTheme.laserPink, width: 1.5),
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: Color(0xFF00E676), width: 1.5),
         ),
         title: const Row(
           children: [
-            Icon(Icons.qr_code_2, color: AppTheme.laserPink),
+            Icon(Icons.qr_code_2, color: Color(0xFF00E676)),
             SizedBox(width: 8),
             Text('Мултиплейър Покани', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
           ],
@@ -50,33 +56,33 @@ class _InboxScreenState extends State<InboxScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 boxShadow: [
-                  BoxShadow(color: AppTheme.laserPink.withValues(alpha: 0.5), blurRadius: 15),
+                  BoxShadow(color: const Color(0xFF00E676).withValues(alpha: 0.5), blurRadius: 15),
                 ],
               ),
               child: const Icon(Icons.qr_code_scanner, size: 130, color: Colors.black),
             ),
             const SizedBox(height: 12),
             const Text(
-              'Сканирай за стая #8841-SciFi',
-              style: TextStyle(color: AppTheme.sciFiCyan, fontWeight: FontWeight.bold),
+              'Стая: #8841-TipTop (Lava 3D)',
+              style: TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 13),
             ),
             const SizedBox(height: 4),
             const Text(
-              'Изпрати този код в чата на приятел, за да влезете заедно в 3D играта!',
+              'Сканирай или изпрати кода на приятел в чата, за да играете заедно в реално време!',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 12),
+              style: TextStyle(color: Colors.grey, fontSize: 11),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Затвори', style: TextStyle(color: AppTheme.laserPink)),
+            child: const Text('Затвори', style: TextStyle(color: AppTheme.laserPink, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -87,26 +93,26 @@ class _InboxScreenState extends State<InboxScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF121422),
+        backgroundColor: const Color(0xFF10121D),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           side: const BorderSide(color: AppTheme.sciFiCyan, width: 1.5),
         ),
         title: const Row(
           children: [
             Icon(Icons.cloud_upload, color: AppTheme.sciFiCyan),
             SizedBox(width: 8),
-            Text('Облачен Експорт', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('Облачен Експорт (QR)', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(color: AppTheme.sciFiCyan.withValues(alpha: 0.5), blurRadius: 15),
                 ],
@@ -115,21 +121,21 @@ class _InboxScreenState extends State<InboxScreen> {
             ),
             const SizedBox(height: 12),
             const Text(
-              'QR Код за Сваляне (.APK / .EXE / .IPA)',
+              'Свали играта (.APK / .EXE / .IPA)',
               style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 12),
             ),
             const SizedBox(height: 4),
             const Text(
-              'Сканирай с компютър или друг телефон за директно изтегляне на играта.',
+              'Сканирай с компютър за .EXE или друг телефон за .APK директна компилация.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 12),
+              style: TextStyle(color: Colors.grey, fontSize: 11),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Готово', style: TextStyle(color: AppTheme.sciFiCyan)),
+            child: const Text('Готово', style: TextStyle(color: AppTheme.sciFiCyan, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -139,14 +145,11 @@ class _InboxScreenState extends State<InboxScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF07080D),
       appBar: AppBar(
         backgroundColor: const Color(0xFF0E101A),
         elevation: 0,
-        title: const Text(
-          'Входящи & Съобщения',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white),
-        ),
+        title: const Text('💬 Входящи & Чат', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white)),
         centerTitle: true,
         actions: [
           IconButton(
@@ -155,46 +158,59 @@ class _InboxScreenState extends State<InboxScreen> {
             onPressed: _showCloudExportDialog,
           ),
           IconButton(
-            icon: const Icon(Icons.qr_code_2, color: AppTheme.laserPink),
+            icon: const Icon(Icons.qr_code_2, color: Color(0xFF00E676)),
             tooltip: 'Мултиплейър QR',
             onPressed: _showMultiplayerQrDialog,
           ),
         ],
       ),
       body: ListView.separated(
+        padding: const EdgeInsets.all(10),
         itemCount: _chats.length,
-        separatorBuilder: (context, index) => Divider(color: AppTheme.laserPink.withValues(alpha: 0.15), height: 1),
+        separatorBuilder: (context, index) => const SizedBox(height: 8),
         itemBuilder: (context, index) {
           final chat = _chats[index];
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundColor: const Color(0xFF1E1E2C),
-              child: Text(chat['avatar']!, style: const TextStyle(fontSize: 20)),
-            ),
-            title: Text(
-              chat['name']!,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-            ),
-            subtitle: Text(
-              chat['msg']!,
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(chat['time']!, style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 11)),
-                const SizedBox(height: 4),
-                const Icon(Icons.send_rounded, color: AppTheme.laserPink, size: 14),
+          final Color cardColor = chat['color'];
+          final bool isRoom = chat['isRoom'];
+          return Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF10121D),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: cardColor.withValues(alpha: 0.4)),
+              boxShadow: [
+                BoxShadow(color: cardColor.withValues(alpha: 0.12), blurRadius: 8),
               ],
             ),
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Отваряне на чат с ${chat['name']}...')),
-              );
-            },
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: cardColor.withValues(alpha: 0.2),
+                child: Text(chat['avatar']!, style: const TextStyle(fontSize: 20)),
+              ),
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(chat['name']!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                  Text(chat['time']!, style: TextStyle(color: cardColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  chat['msg']!,
+                  style: TextStyle(color: isRoom ? cardColor : Colors.grey, fontSize: 12, fontWeight: isRoom ? FontWeight.bold : FontWeight.normal),
+                ),
+              ),
+              trailing: Icon(isRoom ? Icons.sports_esports : Icons.arrow_forward_ios, color: cardColor, size: 16),
+              onTap: () {
+                if (isRoom) {
+                  _showMultiplayerQrDialog();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Отваряне на чат с ${chat['name']}...')),
+                  );
+                }
+              },
+            ),
           );
         },
       ),

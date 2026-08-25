@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:tiptop_game_engine/core/theme/app_theme.dart';
 import 'package:tiptop_game_engine/features/feed/presentation/pages/feed_screen.dart';
+import 'package:tiptop_game_engine/features/friends/presentation/friends_screen.dart';
 import 'package:tiptop_game_engine/features/mushroom_studio/presentation/pages/mushroom_studio_screen.dart';
-import 'package:tiptop_game_engine/features/brain_ai/presentation/pages/brain_ai_screen.dart';
 import 'package:tiptop_game_engine/features/chat_multiplayer/presentation/inbox_screen.dart';
 import 'package:tiptop_game_engine/features/profile/presentation/profile_screen.dart';
 
@@ -18,7 +18,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   final List<Widget> _pages = [
     const FeedScreen(),
-    const Center(child: Text("👥 Приятели (Игри & Активност)", style: TextStyle(color: AppTheme.sciFiCyan, fontSize: 16))),
+    const FriendsScreen(), // Connected rich TikTok Friends Tab!
     const MushroomStudioScreen(),
     const InboxScreen(),
     const ProfileScreen(),
@@ -28,31 +28,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      
-      // Floating Brain Button (ПРЕМЕСТЕН ГОРЕ ВДЯСНО)
-      floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(top: 16.0, right: 4.0),
-        child: FloatingActionButton(
-          mini: true,
-          backgroundColor: AppTheme.laserPink.withValues(alpha: 0.25),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: AppTheme.laserPink, width: 1.5),
-          ),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const BrainAiScreen()),
-            );
-          },
-          child: const Text("🧠", style: TextStyle(fontSize: 18)),
-        ),
-      ),
-      
       body: _pages[_currentIndex],
-      
-      // Bottom TikTok Navigation Bar с лазерно розови Sci-Fi ефекти
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(top: BorderSide(color: AppTheme.laserPink.withValues(alpha: 0.3), width: 1)),
@@ -71,11 +47,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.people_alt_outlined),
-              activeIcon: Icon(Icons.people_alt, color: AppTheme.sciFiCyan),
+              activeIcon: Icon(Icons.people_alt, color: Color(0xFF00E676)),
               label: 'Приятели',
             ),
-            
-            // 🍄 Лазерно светещ бутон за създаване
             BottomNavigationBarItem(
               icon: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
@@ -96,15 +70,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               ),
               label: 'Създай',
             ),
-            
             const BottomNavigationBarItem(
               icon: Icon(Icons.chat_bubble_outline),
-              activeIcon: Icon(Icons.chat_bubble, color: AppTheme.laserPink),
+              activeIcon: Icon(Icons.chat_bubble, color: AppTheme.sciFiCyan),
               label: 'Входящи',
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person, color: AppTheme.sciFiCyan),
+              activeIcon: Icon(Icons.person, color: Color(0xFFFF1744)),
               label: 'Профил',
             ),
           ],

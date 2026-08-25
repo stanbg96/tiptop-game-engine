@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:tiptop_game_engine/core/theme/app_theme.dart';
 import 'package:tiptop_game_engine/features/feed/presentation/widgets/feed_action_bar.dart';
+import 'package:tiptop_game_engine/features/live/presentation/live_stream_screen.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({Key? key}) : super(key: key);
@@ -18,7 +20,7 @@ class _FeedScreenState extends State<FeedScreen> {
       'likes': 1420,
       'comments': 89,
       'shares': 45,
-      'bgGradient': [Colors.deepPurple, Colors.black],
+      'bgGradient': [Color(0xFF2A0845), Color(0xFF0F041D)],
     },
     {
       'title': 'Medieval Castle Defense 2D',
@@ -26,7 +28,7 @@ class _FeedScreenState extends State<FeedScreen> {
       'likes': 850,
       'comments': 34,
       'shares': 12,
-      'bgGradient': [Colors.blueGrey, Colors.black],
+      'bgGradient': [Color(0xFF0B2B26), Color(0xFF051310)],
     },
   ];
 
@@ -34,7 +36,6 @@ class _FeedScreenState extends State<FeedScreen> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // 1. Vertical Swipeable Feed
         PageView.builder(
           controller: _pageController,
           scrollDirection: Axis.vertical,
@@ -43,7 +44,6 @@ class _FeedScreenState extends State<FeedScreen> {
             final game = _gameFeed[index];
             return Stack(
               children: [
-                // 3D Game / Render Target
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -56,23 +56,15 @@ class _FeedScreenState extends State<FeedScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.gamepad_rounded, size: 80, color: Colors.purpleAccent),
+                        const Icon(Icons.gamepad_rounded, size: 80, color: AppTheme.laserPink),
                         const SizedBox(height: 12),
-                        Text(
-                          game['title'],
-                          style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-                        ),
+                        Text(game['title'], style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 6),
-                        const Text(
-                          'Tap screen to play game',
-                          style: TextStyle(color: Colors.grey, fontSize: 13),
-                        ),
+                        const Text('Докосни екрана за интеракция с 3D енджина', style: TextStyle(color: Colors.grey, fontSize: 12)),
                       ],
                     ),
                   ),
                 ),
-
-                // Bottom Info
                 Positioned(
                   left: 16,
                   bottom: 24,
@@ -80,31 +72,20 @@ class _FeedScreenState extends State<FeedScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        game['creator'],
-                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
+                      Text(game['creator'], style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 15, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Text(game['title'], style: const TextStyle(color: Colors.white70, fontSize: 13)),
                       const SizedBox(height: 6),
-                      Text(
-                        game['title'],
-                        style: const TextStyle(color: Colors.white70, fontSize: 14),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: const [
-                          Icon(Icons.bolt, color: Colors.cyanAccent, size: 16),
+                      const Row(
+                        children: [
+                          Icon(Icons.bolt, color: AppTheme.laserPink, size: 15),
                           SizedBox(width: 4),
-                          Text(
-                            'Google Filament Engine Active',
-                            style: TextStyle(color: Colors.cyanAccent, fontSize: 12),
-                          ),
+                          Text('Google Filament C++ 60 FPS', style: TextStyle(color: AppTheme.laserPink, fontSize: 11)),
                         ],
                       ),
                     ],
                   ),
                 ),
-
-                // Right Action Bar
                 Positioned(
                   right: 12,
                   bottom: 20,
@@ -121,33 +102,46 @@ class _FeedScreenState extends State<FeedScreen> {
             );
           },
         ),
-
-        // 2. Top Header (LIVE + Following / For You)
         SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.redAccent, width: 1.5),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text(
-                    'LIVE',
-                    style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 12),
+                // 🔴 LIVE БУТОН - 100% РАБОТЕЩ
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LiveStreamScreen()),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFFFF1744), Color(0xFFFF007F)]),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(color: const Color(0xFFFF1744).withValues(alpha: 0.5), blurRadius: 8),
+                      ],
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.circle, color: Colors.white, size: 8),
+                        SizedBox(width: 5),
+                        Text('LIVE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                      ],
+                    ),
                   ),
                 ),
-                Row(
-                  children: const [
-                    Text('Following', style: TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.w600)),
-                    SizedBox(width: 16),
-                    Text('For You', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                const Row(
+                  children: [
+                    Text('Следвани', style: TextStyle(color: Colors.grey, fontSize: 15, fontWeight: FontWeight.w600)),
+                    SizedBox(width: 14),
+                    Text('За Теб', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                   ],
                 ),
-                const SizedBox(width: 40),
+                const SizedBox(width: 45),
               ],
             ),
           ),
