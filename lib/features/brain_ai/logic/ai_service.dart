@@ -13,7 +13,6 @@ class AiService {
   String provider = '⚡ АВТОМАТИЧЕН (Free Auto-Router)';
   String model = '⚡ АВТОМАТИЧЕН БЕЗПЛАТЕН (100% Онлайн)';
 
-  // Кеширана база от всички изтеглени модели по доставчици
   Map<String, List<String>> providerModelsMap = {};
 
   static const List<String> freeFallbackPool = [
@@ -46,25 +45,25 @@ class AiService {
   }
 
   // =========================================================================
-  // 🔄 СВАЛЯНЕ НА ВСИЧКИ ДОСТАВЧИЦИ И ВСИЧКИ МОДЕЛИ НА ЖИВО (250+ МОДЕЛА)
+  // 🔄 НАДЕЖДНО LIVE СВАЛЯНЕ НА ВСИЧКИ МОДЕЛИ И ДОСТАВЧИЦИ
   // =========================================================================
 
   Future<Map<String, List<String>>> fetchAllProvidersAndModels() async {
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 12);
     Map<String, List<String>> resultMap = _getInitialComprehensiveCatalog();
 
     try {
-      // 1. Сваляне на пълния списък от OpenRouter API (250+ AI модела)
       final url = Uri.parse('https://openrouter.ai/api/v1/models');
       final request = await client.getUrl(url);
+      request.headers.set('User-Agent', 'TipTopGameEngine/1.0');
+      request.headers.set('Accept', 'application/json');
       request.headers.set('HTTP-Referer', 'https://tiptop.games');
       request.headers.set('X-Title', 'TipTop Game Engine');
       if (apiKey.isNotEmpty) request.headers.set('Authorization', 'Bearer $apiKey');
 
       final response = await request.close();
-      final responseBody = await response.transform(utf8.decoder).join();
-
       if (response.statusCode == 200) {
+        final responseBody = await response.transform(utf8.decoder).join();
         final data = jsonDecode(responseBody);
         final List<dynamic> rawList = data['data'] ?? [];
 
@@ -83,24 +82,23 @@ class AiService {
           bool isFree = id.contains(':free') ||
               (pricing != null && pricing['prompt'] == '0' && pricing['completion'] == '0');
 
-          String formattedId = isFree ? '🎁 $id (Free)' : id;
-
-          allOpenRouter.add(formattedId);
+          String formatted = isFree ? '🎁 $id (Free)' : id;
+          allOpenRouter.add(formatted);
 
           if (id.startsWith('openai/')) {
-            openAiList.add(formattedId.replaceAll('openai/', ''));
+            openAiList.add(formatted.replaceAll('openai/', ''));
           } else if (id.startsWith('anthropic/')) {
-            claudeList.add(formattedId.replaceAll('anthropic/', ''));
+            claudeList.add(formatted.replaceAll('anthropic/', ''));
           } else if (id.startsWith('google/')) {
-            geminiList.add(formattedId.replaceAll('google/', ''));
+            geminiList.add(formatted.replaceAll('google/', ''));
           } else if (id.startsWith('deepseek/')) {
-            deepseekList.add(formattedId.replaceAll('deepseek/', ''));
+            deepseekList.add(formatted.replaceAll('deepseek/', ''));
           } else if (id.startsWith('meta-llama/')) {
-            llamaList.add(formattedId.replaceAll('meta-llama/', ''));
+            llamaList.add(formatted.replaceAll('meta-llama/', ''));
           } else if (id.startsWith('mistralai/')) {
-            mistralList.add(formattedId.replaceAll('mistralai/', ''));
+            mistralList.add(formatted.replaceAll('mistralai/', ''));
           } else if (id.startsWith('qwen/')) {
-            qwenList.add(formattedId.replaceAll('qwen/', ''));
+            qwenList.add(formatted.replaceAll('qwen/', ''));
           }
         }
 
@@ -114,7 +112,7 @@ class AiService {
         if (qwenList.isNotEmpty) resultMap['🐉 Qwen & Alibaba'] = qwenList;
       }
     } catch (_) {
-      // При липса на мрежа връщаме богатия локален каталог
+      // Автоматичен Fallback към вградения каталог при проблем с мрежата
     } finally {
       client.close();
     }
@@ -127,7 +125,8 @@ class AiService {
     if (providerModelsMap.containsKey(prov)) {
       return providerModelsMap[prov]!;
     }
-    return getDefaultModelsFor(prov);
+    final defaultCat = _getInitialComprehensiveCatalog();
+    return defaultCat[prov] ?? defaultCat['⚡ АВТОМАТИЧЕН (Free Auto-Router)']!;
   }
 
   Map<String, List<String>> _getInitialComprehensiveCatalog() {
@@ -147,11 +146,9 @@ class AiService {
         '🎁 deepseek/deepseek-r1:free',
         '🎁 deepseek/deepseek-chat:free',
         '🎁 qwen/qwen-2.5-72b-instruct:free',
-        '🎁 google/gemini-2.0-flash-exp:free',
         'openai/gpt-4o',
         'openai/o1-mini',
         'anthropic/claude-3.5-sonnet',
-        'anthropic/claude-3-opus',
         'google/gemini-pro-1.5',
       ],
       '⚡ Groq (Ултра Бърз / Free)': [
@@ -166,61 +163,40 @@ class AiService {
         '🎁 gemini-2.0-flash-exp (Free)',
         '🎁 gemini-1.5-flash (Free)',
         'gemini-1.5-pro',
-        'gemini-exp-1206',
-        'gemini-ultra',
       ],
       '🤖 DeepSeek': [
         '🎁 deepseek-chat (V3)',
-        '🎁 deepseek-reasoner (R1 Решаващ модел)',
-        'deepseek-coder-33b',
+        '🎁 deepseek-reasoner (R1)',
       ],
       '🟢 OpenAI': [
         'gpt-4o',
         'gpt-4o-mini',
-        'o1-preview',
         'o1-mini',
-        'gpt-4-turbo',
-        'chatgpt-4o-latest',
+        'o1-preview',
       ],
       '🧠 Anthropic Claude': [
         'claude-3-5-sonnet-20241022',
         'claude-3-5-haiku',
-        'claude-3-opus-20240229',
-        'claude-3-sonnet',
       ],
       '🦙 Meta LLaMA': [
         '🎁 llama-3.3-70b-instruct:free',
         '🎁 llama-3.1-8b-instruct:free',
         'llama-3.1-405b-instruct',
-        'llama-3.2-11b-vision',
       ],
       '🌪️ Mistral AI': [
         '🎁 mistral-7b-instruct:free',
         'mistral-large-latest',
-        'mistral-small-latest',
-        'codestral-latest',
-        'pixtral-12b',
       ],
       '🐉 Qwen & Alibaba': [
         '🎁 qwen-2.5-72b-instruct:free',
         '🎁 qwen-2.5-coder-32b:free',
-        'qwen-2.5-vl-72b',
-        'qwen-max',
       ],
     };
   }
 
-  List<String> getDefaultModelsFor(String prov) {
-    if (providerModelsMap.containsKey(prov)) {
-      return providerModelsMap[prov]!;
-    }
-    final defaultCat = _getInitialComprehensiveCatalog();
-    return defaultCat[prov] ?? defaultCat['⚡ АВТОМАТИЧЕН (Free Auto-Router)']!;
-  }
-
   Future<String> testConnection() async {
     if (provider.contains('АВТОМАТИЧЕН') || model.contains('АВТОМАТИЧЕН')) {
-      return '🟢 Успешна връзка! Автоматичният рутер е активен с 6 резервни модела.';
+      return '🟢 Успешна връзка! Автоматичният безплатен рутер е напълно активен.';
     }
     if (apiKey.isEmpty) return 'Грешка: Моля въведете API ключ в полето отдолу.';
 
@@ -247,6 +223,10 @@ class AiService {
     }
   }
 
+  // =========================================================================
+  // 💬 ИЗПРАЩАНЕ НА СЪОБЩЕНИЕ (РАЗГРАНИЧЕНИЕ НА ЧАТ И СТРОИТЕЛ)
+  // =========================================================================
+
   Future<String> sendPrompt(String prompt, {bool isBuilderMode = true}) async {
     if (apiKey.isNotEmpty && !provider.contains('АВТОМАТИЧЕН')) {
       final client = HttpClient()..connectionTimeout = const Duration(seconds: 20);
@@ -261,8 +241,8 @@ class AiService {
             {
               'role': 'system',
               'content': isBuilderMode
-                  ? 'Ти си главен 3D/2D архитект на TipTop Engine (Godot 4 & Filament). Генерираш прецизни светове, градове, сгради и логика на български.'
-                  : 'Ти си приятелски AI асистент.'
+                  ? 'Ти си главен 3D/2D гейм архитект за TipTop Engine (Godot 4 & Filament). Генерираш точни описания на сцени и физика на български.'
+                  : 'Ти си приятелски AI асистент за геймъри и разработчици. Отговаряй естествено на български език.'
             },
             {'role': 'user', 'content': prompt}
           ],
@@ -300,7 +280,15 @@ class AiService {
 
         request.write(jsonEncode({
           'model': fallback,
-          'messages': [{'role': 'user', 'content': prompt}],
+          'messages': [
+            {
+              'role': 'system',
+              'content': isBuilderMode
+                  ? 'Ти си 3D/2D гейм дизайнер на TipTop Engine.'
+                  : 'Ти си интелигентен чат асистент на български.'
+            },
+            {'role': 'user', 'content': prompt}
+          ],
           'temperature': 0.7,
         }));
 
@@ -321,6 +309,41 @@ class AiService {
     client.close();
     return '';
   }
+
+  // Интелигентен локален отговор според режима
+  String _generateSmartLocalResponse(String text, bool isBuilderMode) {
+    String t = text.toLowerCase().trim();
+
+    // 1. АКО СМЕ В РЕЖИМ ОБИКНОВЕН ЧАТ:
+    if (!isBuilderMode) {
+      if (t == 'здравей' || t == 'здрасти' || t == 'хей' || t == 'hi' || t == 'hello') {
+        return 'Здравей! Радвам се да се чуем. Как мога да ти помогна днес с игрите или въпросите ти?';
+      } else if (t == 'какво' || t == 'какво правиш' || t == 'кой си') {
+        return 'Аз съм твоят Brain AI асистент в TipTop. В режим ЧАТ можем да си говорим за идеи, гейм дизайн и механики, а в режим СТРОИТЕЛ мога директно да строя 2D и 3D светове за теб!';
+      } else if (t.contains('как си')) {
+        return 'Супер съм, готов за нови предизвикателства! Ти върху каква игра работиш днес?';
+      } else if (t.contains('помощ') || t.contains('как да')) {
+        return 'За да построиш игра, превключи горе на режим "СТРОИТЕЛ" и ми напиши какво искаш да създам (напр. 3D лава свят или 2D замък). След това кликни бутона, за да го отвориш в Студиото!';
+      } else {
+        return 'Разбрах те! В момента сме в режим ЧАТ. Ако искаш да построим тази идея като истинска 2D или 3D игра, просто превключи горе на режим "СТРОИТЕЛ"!';
+      }
+    }
+
+    // 2. АКО СМЕ В РЕЖИМ СТРОИТЕЛ (BUILDER MODE):
+    if (t.contains('град') || t.contains('мегаполис') || t.contains('city')) {
+      return '🏙️ Построих 3D Cyberpunk мегаполис: 6 небостъргача с PBR неоново светене, лава зона, звездни монети по покривите и хеликоптерна площадка за финал!';
+    } else if (t.contains('лава') || t.contains('вулкан')) {
+      return '🌋 Създадох 3D Вулканичен свят с лава океан, 5 спираловидни паркур платформи и Jolt Physics гравитация!';
+    } else if (t.contains('замък') || t.contains('2d')) {
+      return '🏰 Генерирах 2D Godot замък: CharacterBody2D рицар, мост, капани с шипове, AI патрулиращ страж и портал към тронната зала!';
+    } else {
+      return '⚡ Генерирах пълна сцена с обекти, PBR шейдъри и физика за "$text"! Кликни бутона отдолу, за да я отвориш в Студиото.';
+    }
+  }
+
+  // =========================================================================
+  // 🏙️ ПРОЦЕДУРЕН СВЯТ ГЕНЕРАТОР
+  // =========================================================================
 
   LevelModel generateLevelFromPrompt(String prompt) {
     String t = prompt.toLowerCase();
@@ -427,18 +450,5 @@ class AiService {
       musicTrack: 'Cyberpunk Action OST',
       nodes: castle2DNodes,
     );
-  }
-
-  String _generateSmartLocalResponse(String text, bool isBuilderMode) {
-    String t = text.toLowerCase();
-    if (t.contains('град') || t.contains('мегаполис') || t.contains('city')) {
-      return '🏙️ Построих цял Cyberpunk мегаполис: 6 небостъргача с PBR неоново светене, лава зона в метрото, звездни монети по покривите и хеликоптерна площадка за финал!';
-    } else if (t.contains('лава') || t.contains('вулкан')) {
-      return '🌋 Създадох 3D Вулканичен свят с лава океан, 5 спираловидни паркур платформи и Jolt Physics гравитация!';
-    } else if (t.contains('замък') || t.contains('2d')) {
-      return '🏰 Генерирах 2D Godot замък: CharacterBody2D рицар, мост, капани с шипове, AI патрулиращ страж и портал към тронната зала!';
-    } else {
-      return '⚡ Генерирах пълна сцена с обекти, PBR шейдъри и физика за "$text"! Кликни бутона отдолу, за да я отвориш в Студиото.';
-    }
   }
 }

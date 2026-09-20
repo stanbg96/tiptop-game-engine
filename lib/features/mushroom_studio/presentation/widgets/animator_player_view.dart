@@ -24,6 +24,7 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
   double _speed = 1.0;
   double _currentFrame = 0.0;
   final double _totalFrames = 120.0;
+  double _mannequinYaw = 0.0;
 
   @override
   void initState() {
@@ -103,33 +104,54 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // 1. Преглед на скелетния Rig
+        // 1. Професионален 3D Viewport на Манекена
         Expanded(
           child: Container(
             margin: const EdgeInsets.fromLTRB(10, 8, 10, 4),
             decoration: BoxDecoration(
-              color: const Color(0xFF141724),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppTheme.laserPink.withValues(alpha: 0.6)),
+              color: const Color(0xFF141622),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF222638), width: 1.5),
               boxShadow: [
-                BoxShadow(color: AppTheme.laserPink.withValues(alpha: 0.15), blurRadius: 15),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 15),
               ],
             ),
             child: Stack(
               children: [
-                Center(
-                  child: CustomPaint(
-                    size: const Size(190, 230),
-                    painter: StudioSkeletonRigPainter(
-                      progress: _animController.value,
-                      showBones: _showBones,
-                      category: widget.activeCategory,
-                      color: AppTheme.sciFiCyan,
+                // 3D Студио фон с осветление
+                Positioned.fill(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: RadialGradient(
+                        center: Alignment(0, -0.2),
+                        radius: 1.1,
+                        colors: [Color(0xFF1E2338), Color(0xFF0C0E16)],
+                      ),
                     ),
                   ),
                 ),
 
-                // Горна лента с данни
+                // Манекен с плъзгане за 360° завъртане
+                GestureDetector(
+                  onHorizontalDragUpdate: (details) {
+                    setState(() {
+                      _mannequinYaw += details.delta.dx * 0.015;
+                    });
+                  },
+                  child: Center(
+                    child: CustomPaint(
+                      size: const Size(260, 300),
+                      painter: VolumetricHumanMannequinPainter(
+                        progress: _animController.value,
+                        yaw: _mannequinYaw,
+                        showBones: _showBones,
+                        category: widget.activeCategory,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Горна лента с данни (Godot Style Badge)
                 Positioned(
                   top: 10,
                   left: 12,
@@ -138,22 +160,32 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(8)),
-                        child: Text(widget.activeAnimation, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF181B2C),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.laserPink.withValues(alpha: 0.5)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.motion_photos_on, size: 14, color: AppTheme.laserPink),
+                            const SizedBox(width: 6),
+                            Text(widget.activeAnimation, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
                       ),
                       GestureDetector(
                         onTap: () => setState(() => _showBones = !_showBones),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                           decoration: BoxDecoration(
-                            color: _showBones ? const Color(0xFF00E676).withValues(alpha: 0.25) : Colors.black87,
+                            color: _showBones ? const Color(0xFF00E676).withValues(alpha: 0.2) : const Color(0xFF181B2C),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: _showBones ? const Color(0xFF00E676) : Colors.white24),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.accessibility_new, size: 12, color: _showBones ? const Color(0xFF00E676) : Colors.grey),
+                              Icon(Icons.accessibility_new, size: 13, color: _showBones ? const Color(0xFF00E676) : Colors.grey),
                               const SizedBox(width: 4),
                               Text('🦴 Скелет', style: TextStyle(color: _showBones ? const Color(0xFF00E676) : Colors.grey, fontSize: 9, fontWeight: FontWeight.bold)),
                             ],
@@ -164,17 +196,24 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
                   ),
                 ),
 
-                // Индикатор на кадъра (Frame Counter)
+                // Долен статус за 360° завъртане & Кадър
                 Positioned(
-                  bottom: 10,
+                  bottom: 8,
                   left: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(6)),
-                    child: Text(
-                      'Кадър: ${_currentFrame.toInt()} / ${_totalFrames.toInt()} (60 FPS)',
-                      style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 9, fontWeight: FontWeight.bold),
-                    ),
+                  right: 12,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(6)),
+                        child: Text(
+                          'Кадър: ${_currentFrame.toInt()} / ${_totalFrames.toInt()} (60 FPS)',
+                          style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 9, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const Text('↔ Плъзни за 360° въртене', style: TextStyle(color: Colors.white38, fontSize: 9)),
+                    ],
                   ),
                 ),
               ],
@@ -187,14 +226,14 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
           padding: const EdgeInsets.symmetric(horizontal: 14.0),
           child: Row(
             children: [
-              Text('0', style: const TextStyle(color: Colors.grey, fontSize: 10)),
+              const Text('0', style: TextStyle(color: Colors.grey, fontSize: 10)),
               Expanded(
                 child: SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     activeTrackColor: AppTheme.laserPink,
                     inactiveTrackColor: const Color(0xFF222638),
                     thumbColor: AppTheme.sciFiCyan,
-                    trackHeight: 3.0,
+                    trackHeight: 3.5,
                   ),
                   child: Slider(
                     value: _currentFrame.clamp(0.0, _totalFrames),
@@ -277,82 +316,260 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
   }
 }
 
-// 3D Skeleton Rig Painter
-class StudioSkeletonRigPainter extends CustomPainter {
+// =========================================================================
+// 🧍 3D ОБЕМЕН ХЮМАНОИДЕН МАНЕКЕН (VOLUMETRIC PBR MANNEQUIN PAINTER)
+// =========================================================================
+
+class VolumetricHumanMannequinPainter extends CustomPainter {
   final double progress;
+  final double yaw;
   final bool showBones;
   final String category;
-  final Color color;
 
-  StudioSkeletonRigPainter({
+  VolumetricHumanMannequinPainter({
     required this.progress,
+    required this.yaw,
     required this.showBones,
     required this.category,
-    required this.color,
   });
+
+  Offset project(double x, double y, double z, double cx, double cy) {
+    double cosY = math.cos(yaw);
+    double sinY = math.sin(yaw);
+    double rx = x * cosY - z * sinY;
+    double rz = x * sinY + z * cosY;
+    double depth = (rz + 260.0) / 260.0;
+    if (depth < 0.2) depth = 0.2;
+    return Offset(cx + rx * depth, cy + y * depth);
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
-    final bonePaint = Paint()
-      ..color = showBones ? color : color.withValues(alpha: 0.4)
-      ..strokeWidth = 3.5
-      ..strokeCap = StrokeCap.round;
-
-    final jointPaint = Paint()..color = const Color(0xFFFF007F);
-    final centerPaint = Paint()..color = const Color(0xFFFFD600);
-
     final double cx = size.width / 2.0;
     final double cy = size.height / 2.0;
 
     double t = progress * 2.0 * math.pi;
-    double armAngle = math.sin(t) * 0.6;
-    double legAngle = math.cos(t) * 0.7;
+
+    // Изчисляване на анатомични ъгли според типа движение
+    double armAngle = math.sin(t) * 0.7;
+    double legAngle = math.cos(t) * 0.8;
     double bodyBob = math.sin(t * 2.0) * 6.0;
+    double torsoTilt = math.sin(t) * 0.1;
 
     if (category.contains('Танци')) {
-      armAngle = math.sin(t * 2.0) * 1.1;
-      bodyBob = math.cos(t * 2.0) * 10.0;
+      armAngle = math.sin(t * 2.0) * 1.2;
+      bodyBob = math.cos(t * 2.0) * 12.0;
+      torsoTilt = math.sin(t * 2.0) * 0.25;
     } else if (category.contains('Бойни')) {
-      armAngle = math.sin(t * 3.0) * 1.3;
-      legAngle = math.cos(t * 2.0) * 1.0;
+      armAngle = math.sin(t * 3.0) * 1.4;
+      legAngle = math.cos(t * 2.0) * 1.1;
+      torsoTilt = 0.2;
     } else if (category.contains('Паркур')) {
-      armAngle = math.sin(t) * 1.4;
-      legAngle = math.sin(t) * 1.2;
-      bodyBob = math.sin(t * 2.0) * 14.0;
+      armAngle = math.sin(t) * 1.5;
+      legAngle = math.sin(t) * 1.3;
+      bodyBob = math.sin(t * 2.0) * 16.0;
     }
 
-    // Глава
-    canvas.drawCircle(Offset(cx, cy - 55.0 + bodyBob), 14, bonePaint);
-    canvas.drawCircle(Offset(cx, cy - 55.0 + bodyBob), 4, jointPaint);
+    // 1. Подиум с метални отражения под краката
+    final pedestalPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [AppTheme.sciFiCyan.withValues(alpha: 0.25), Colors.transparent],
+      ).createShader(Rect.fromCircle(center: Offset(cx, cy + 90.0), radius: 65.0));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + 90.0), width: 130.0, height: 36.0), pedestalPaint);
 
-    // Гръбнак (Spine & Pelvis)
-    Offset neck = Offset(cx, cy - 40.0 + bodyBob);
-    Offset pelvis = Offset(cx, cy + 10.0 + bodyBob);
-    canvas.drawLine(neck, pelvis, bonePaint);
-    canvas.drawCircle(pelvis, 5, centerPaint);
+    // 2. Анатомични възли (3D костни позиции)
+    Offset head = project(0.0, -75.0 + bodyBob, 0.0, cx, cy);
+    Offset neck = project(0.0, -52.0 + bodyBob, 0.0, cx, cy);
+    Offset chest = project(0.0, -32.0 + bodyBob, 0.0, cx, cy);
+    Offset pelvis = project(0.0, 10.0 + bodyBob, 0.0, cx, cy);
 
-    // Рамене и Ръце (Left & Right Arms)
-    Offset leftShoulder = Offset(cx - 16.0, cy - 35.0 + bodyBob);
-    Offset rightShoulder = Offset(cx + 16.0, cy - 35.0 + bodyBob);
-    canvas.drawLine(neck, leftShoulder, bonePaint);
-    canvas.drawLine(neck, rightShoulder, bonePaint);
+    // Рамене
+    Offset lShoulder = project(-22.0 * math.cos(torsoTilt), -45.0 + bodyBob, -22.0 * math.sin(torsoTilt), cx, cy);
+    Offset rShoulder = project(22.0 * math.cos(torsoTilt), -45.0 + bodyBob, 22.0 * math.sin(torsoTilt), cx, cy);
 
-    Offset leftHand = Offset(cx - 36.0 * math.cos(armAngle), cy - 20.0 + 35.0 * math.sin(armAngle) + bodyBob);
-    Offset rightHand = Offset(cx + 36.0 * math.cos(armAngle), cy - 20.0 - 35.0 * math.sin(armAngle) + bodyBob);
-    canvas.drawLine(leftShoulder, leftHand, bonePaint);
-    canvas.drawLine(rightShoulder, rightHand, bonePaint);
-    canvas.drawCircle(leftHand, 4, jointPaint);
-    canvas.drawCircle(rightHand, 4, jointPaint);
+    // Ръце
+    Offset lElbow = project(
+      -22.0 - 24.0 * math.cos(armAngle),
+      -20.0 + 26.0 * math.sin(armAngle) + bodyBob,
+      12.0 * math.sin(armAngle),
+      cx,
+      cy,
+    );
+    Offset lHand = project(
+      -22.0 - 46.0 * math.cos(armAngle),
+      -2.0 + 44.0 * math.sin(armAngle) + bodyBob,
+      24.0 * math.sin(armAngle),
+      cx,
+      cy,
+    );
 
-    // Крака (Left & Right Legs)
-    Offset leftFoot = Offset(cx - 26.0 * math.sin(legAngle), cy + 65.0 + 15.0 * math.cos(legAngle));
-    Offset rightFoot = Offset(cx + 26.0 * math.sin(legAngle), cy + 65.0 - 15.0 * math.cos(legAngle));
-    canvas.drawLine(pelvis, leftFoot, bonePaint);
-    canvas.drawLine(pelvis, rightFoot, bonePaint);
-    canvas.drawCircle(leftFoot, 4, jointPaint);
-    canvas.drawCircle(rightFoot, 4, jointPaint);
+    Offset rElbow = project(
+      22.0 + 24.0 * math.cos(armAngle),
+      -20.0 - 26.0 * math.sin(armAngle) + bodyBob,
+      -12.0 * math.sin(armAngle),
+      cx,
+      cy,
+    );
+    Offset rHand = project(
+      22.0 + 46.0 * math.cos(armAngle),
+      -2.0 - 44.0 * math.sin(armAngle) + bodyBob,
+      -24.0 * math.sin(armAngle),
+      cx,
+      cy,
+    );
+
+    // Крака
+    Offset lHip = project(-14.0, 12.0 + bodyBob, 0.0, cx, cy);
+    Offset rHip = project(14.0, 12.0 + bodyBob, 0.0, cx, cy);
+
+    Offset lKnee = project(
+      -14.0,
+      48.0 + 18.0 * math.cos(legAngle) + bodyBob,
+      -30.0 * math.sin(legAngle),
+      cx,
+      cy,
+    );
+    Offset lFoot = project(
+      -14.0,
+      82.0 + 26.0 * math.cos(legAngle),
+      -45.0 * math.sin(legAngle),
+      cx,
+      cy,
+    );
+
+    Offset rKnee = project(
+      14.0,
+      48.0 - 18.0 * math.cos(legAngle) + bodyBob,
+      30.0 * math.sin(legAngle),
+      cx,
+      cy,
+    );
+    Offset rFoot = project(
+      14.0,
+      82.0 - 26.0 * math.cos(legAngle),
+      45.0 * math.sin(legAngle),
+      cx,
+      cy,
+    );
+
+    // 3. Рисуване на ОБЕМНОТО АНАТОМИЧНО ТЯЛО (PBR Shaded Muscle Volumes)
+    _drawLimbVolume(canvas, lShoulder, lElbow, 8.0, 6.0);
+    _drawLimbVolume(canvas, lElbow, lHand, 6.0, 4.5);
+    _drawLimbVolume(canvas, rShoulder, rElbow, 8.0, 6.0);
+    _drawLimbVolume(canvas, rElbow, rHand, 6.0, 4.5);
+
+    _drawLimbVolume(canvas, lHip, lKnee, 10.0, 7.5);
+    _drawLimbVolume(canvas, lKnee, lFoot, 7.5, 5.0);
+    _drawLimbVolume(canvas, rHip, rKnee, 10.0, 7.5);
+    _drawLimbVolume(canvas, rKnee, rFoot, 7.5, 5.0);
+
+    // Торс (Chest & Abdomen armor plates)
+    _drawTorsoVolume(canvas, neck, chest, pelvis, lShoulder, rShoulder);
+
+    // Глава с обем и шлем
+    _drawHeadVolume(canvas, head);
+
+    // 4. Скелетни светещи кости (ако са включени)
+    if (showBones) {
+      final bonePaint = Paint()
+        ..color = AppTheme.sciFiCyan.withValues(alpha: 0.9)
+        ..strokeWidth = 2.2
+        ..strokeCap = StrokeCap.round;
+
+      final jointPaint = Paint()..color = const Color(0xFFFF007F);
+
+      List<List<Offset>> boneLinks = [
+        [neck, head],
+        [neck, chest],
+        [chest, pelvis],
+        [neck, lShoulder],
+        [lShoulder, lElbow],
+        [lElbow, lHand],
+        [neck, rShoulder],
+        [rShoulder, rElbow],
+        [rElbow, rHand],
+        [pelvis, lHip],
+        [lHip, lKnee],
+        [lKnee, lFoot],
+        [pelvis, rHip],
+        [rHip, rKnee],
+        [rKnee, rFoot],
+      ];
+
+      for (var link in boneLinks) {
+        canvas.drawLine(link[0], link[1], bonePaint);
+        canvas.drawCircle(link[0], 3.0, jointPaint);
+        canvas.drawCircle(link[1], 3.0, jointPaint);
+      }
+    }
+  }
+
+  void _drawLimbVolume(Canvas canvas, Offset p1, Offset p2, double r1, double r2) {
+    final double angle = math.atan2(p2.dy - p1.dy, p2.dx - p1.dx) + math.pi / 2.0;
+    Offset offset1 = Offset(math.cos(angle) * r1, math.sin(angle) * r1);
+    Offset offset2 = Offset(math.cos(angle) * r2, math.sin(angle) * r2);
+
+    Path path = Path()
+      ..moveTo(p1.dx + offset1.dx, p1.dy + offset1.dy)
+      ..lineTo(p2.dx + offset2.dx, p2.dy + offset2.dy)
+      ..lineTo(p2.dx - offset2.dx, p2.dy - offset2.dy)
+      ..lineTo(p1.dx - offset1.dx, p1.dy - offset1.dy)
+      ..close();
+
+    final limbPaint = Paint()
+      ..shader = LinearGradient(
+        colors: [const Color(0xFF323B54), const Color(0xFF161A28)],
+      ).createShader(Rect.fromPoints(p1, p2));
+
+    final outlinePaint = Paint()
+      ..color = AppTheme.sciFiCyan.withValues(alpha: 0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    canvas.drawPath(path, limbPaint);
+    canvas.drawPath(path, outlinePaint);
+    canvas.drawCircle(p1, r1, limbPaint);
+    canvas.drawCircle(p2, r2, limbPaint);
+  }
+
+  void _drawTorsoVolume(Canvas canvas, Offset neck, Offset chest, Offset pelvis, Offset lSh, Offset rSh) {
+    Path torso = Path()
+      ..moveTo(lSh.dx, lSh.dy)
+      ..lineTo(neck.dx, neck.dy - 2.0)
+      ..lineTo(rSh.dx, rSh.dy)
+      ..lineTo(pelvis.dx + 16.0, pelvis.dy)
+      ..lineTo(pelvis.dx - 16.0, pelvis.dy)
+      ..close();
+
+    final torsoPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFF3E4866), Color(0xFF1E2335)],
+      ).createShader(Rect.fromCenter(center: chest, width: 50, height: 60));
+
+    final edge = Paint()
+      ..color = AppTheme.laserPink.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    canvas.drawPath(torso, torsoPaint);
+    canvas.drawPath(torso, edge);
+  }
+
+  void _drawHeadVolume(Canvas canvas, Offset headPos) {
+    final headPaint = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(-0.3, -0.3),
+        colors: [const Color(0xFF536085), const Color(0xFF161A28)],
+      ).createShader(Rect.fromCircle(center: headPos, radius: 15.0));
+
+    final visorPaint = Paint()..color = AppTheme.sciFiCyan;
+
+    canvas.drawCircle(headPos, 14.0, headPaint);
+    canvas.drawOval(Rect.fromCenter(center: Offset(headPos.dx, headPos.dy - 1.0), width: 14.0, height: 4.5), visorPaint);
   }
 
   @override
-  bool shouldRepaint(covariant StudioSkeletonRigPainter oldDelegate) => true;
+  bool shouldRepaint(covariant VolumetricHumanMannequinPainter oldDelegate) => true;
 }
