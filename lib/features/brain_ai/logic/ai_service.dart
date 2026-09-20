@@ -13,6 +13,7 @@ class AiService {
   String provider = '⚡ АВТОМАТИЧЕН (Free Auto-Router)';
   String model = '⚡ АВТОМАТИЧЕН БЕЗПЛАТЕН (100% Онлайн)';
 
+  // Кеширана пълна база от всички live изтеглени модели по доставчици
   Map<String, List<String>> providerModelsMap = {};
 
   static const List<String> freeFallbackPool = [
@@ -45,17 +46,32 @@ class AiService {
   }
 
   // =========================================================================
-  // 🔄 НАДЕЖДНО LIVE СВАЛЯНЕ НА ВСИЧКИ МОДЕЛИ И ДОСТАВЧИЦИ
+  // 🔄 ПРОФЕСИОНАЛНО LIVE СВАЛЯНЕ НА ВСИЧКИ МОДЕЛИ (300+ БЕЗ ОГРАНИЧЕНИЯ)
   // =========================================================================
 
   Future<Map<String, List<String>>> fetchAllProvidersAndModels() async {
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 12);
-    Map<String, List<String>> resultMap = _getInitialComprehensiveCatalog();
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 15)
+      ..badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+
+    Map<String, List<String>> dynamicCategories = {
+      '⚡ АВТОМАТИЧЕН (Free Auto-Router)': [
+        '⚡ АВТОМАТИЧЕН БЕЗПЛАТЕН (100% Онлайн)',
+        '🎁 meta-llama/llama-3.3-70b-instruct:free',
+        '🎁 deepseek/deepseek-r1:free',
+        '🎁 deepseek/deepseek-chat:free',
+        '🎁 qwen/qwen-2.5-72b-instruct:free',
+        '🎁 google/gemini-2.0-flash-exp:free',
+        '🎁 mistralai/mistral-7b-instruct:free',
+      ],
+      '⭐ ВСИЧКИ МОДЕЛИ (Live Catalog)': [],
+      '🎁 САМО БЕЗПЛАТНИТЕ (Free 0\$)': [],
+    };
 
     try {
       final url = Uri.parse('https://openrouter.ai/api/v1/models');
       final request = await client.getUrl(url);
-      request.headers.set('User-Agent', 'TipTopGameEngine/1.0');
+      request.headers.set('User-Agent', 'Mozilla/5.0 (Android; TipTop Engine)');
       request.headers.set('Accept', 'application/json');
       request.headers.set('HTTP-Referer', 'https://tiptop.games');
       request.headers.set('X-Title', 'TipTop Game Engine');
@@ -67,14 +83,7 @@ class AiService {
         final data = jsonDecode(responseBody);
         final List<dynamic> rawList = data['data'] ?? [];
 
-        List<String> allOpenRouter = ['⚡ АВТОМАТИЧЕН БЕЗПЛАТЕН (100% Онлайн)'];
-        List<String> openAiList = [];
-        List<String> claudeList = [];
-        List<String> geminiList = [];
-        List<String> deepseekList = [];
-        List<String> llamaList = [];
-        List<String> mistralList = [];
-        List<String> qwenList = [];
+        Map<String, List<String>> groupedByAuthor = {};
 
         for (var m in rawList) {
           String id = m['id'].toString();
@@ -82,54 +91,76 @@ class AiService {
           bool isFree = id.contains(':free') ||
               (pricing != null && pricing['prompt'] == '0' && pricing['completion'] == '0');
 
-          String formatted = isFree ? '🎁 $id (Free)' : id;
-          allOpenRouter.add(formatted);
+          String displayName = isFree ? '🎁 $id (Free)' : id;
 
-          if (id.startsWith('openai/')) {
-            openAiList.add(formatted.replaceAll('openai/', ''));
-          } else if (id.startsWith('anthropic/')) {
-            claudeList.add(formatted.replaceAll('anthropic/', ''));
-          } else if (id.startsWith('google/')) {
-            geminiList.add(formatted.replaceAll('google/', ''));
-          } else if (id.startsWith('deepseek/')) {
-            deepseekList.add(formatted.replaceAll('deepseek/', ''));
-          } else if (id.startsWith('meta-llama/')) {
-            llamaList.add(formatted.replaceAll('meta-llama/', ''));
-          } else if (id.startsWith('mistralai/')) {
-            mistralList.add(formatted.replaceAll('mistralai/', ''));
-          } else if (id.startsWith('qwen/')) {
-            qwenList.add(formatted.replaceAll('qwen/', ''));
+          dynamicCategories['⭐ ВСИЧКИ МОДЕЛИ (Live Catalog)']!.add(displayName);
+
+          if (isFree) {
+            dynamicCategories['🎁 САМО БЕЗПЛАТНИТЕ (Free 0\$)']!.add(displayName);
           }
+
+          String authorKey = 'Други';
+          if (id.contains('/')) {
+            String prefix = id.split('/')[0].toLowerCase();
+            if (prefix.contains('openai')) {
+              authorKey = '🟢 OpenAI';
+            } else if (prefix.contains('anthropic')) {
+              authorKey = '🧠 Anthropic Claude';
+            } else if (prefix.contains('google')) {
+              authorKey = '🔮 Google Gemini';
+            } else if (prefix.contains('deepseek')) {
+              authorKey = '🤖 DeepSeek';
+            } else if (prefix.contains('meta') || prefix.contains('llama')) {
+              authorKey = '🦙 Meta LLaMA';
+            } else if (prefix.contains('mistral')) {
+              authorKey = '🌪️ Mistral AI';
+            } else if (prefix.contains('qwen') || prefix.contains('alibaba')) {
+              authorKey = '🐉 Qwen & Alibaba';
+            } else if (prefix.contains('cohere')) {
+              authorKey = '🌊 Cohere';
+            } else if (prefix.contains('x-ai')) {
+              authorKey = '🚀 xAI (Grok)';
+            } else if (prefix.contains('microsoft')) {
+              authorKey = '💻 Microsoft';
+            } else if (prefix.contains('nvidia')) {
+              authorKey = '🎮 Nvidia Nemotron';
+            } else {
+              authorKey = '🌐 ${prefix.toUpperCase()}';
+            }
+          }
+
+          groupedByAuthor.putIfAbsent(authorKey, () => []).add(displayName);
         }
 
-        if (allOpenRouter.isNotEmpty) resultMap['🌐 OpenRouter (Всички 250+ Модела)'] = allOpenRouter;
-        if (openAiList.isNotEmpty) resultMap['🟢 OpenAI'] = openAiList;
-        if (claudeList.isNotEmpty) resultMap['🧠 Anthropic Claude'] = claudeList;
-        if (geminiList.isNotEmpty) resultMap['🔮 Google Gemini'] = geminiList;
-        if (deepseekList.isNotEmpty) resultMap['🤖 DeepSeek'] = deepseekList;
-        if (llamaList.isNotEmpty) resultMap['🦙 Meta LLaMA'] = llamaList;
-        if (mistralList.isNotEmpty) resultMap['🌪️ Mistral AI'] = mistralList;
-        if (qwenList.isNotEmpty) resultMap['🐉 Qwen & Alibaba'] = qwenList;
+        groupedByAuthor.forEach((key, list) {
+          if (list.isNotEmpty) {
+            dynamicCategories[key] = list;
+          }
+        });
       }
     } catch (_) {
-      // Автоматичен Fallback към вградения каталог при проблем с мрежата
+      // Автоматичен Fallback
     } finally {
       client.close();
     }
 
-    providerModelsMap = resultMap;
-    return resultMap;
+    if (dynamicCategories['⭐ ВСИЧКИ МОДЕЛИ (Live Catalog)']!.isEmpty) {
+      dynamicCategories = _getComprehensiveOfflineCatalog();
+    }
+
+    providerModelsMap = dynamicCategories;
+    return dynamicCategories;
   }
 
   List<String> getModelsForProvider(String prov) {
     if (providerModelsMap.containsKey(prov)) {
       return providerModelsMap[prov]!;
     }
-    final defaultCat = _getInitialComprehensiveCatalog();
+    final defaultCat = _getComprehensiveOfflineCatalog();
     return defaultCat[prov] ?? defaultCat['⚡ АВТОМАТИЧЕН (Free Auto-Router)']!;
   }
 
-  Map<String, List<String>> _getInitialComprehensiveCatalog() {
+  Map<String, List<String>> _getComprehensiveOfflineCatalog() {
     return {
       '⚡ АВТОМАТИЧЕН (Free Auto-Router)': [
         '⚡ АВТОМАТИЧЕН БЕЗПЛАТЕН (100% Онлайн)',
@@ -140,57 +171,36 @@ class AiService {
         '🎁 google/gemini-2.0-flash-exp:free',
         '🎁 mistralai/mistral-7b-instruct:free',
       ],
-      '🌐 OpenRouter (Всички 250+ Модела)': [
-        '⚡ АВТОМАТИЧЕН БЕЗПЛАТЕН (100% Онлайн)',
+      '⭐ ВСИЧКИ МОДЕЛИ (Live Catalog)': [
+        'openai/gpt-4o',
+        'openai/o1',
+        'openai/o3-mini',
+        'anthropic/claude-3.5-sonnet',
+        'google/gemini-2.0-flash',
+        'deepseek/deepseek-r1',
+        'deepseek/deepseek-chat',
+        'meta-llama/llama-3.3-70b-instruct',
+        'qwen/qwen-2.5-72b-instruct',
+        'mistralai/mistral-large-2411',
+        'x-ai/grok-2-1212',
+      ],
+      '🎁 САМО БЕЗПЛАТНИТЕ (Free 0\$)': [
         '🎁 meta-llama/llama-3.3-70b-instruct:free',
         '🎁 deepseek/deepseek-r1:free',
         '🎁 deepseek/deepseek-chat:free',
         '🎁 qwen/qwen-2.5-72b-instruct:free',
-        'openai/gpt-4o',
-        'openai/o1-mini',
-        'anthropic/claude-3.5-sonnet',
-        'google/gemini-pro-1.5',
+        '🎁 qwen/qwen-2.5-coder-32b-instruct:free',
+        '🎁 google/gemini-2.0-flash-exp:free',
+        '🎁 mistralai/mistral-7b-instruct:free',
       ],
-      '⚡ Groq (Ултра Бърз / Free)': [
-        '⚡ АВТОМАТИЧЕН БЕЗПЛАТЕН (Groq)',
-        '🎁 llama-3.3-70b-versatile (Free)',
-        '🎁 llama-3.1-8b-instant (Free)',
-        '🎁 mixtral-8x7b-32768 (Free)',
-        '🎁 gemma2-9b-it (Free)',
-        '🎁 deepseek-r1-distill-llama-70b (Free)',
-      ],
-      '🔮 Google Gemini': [
-        '🎁 gemini-2.0-flash-exp (Free)',
-        '🎁 gemini-1.5-flash (Free)',
-        'gemini-1.5-pro',
-      ],
-      '🤖 DeepSeek': [
-        '🎁 deepseek-chat (V3)',
-        '🎁 deepseek-reasoner (R1)',
-      ],
-      '🟢 OpenAI': [
-        'gpt-4o',
-        'gpt-4o-mini',
-        'o1-mini',
-        'o1-preview',
-      ],
-      '🧠 Anthropic Claude': [
-        'claude-3-5-sonnet-20241022',
-        'claude-3-5-haiku',
-      ],
-      '🦙 Meta LLaMA': [
-        '🎁 llama-3.3-70b-instruct:free',
-        '🎁 llama-3.1-8b-instruct:free',
-        'llama-3.1-405b-instruct',
-      ],
-      '🌪️ Mistral AI': [
-        '🎁 mistral-7b-instruct:free',
-        'mistral-large-latest',
-      ],
-      '🐉 Qwen & Alibaba': [
-        '🎁 qwen-2.5-72b-instruct:free',
-        '🎁 qwen-2.5-coder-32b:free',
-      ],
+      '🟢 OpenAI': ['gpt-4o', 'gpt-4o-mini', 'o1', 'o1-mini', 'o3-mini', 'gpt-4-turbo'],
+      '🧠 Anthropic Claude': ['claude-3-5-sonnet', 'claude-3-5-haiku', 'claude-3-opus'],
+      '🔮 Google Gemini': ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-2.0-pro-exp'],
+      '🤖 DeepSeek': ['deepseek-r1', 'deepseek-chat', 'deepseek-coder-33b'],
+      '🦙 Meta LLaMA': ['llama-3.3-70b-instruct', 'llama-3.1-405b-instruct', 'llama-3.1-8b-instruct'],
+      '🌪️ Mistral AI': ['mistral-large-latest', 'codestral-latest', 'mistral-small-latest'],
+      '🐉 Qwen & Alibaba': ['qwen-2.5-72b-instruct', 'qwen-2.5-coder-32b', 'qwen-max'],
+      '🚀 xAI (Grok)': ['x-ai/grok-2-1212', 'x-ai/grok-vision-beta'],
     };
   }
 
@@ -200,7 +210,10 @@ class AiService {
     }
     if (apiKey.isEmpty) return 'Грешка: Моля въведете API ключ в полето отдолу.';
 
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 8);
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 8)
+      ..badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+
     final stopwatch = Stopwatch()..start();
 
     try {
@@ -223,13 +236,11 @@ class AiService {
     }
   }
 
-  // =========================================================================
-  // 💬 ИЗПРАЩАНЕ НА СЪОБЩЕНИЕ (РАЗГРАНИЧЕНИЕ НА ЧАТ И СТРОИТЕЛ)
-  // =========================================================================
-
   Future<String> sendPrompt(String prompt, {bool isBuilderMode = true}) async {
     if (apiKey.isNotEmpty && !provider.contains('АВТОМАТИЧЕН')) {
-      final client = HttpClient()..connectionTimeout = const Duration(seconds: 20);
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 20)
+        ..badCertificateCallback = (X509Certificate cert, String host, int port) => true;
       try {
         final request = await client.postUrl(_getChatEndpoint());
         request.headers.set('Content-Type', 'application/json');
@@ -268,7 +279,9 @@ class AiService {
   }
 
   Future<String> _sendAutoFreePrompt(String prompt, {bool isBuilderMode = true}) async {
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 10)
+      ..badCertificateCallback = (X509Certificate cert, String host, int port) => true;
     final url = Uri.parse('https://openrouter.ai/api/v1/chat/completions');
 
     for (String fallback in freeFallbackPool) {
@@ -310,26 +323,21 @@ class AiService {
     return '';
   }
 
-  // Интелигентен локален отговор според режима
   String _generateSmartLocalResponse(String text, bool isBuilderMode) {
     String t = text.toLowerCase().trim();
 
-    // 1. АКО СМЕ В РЕЖИМ ОБИКНОВЕН ЧАТ:
     if (!isBuilderMode) {
       if (t == 'здравей' || t == 'здрасти' || t == 'хей' || t == 'hi' || t == 'hello') {
-        return 'Здравей! Радвам се да се чуем. Как мога да ти помогна днес с игрите или въпросите ти?';
+        return 'Здравей! Радвам се да се чуем. Как мога да ти помогна днес с идеите ти за игри?';
       } else if (t == 'какво' || t == 'какво правиш' || t == 'кой си') {
-        return 'Аз съм твоят Brain AI асистент в TipTop. В режим ЧАТ можем да си говорим за идеи, гейм дизайн и механики, а в режим СТРОИТЕЛ мога директно да строя 2D и 3D светове за теб!';
+        return 'Аз съм твоят Brain AI асистент в TipTop. В режим ЧАТ си говорим, а в режим СТРОИТЕЛ мога да строя цели 3D и 2D светове!';
       } else if (t.contains('как си')) {
-        return 'Супер съм, готов за нови предизвикателства! Ти върху каква игра работиш днес?';
-      } else if (t.contains('помощ') || t.contains('как да')) {
-        return 'За да построиш игра, превключи горе на режим "СТРОИТЕЛ" и ми напиши какво искаш да създам (напр. 3D лава свят или 2D замък). След това кликни бутона, за да го отвориш в Студиото!';
+        return 'Супер съм, готов за нови предизвикателства! Върху какъв проект работиш в момента?';
       } else {
-        return 'Разбрах те! В момента сме в режим ЧАТ. Ако искаш да построим тази идея като истинска 2D или 3D игра, просто превключи горе на режим "СТРОИТЕЛ"!';
+        return 'Разбрах те! В момента сме в режим ЧАТ. Ако искаш да построим нещо на живо в играта, превключи горе на режим "СТРОИТЕЛ"!';
       }
     }
 
-    // 2. АКО СМЕ В РЕЖИМ СТРОИТЕЛ (BUILDER MODE):
     if (t.contains('град') || t.contains('мегаполис') || t.contains('city')) {
       return '🏙️ Построих 3D Cyberpunk мегаполис: 6 небостъргача с PBR неоново светене, лава зона, звездни монети по покривите и хеликоптерна площадка за финал!';
     } else if (t.contains('лава') || t.contains('вулкан')) {
@@ -341,17 +349,13 @@ class AiService {
     }
   }
 
-  // =========================================================================
-  // 🏙️ ПРОЦЕДУРЕН СВЯТ ГЕНЕРАТОР
-  // =========================================================================
-
   LevelModel generateLevelFromPrompt(String prompt) {
     String t = prompt.toLowerCase();
 
     if (t.contains('град') || t.contains('мегаполис') || t.contains('city') || t.contains('небостъргач')) {
       List<EntityNodeModel> cityNodes = [
         EntityNodeModel(id: 'player_spawn', name: 'CharacterBody3D (Player)', type: 'player', x: 0, y: -25, z: 0, size: 32, color: const Color(0xFFFF007F), glow: 0.8),
-        EntityNodeModel(id: 'city_ground', name: 'MeshInstance3D (City Floor)', type: 'block', x: 0, y: 55, z: 0, size: 150, color: const Color(0xFF101424), glow: 0.2),
+        EntityNodeModel(id: 'city_ground', name: 'MeshInstance3D (City Floor)', type: 'block', x: 0, y: 50, z: 0, size: 150, color: const Color(0xFF101424), glow: 0.2),
         EntityNodeModel(id: 'lava_hazard', name: 'Area3D (Subway Lava Pit)', type: 'lava', x: 0, y: 60, z: 80, size: 90, color: const Color(0xFFFF3D00), glow: 1.0),
       ];
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tiptop_game_engine/core/theme/app_theme.dart';
+import 'package:tiptop_game_engine/core/services/animation_catalog_service.dart';
 
 class MovementsView extends StatefulWidget {
   final Function(String name, String category)? onSelectAnimation;
@@ -14,7 +15,10 @@ class MovementsView extends StatefulWidget {
 }
 
 class _MovementsViewState extends State<MovementsView> {
+  final AnimationCatalogService _catalogService = AnimationCatalogService();
+
   final List<String> _animLibraries = [
+    'Всички',
     'Mixamo (2000+)',
     'ActorCore MoCap',
     'CMU Database',
@@ -24,69 +28,29 @@ class _MovementsViewState extends State<MovementsView> {
   final List<String> _categories = [
     'Всички',
     '🏃 Локомоция',
-    '⚔️ Бойни & Меч',
-    '🤸 Паркур',
+    '⚔️ Бойни & Оръжия',
+    '🤸 Паркур & Скокове',
     '💃 Танци & Емоути',
     '🧟 Чудовища & Мех',
+    '💥 Реакции & Смърт',
     '⚽ Спорт & Екшън',
   ];
 
-  String _selectedLibrary = 'Mixamo (2000+)';
+  String _selectedLibrary = 'Всички';
   String _selectedCategory = 'Всички';
   String _searchQuery = '';
 
-  final List<Map<String, dynamic>> _movementsDatabase = [
-    // 🏃 Локомоция
-    {'name': 'Cyber Sprint Run', 'cat': '🏃 Локомоция', 'frames': '24 fr', 'lib': 'Mixamo', 'color': AppTheme.sciFiCyan, 'icon': Icons.directions_run},
-    {'name': 'Casual Walk Cycle', 'cat': '🏃 Локомоция', 'frames': '32 fr', 'lib': 'ActorCore', 'color': const Color(0xFF00E676), 'icon': Icons.directions_walk},
-    {'name': 'Stealth Crouch Walk', 'cat': '🏃 Локомоция', 'frames': '40 fr', 'lib': 'Mixamo', 'color': const Color(0xFFFFD600), 'icon': Icons.airline_seat_recline_extra},
-    {'name': 'Tactical Strafe Left/Right', 'cat': '🏃 Локомоция', 'frames': '28 fr', 'lib': 'Mixamo', 'color': AppTheme.sciFiCyan, 'icon': Icons.compare_arrows},
-    {'name': 'Ledge Climb & Pull Up', 'cat': '🏃 Локомоция', 'frames': '45 fr', 'lib': 'CMU Database', 'color': const Color(0xFFFF9100), 'icon': Icons.vertical_align_top},
-
-    // ⚔️ Бойни
-    {'name': 'Ninja Katana Slash 3-Hit', 'cat': '⚔️ Бойни & Меч', 'frames': '48 fr', 'lib': 'ActorCore', 'color': const Color(0xFFFF1744), 'icon': Icons.flash_on},
-    {'name': 'Heavy Greatsword Spin', 'cat': '⚔️ Бойни & Меч', 'frames': '64 fr', 'lib': 'Mixamo', 'color': const Color(0xFFFF3D00), 'icon': Icons.shield},
-    {'name': 'Boxing 1-2 Combo & Hook', 'cat': '⚔️ Бойни & Меч', 'frames': '36 fr', 'lib': 'Mixamo', 'color': const Color(0xFFFF1744), 'icon': Icons.sports_mma},
-    {'name': 'Dual Pistol Aim & Fire', 'cat': '⚔️ Бойни & Меч', 'frames': '22 fr', 'lib': 'ActorCore', 'color': AppTheme.laserPink, 'icon': Icons.gps_fixed},
-    {'name': 'Magic Spell Cast Arcane', 'cat': '⚔️ Бойни & Меч', 'frames': '55 fr', 'lib': 'Unity Free', 'color': const Color(0xFFD500F9), 'icon': Icons.auto_awesome},
-
-    // 🤸 Паркур
-    {'name': 'Super Hero Jump & Slam', 'cat': '🤸 Паркур', 'frames': '38 fr', 'lib': 'Mixamo', 'color': const Color(0xFF00E676), 'icon': Icons.flight_takeoff},
-    {'name': 'Backflip Somersault', 'cat': '🤸 Паркур', 'frames': '42 fr', 'lib': 'ActorCore', 'color': const Color(0xFFFFD600), 'icon': Icons.cached},
-    {'name': 'Wall Run & Kick Off', 'cat': '🤸 Паркур', 'frames': '35 fr', 'lib': 'Mixamo', 'color': AppTheme.sciFiCyan, 'icon': Icons.directions_run},
-    {'name': 'Combat Slide & Roll', 'cat': '🤸 Паркур', 'frames': '30 fr', 'lib': 'Mixamo', 'color': const Color(0xFFFF9100), 'icon': Icons.replay},
-
-    // 💃 Танци & Емоути
-    {'name': 'Hip Hop Dance Battle', 'cat': '💃 Танци & Емоути', 'frames': '120 fr', 'lib': 'Mixamo', 'color': AppTheme.laserPink, 'icon': Icons.music_note},
-    {'name': 'Breakdance Windmill', 'cat': '💃 Танци & Емоути', 'frames': '90 fr', 'lib': 'ActorCore', 'color': const Color(0xFFD500F9), 'icon': Icons.cyclone},
-    {'name': 'Cyber Robot Pop Dance', 'cat': '💃 Танци & Емоути', 'frames': '85 fr', 'lib': 'Mixamo', 'color': AppTheme.sciFiCyan, 'icon': Icons.smart_toy},
-    {'name': 'Victory Flip & Flex Emote', 'cat': '💃 Танци & Емоути', 'frames': '60 fr', 'lib': 'Mixamo Free', 'color': const Color(0xFF00E676), 'icon': Icons.celebration},
-
-    // 🧟 Чудовища & Мех
-    {'name': 'Zombie Horde Shambler', 'cat': '🧟 Чудовища & Мех', 'frames': '80 fr', 'lib': 'Mixamo', 'color': const Color(0xFFFF9100), 'icon': Icons.coronavirus},
-    {'name': 'Titan Mech Stomp Walk', 'cat': '🧟 Чудовища & Мех', 'frames': '50 fr', 'lib': 'ActorCore', 'color': const Color(0xFFFF1744), 'icon': Icons.precision_manufacturing},
-    {'name': 'Dragon Roar & Wing Beat', 'cat': '🧟 Чудовища & Мех', 'frames': '75 fr', 'lib': 'CMU Database', 'color': const Color(0xFFFF3D00), 'icon': Icons.whatshot},
-
-    // ⚽ Спорт
-    {'name': 'Cyber Drift Bike Ride', 'cat': '⚽ Спорт & Екшън', 'frames': '60 fr', 'lib': 'Mixamo', 'color': const Color(0xFF00E676), 'icon': Icons.two_wheeler},
-    {'name': 'Skateboard 360 Kickflip', 'cat': '⚽ Спорт & Екшън', 'frames': '45 fr', 'lib': 'ActorCore', 'color': const Color(0xFFFFD600), 'icon': Icons.skateboarding},
-    {'name': 'Soccer Bicycle Kick', 'cat': '⚽ Спорт & Екшън', 'frames': '40 fr', 'lib': 'Mixamo', 'color': AppTheme.sciFiCyan, 'icon': Icons.sports_soccer},
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final filtered = _movementsDatabase.where((m) {
-      final matchesLib = _selectedLibrary == 'Mixamo (2000+)' || m['lib'].toString().contains(_selectedLibrary.split(' ')[0]);
-      final matchesCat = _selectedCategory == 'Всички' || m['cat'] == _selectedCategory;
-      final matchesSearch = _searchQuery.isEmpty ||
-          m['name'].toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          m['cat'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
-      return matchesLib && matchesCat && matchesSearch;
-    }).toList();
+    final filtered = _catalogService.search(
+      query: _searchQuery,
+      category: _selectedCategory,
+      library: _selectedLibrary,
+    );
 
     return Column(
       children: [
-        // 1. Избор на MoCap библиотека
+        // 1. Библиотека селектор (Mixamo, ActorCore, CMU)
         Container(
           height: 36,
           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -122,7 +86,7 @@ class _MovementsViewState extends State<MovementsView> {
           ),
         ),
 
-        // 2. Търсачка
+        // 2. Търсачка с динамичен брояч
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
           child: Container(
@@ -133,20 +97,33 @@ class _MovementsViewState extends State<MovementsView> {
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.white12),
             ),
-            child: TextField(
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-              decoration: const InputDecoration(
-                hintText: 'Търси сред 2000+ движения (скок, бягане, нинджа)...',
-                hintStyle: TextStyle(color: Colors.grey, fontSize: 11),
-                icon: Icon(Icons.search, size: 16, color: AppTheme.laserPink),
-                border: InputBorder.none,
-              ),
-              onChanged: (val) => setState(() => _searchQuery = val),
+            child: Row(
+              children: [
+                const Icon(Icons.search, size: 16, color: AppTheme.laserPink),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    decoration: InputDecoration(
+                      hintText: 'Търси сред ${filtered.length} налични движения...',
+                      hintStyle: const TextStyle(color: Colors.grey, fontSize: 11),
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                    onChanged: (val) => setState(() => _searchQuery = val),
+                  ),
+                ),
+                if (_searchQuery.isNotEmpty)
+                  GestureDetector(
+                    onTap: () => setState(() => _searchQuery = ''),
+                    child: const Icon(Icons.clear, size: 14, color: Colors.grey),
+                  ),
+              ],
             ),
           ),
         ),
 
-        // 3. Категории лента
+        // 3. Категории
         SizedBox(
           height: 32,
           child: ListView.builder(
@@ -182,14 +159,14 @@ class _MovementsViewState extends State<MovementsView> {
           ),
         ),
 
-        // 4. Списък с движения
+        // 4. Списък с хиляди индексирани движения
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.all(8),
             itemCount: filtered.length,
             itemBuilder: (context, index) {
               final move = filtered[index];
-              final Color glow = move['color'] as Color? ?? AppTheme.laserPink;
+              final Color glow = move.color;
 
               return Container(
                 margin: const EdgeInsets.symmetric(vertical: 4),
@@ -208,7 +185,7 @@ class _MovementsViewState extends State<MovementsView> {
                         color: glow.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(move['icon'] as IconData? ?? Icons.directions_run, color: glow, size: 22),
+                      child: Icon(move.icon, color: glow, size: 22),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -216,7 +193,7 @@ class _MovementsViewState extends State<MovementsView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            move['name'] as String,
+                            move.name,
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -225,7 +202,7 @@ class _MovementsViewState extends State<MovementsView> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${move['cat']} • ${move['frames']} • ${move['lib']}',
+                            '${move.category} • ${move.frames} • ${move.library}',
                             style: const TextStyle(color: Colors.grey, fontSize: 9),
                           ),
                         ],
@@ -240,9 +217,9 @@ class _MovementsViewState extends State<MovementsView> {
                         ),
                       ),
                       onPressed: () {
-                        widget.onSelectAnimation?.call(move['name'] as String, move['cat'] as String);
+                        widget.onSelectAnimation?.call(move.name, move.category);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('▶ Зареждане в Анимационния Плейър: ${move['name']}')),
+                          SnackBar(content: Text('▶ Заредено движение: ${move.name}')),
                         );
                       },
                       child: const Text(

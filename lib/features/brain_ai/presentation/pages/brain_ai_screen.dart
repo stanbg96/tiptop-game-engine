@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:tiptop_game_engine/core/theme/app_theme.dart';
-import 'package:tiptop_game_engine/core/models/level_model.dart';
+import 'package:tiptop_game_engine/core/services/scene_command_bus.dart';
 import 'package:tiptop_game_engine/features/brain_ai/logic/ai_service.dart';
 
-enum MessageType { user, assistant, levelGenerated }
+enum MessageType { user, assistant, engineAction }
 
 class ChatMessage {
   final String text;
   final MessageType type;
   final String? subtitle;
-  final LevelModel? generatedLevel;
+  final CommandExecutionResult? actionResult;
 
   ChatMessage({
     required this.text,
     required this.type,
     this.subtitle,
-    this.generatedLevel,
+    this.actionResult,
   });
 }
 
@@ -29,6 +29,7 @@ class BrainAiScreen extends StatefulWidget {
 class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final AiService _aiService = AiService();
+  final SceneCommandBus _commandBus = SceneCommandBus();
 
   bool _isBuilderMode = true;
   bool _isLoading = false;
@@ -36,9 +37,9 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
 
   final List<ChatMessage> _messages = [
     ChatMessage(
-      text: 'Готов съм за TipTop Engine! Кажи какво да построим в 2D или 3D.',
+      text: 'Готов съм за TipTop Engine! Мога да управлявам целия енджин на живо.',
       type: MessageType.assistant,
-      subtitle: '• 🏙️ Cyberpunk мегаполиси и градове\n• 🌋 3D Filament лава паркури\n• 🏰 2D Godot замъци и нинджи',
+      subtitle: '• 🏙️ Строене на цели 3D градове и небостъргачи\n• 🌋 Лава светове и физика\n• 🎯 Преместване, създаване и изтриване на обекти на живо',
     ),
   ];
 
@@ -78,8 +79,8 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     super.dispose();
   }
 
-  void _sendMessage() async {
-    String text = _chatController.text.trim();
+  void _sendMessage({String? customText}) async {
+    String text = (customText ?? _chatController.text).trim();
     if (text.isEmpty) return;
 
     setState(() {
@@ -88,26 +89,33 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
       _isLoading = true;
     });
 
-    String response = await _aiService.sendPrompt(text, isBuilderMode: _isBuilderMode);
-    LevelModel? generatedLevel;
     if (_isBuilderMode) {
-      generatedLevel = _aiService.generateLevelFromPrompt(text);
-    }
+      // ⚡ ИЗПЪЛНЕНИЕ НА КОМАНДА НА ЖИВО В ЕНДЖИНА
+      final cmdResult = _commandBus.executeAiPrompt(text);
+      String aiResponse = await _aiService.sendPrompt(text, isBuilderMode: true);
 
-    setState(() {
-      _isLoading = false;
-      _messages.add(ChatMessage(text: response, type: MessageType.assistant));
-      if (generatedLevel != null) {
+      setState(() {
+        _isLoading = false;
         _messages.add(ChatMessage(
-          text: 'Сцената е генерирана успешно!',
-          type: MessageType.levelGenerated,
-          generatedLevel: generatedLevel,
+          text: aiResponse,
+          type: MessageType.assistant,
         ));
-      }
-    });
+        _messages.add(ChatMessage(
+          text: cmdResult.message,
+          type: MessageType.engineAction,
+          actionResult: cmdResult,
+        ));
+      });
+    } else {
+      // 💬 ОБИКНОВЕН ИНТЕЛИГЕНТЕН ЧАТ
+      String response = await _aiService.sendPrompt(text, isBuilderMode: false);
+      setState(() {
+        _isLoading = false;
+        _messages.add(ChatMessage(text: response, type: MessageType.assistant));
+      });
+    }
   }
 
-  // 🔄 СВАЛЯНЕ НА ВСИЧКИ ДОСТАВЧИЦИ И ВСИЧКИ МОДЕЛИ
   void _syncAllProvidersAndModels() async {
     setState(() => _isLoading = true);
     _aiService.configure(key: _apiKeyController.text, selectedProvider: _selectedProvider, selectedModel: _selectedModel);
@@ -129,9 +137,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     int totalModels = fullCatalog.values.fold(0, (sum, list) => sum + list.length);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('🎉 Успешно свалени $totalModels модела от ${_providers.length} доставчика!'),
-      ),
+      SnackBar(content: Text('🎉 Успешно свалени $totalModels модела от ${_providers.length} доставчика!')),
     );
   }
 
@@ -162,7 +168,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
           icon: const Icon(Icons.arrow_back_ios_new, color: AppTheme.sciFiCyan, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('🧠 Brain AI Гейм Архитект', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16)),
+        title: const Text('🧠 Brain AI Copilot (Live Engine)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16)),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
@@ -189,6 +195,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
   Widget _buildChatAgentTab() {
     return Column(
       children: [
+        // Превключвател ЧАТ / СТРОИТЕЛ
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           color: const Color(0xFF141622),
@@ -199,7 +206,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
                 children: [
                   Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFF00E676), shape: BoxShape.circle)),
                   const SizedBox(width: 6),
-                  Text(_isBuilderMode ? 'TipTop 2D/3D Builder' : 'TipTop AI Chat', style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold)),
+                  Text(_isBuilderMode ? 'TipTop 3D Live Engine Bus' : 'TipTop AI Chat', style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold)),
                 ],
               ),
               Container(
@@ -232,6 +239,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
 
         if (_isLoading) const LinearProgressIndicator(color: AppTheme.sciFiCyan, backgroundColor: Colors.black, minHeight: 2),
 
+        // Списък със съобщения
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -240,6 +248,24 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
           ),
         ),
 
+        // Бързи бутони за команди (Action Chips) в режим Строител
+        if (_isBuilderMode)
+          Container(
+            height: 34,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _buildActionChip('🏙️ Построй Град', 'построй cyberpunk град с небостъргачи'),
+                _buildActionChip('🌋 Лава Паркур', 'построй лава свят с платформи'),
+                _buildActionChip('➕ Добави 3D Блок', 'добави нов блок в центъра'),
+                _buildActionChip('🎯 Премести Играча', 'премести играча напред'),
+                _buildActionChip('🧹 Изчисти Сцената', 'изтрий всичко от сцената'),
+              ],
+            ),
+          ),
+
+        // Поле за писане
         SafeArea(
           top: false,
           child: Padding(
@@ -254,7 +280,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
                       controller: _chatController,
                       style: const TextStyle(color: Colors.white, fontSize: 13),
                       decoration: InputDecoration(
-                        hintText: _isBuilderMode ? 'Построй Cyberpunk град, 3D лава или 2D замък...' : 'Напиши съобщение...',
+                        hintText: _isBuilderMode ? 'Команда: построй град, премести, изтрий...' : 'Напиши съобщение...',
                         hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
                         border: InputBorder.none,
                       ),
@@ -274,58 +300,65 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildMessageItem(ChatMessage msg) {
-    if (msg.type == MessageType.levelGenerated && msg.generatedLevel != null) {
-      final lvl = msg.generatedLevel!;
-      final bool is3D = lvl.dimension == LevelDimension.threeD;
+  Widget _buildActionChip(String label, String command) {
+    return GestureDetector(
+      onTap: () => _sendMessage(customText: command),
+      child: Container(
+        margin: const EdgeInsets.only(right: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1F2C),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.sciFiCyan.withValues(alpha: 0.4)),
+        ),
+        child: Center(
+          child: Text(label, style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 10, fontWeight: FontWeight.bold)),
+        ),
+      ),
+    );
+  }
 
+  Widget _buildMessageItem(ChatMessage msg) {
+    // ДЕЙСТВИЕ В ЕНДЖИНА НА ЖИВО (Live Engine Execution Card)
+    if (msg.type == MessageType.engineAction && msg.actionResult != null) {
+      final res = msg.actionResult!;
       return Container(
-        margin: const EdgeInsets.symmetric(vertical: 6),
+        margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFF121A28),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: is3D ? AppTheme.laserPink : const Color(0xFF00E676)),
-          boxShadow: [
-            BoxShadow(
-              color: (is3D ? AppTheme.laserPink : const Color(0xFF00E676)).withValues(alpha: 0.15),
-              blurRadius: 10,
-            ),
-          ],
+          color: const Color(0xFF0F221A),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF00E676)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(is3D ? Icons.view_in_ar : Icons.grid_view, color: is3D ? AppTheme.laserPink : const Color(0xFF00E676), size: 22),
-                const SizedBox(width: 8),
+                const Icon(Icons.bolt, color: Color(0xFF00E676), size: 18),
+                const SizedBox(width: 6),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(lvl.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                      Text('${lvl.dimension == LevelDimension.threeD ? "3D Filament" : "2D Godot"} • ${lvl.nodes.length} генерирани обекта', style: const TextStyle(color: Colors.grey, fontSize: 10)),
-                    ],
+                  child: Text(
+                    '⚡ ИЗПЪЛНЕНО НА ЖИВО В ЕНДЖИНА: ${res.actionType}',
+                    style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 11),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 4),
+            Text(res.message, style: const TextStyle(color: Colors.white, fontSize: 12)),
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
-              height: 34,
+              height: 32,
               child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: is3D ? AppTheme.laserPink : const Color(0xFF00E676),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                icon: const Icon(Icons.play_arrow, color: Colors.black, size: 18),
-                label: const Text('ОТВОРИ И ИГРАЙ В СТУДИОТО', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00E676), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                icon: const Icon(Icons.view_in_ar, color: Colors.black, size: 16),
+                label: const Text('ВИЖ В 3D СТУДИОТО', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
                 onPressed: () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('🍄 Зареждане на "${lvl.title}" в Студиото...')),
+                    const SnackBar(content: Text('🍄 Отваряне на 3D Студиото с обновената сцена!')),
                   );
                 },
               ),
