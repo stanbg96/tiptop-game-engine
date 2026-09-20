@@ -25,7 +25,6 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  // 1. PHONE / EMAIL AUTH MODAL (1:1 with TikTok)
   void _showPhoneEmailAuthModal() {
     showModalBottomSheet(
       context: context,
@@ -124,7 +123,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   controller: codeController,
                   keyboardType: TextInputType.number,
                   style: const TextStyle(color: Colors.white, fontSize: 14),
-                  decoration: const InputDecoration(hintText: 'Въведи 6-цифрен SMS код (123456)', hintStyle: TextStyle(color: Colors.grey, fontSize: 12), border: InputBorder.none),
+                  decoration: const InputDecoration(hintText: 'Въведи SMS код (123456)', hintStyle: TextStyle(color: Colors.grey, fontSize: 12), border: InputBorder.none),
                 ),
               ),
               const SizedBox(height: 12),
@@ -147,10 +146,10 @@ class _AuthScreenState extends State<AuthScreen> {
                         return;
                       }
                       setModalState(() => codeSent = true);
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📩 SMS кодът е изпратен успешно: 123456')));
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📩 SMS кодът е изпратен: 123456')));
                     } else {
                       Navigator.pop(context);
-                      _navigateToHome('User_${phoneController.text.trim().substring(0, 3)}');
+                      _navigateToHome('Gamer_${phoneController.text.trim().substring(0, math_min(3, phoneController.text.trim().length))}');
                     }
                   },
                   child: Text(codeSent ? 'ПОТВЪРДИ И ВЛЕЗ' : 'ИЗПРАТИ SMS КОД', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
@@ -162,6 +161,8 @@ class _AuthScreenState extends State<AuthScreen> {
       },
     );
   }
+
+  int math_min(int a, int b) => a < b ? a : b;
 
   Widget _buildEmailAuthTab() {
     final emailController = TextEditingController();
@@ -233,7 +234,6 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  // 2. GOOGLE AUTH MODAL (One-Tap Google Play Games Sign-In)
   void _showGoogleAuthModal() {
     showModalBottomSheet(
       context: context,
@@ -267,7 +267,6 @@ class _AuthScreenState extends State<AuthScreen> {
               ],
             ),
             const SizedBox(height: 18),
-            // Google Account Tile 1
             InkWell(
               onTap: () {
                 Navigator.pop(context);
@@ -293,46 +292,12 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 10),
-            // Google Account Tile 2
-            InkWell(
-              onTap: () {
-                Navigator.pop(context);
-                _navigateToHome('Gamer_Creator');
-              },
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: const Color(0xFF181B2C), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white10)),
-                child: const Row(
-                  children: [
-                    CircleAvatar(radius: 18, backgroundColor: AppTheme.sciFiCyan, child: Text('G', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold))),
-                    SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Gamer_Creator', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                        Text('gamer.creator@gmail.com', style: TextStyle(color: Colors.grey, fontSize: 11)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Center(
-              child: TextButton.icon(
-                icon: const Icon(Icons.add, color: AppTheme.sciFiCyan, size: 16),
-                label: const Text('Добави друг Google акаунт', style: TextStyle(color: AppTheme.sciFiCyan, fontSize: 12)),
-                onPressed: () {},
-              ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  // 3. DISCORD / GAMING ID AUTH MODAL
   void _showDiscordAuthModal() {
     final tagController = TextEditingController();
 
@@ -376,7 +341,7 @@ class _AuthScreenState extends State<AuthScreen> {
               child: TextField(
                 controller: tagController,
                 style: const TextStyle(color: Colors.white, fontSize: 14),
-                decoration: const InputDecoration(hintText: 'Въведи Discord Tag (напр. Neo#1337)', hintStyle: TextStyle(color: Colors.grey, fontSize: 12), border: InputBorder.none),
+                decoration: const InputDecoration(hintText: 'Discord Tag (напр. Neo#1337)', hintStyle: TextStyle(color: Colors.grey, fontSize: 12), border: InputBorder.none),
               ),
             ),
             const SizedBox(height: 16),
@@ -413,19 +378,16 @@ class _AuthScreenState extends State<AuthScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Skip / Guest Button
               Align(
                 alignment: Alignment.topRight,
                 child: TextButton(
                   onPressed: () => _navigateToHome('Гост_Създател'),
                   child: const Text(
-                    'Skip / Guest >',
+                    'Skip / Гост >',
                     style: TextStyle(color: AppTheme.sciFiCyan, fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
-
-              // Center Logo & Title
               Column(
                 children: [
                   Container(
@@ -442,59 +404,51 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    _isLogin ? 'Log in to Game Engine' : 'Sign up for Game Engine',
+                    _isLogin ? 'Вход в TipTop Engine' : 'Регистрация в TipTop',
                     style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Create 3D games with AI, share & play with friends.',
+                    'Създавай 2D & 3D игри с AI и Filament, споделяй с приятели.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey, fontSize: 13),
                   ),
                   const SizedBox(height: 28),
-
-                  // 1. Phone / Email / Username Button
                   _buildAuthButton(
                     icon: Icons.person_outline,
-                    text: 'Use Phone / Email / Username',
+                    text: 'Вход с Телефон / Имейл / Username',
                     glowColor: AppTheme.laserPink,
                     onTap: _showPhoneEmailAuthModal,
                   ),
                   const SizedBox(height: 12),
-
-                  // 2. Google Button
                   _buildAuthButton(
                     icon: Icons.g_mobiledata,
-                    text: 'Continue with Google',
+                    text: 'Продължи с Google Play Games',
                     glowColor: const Color(0xFF00E676),
                     onTap: _showGoogleAuthModal,
                   ),
                   const SizedBox(height: 12),
-
-                  // 3. Discord / Gaming ID Button
                   _buildAuthButton(
                     icon: Icons.sports_esports_outlined,
-                    text: 'Continue with Discord / Gaming ID',
+                    text: 'Продължи с Discord / Gaming ID',
                     glowColor: const Color(0xFF5865F2),
                     onTap: _showDiscordAuthModal,
                   ),
                 ],
               ),
-
-              // Bottom Switcher
               Padding(
                 padding: const EdgeInsets.only(bottom: 16.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      _isLogin ? "Don't have an account? " : "Already have an account? ",
+                      _isLogin ? 'Нямаш акаунт? ' : 'Вече имаш акаунт? ',
                       style: const TextStyle(color: Colors.grey, fontSize: 13),
                     ),
                     GestureDetector(
                       onTap: () => setState(() => _isLogin = !_isLogin),
                       child: Text(
-                        _isLogin ? 'Sign up' : 'Log in',
+                        _isLogin ? 'Регистрирай се' : 'Вход',
                         style: const TextStyle(color: AppTheme.laserPink, fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                     ),

@@ -17,7 +17,7 @@ class _InboxScreenState extends State<InboxScreen> {
       'time': '2 мин',
       'avatar': '🎮',
       'isRoom': true,
-      'color': Color(0xFF00E676),
+      'color': const Color(0xFF00E676),
       'messages': [
         {'sender': 'Alex_Gamer', 'text': 'Здрасти! Направих ново 3D ниво с лава в Filament.', 'isMe': false, 'time': '14:30'},
         {'sender': 'Ти', 'text': 'Супер, пускай мултиплейър стаята!', 'isMe': true, 'time': '14:31'},
@@ -78,7 +78,6 @@ class _InboxScreenState extends State<InboxScreen> {
     ).then((_) => setState(() {}));
   }
 
-  // 1. ОБЛАЧЕН ЕКСПОРТ (ПОВДИГНАТ С ДОПЪЛНИТЕЛЕН SAFEAREA ОТСТЪП)
   void _showCloudExportModal() {
     String selectedPlatform = 'Android (.APK)';
     String selectedGame = 'Cyberpunk Neon Runner 3D';
@@ -105,8 +104,8 @@ class _InboxScreenState extends State<InboxScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: const [
+                const Row(
+                  children: [
                     Icon(Icons.cloud_upload, color: AppTheme.sciFiCyan, size: 24),
                     SizedBox(width: 10),
                     Text('Облачен Експорт на Игра', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
@@ -125,7 +124,8 @@ class _InboxScreenState extends State<InboxScreen> {
                       dropdownColor: const Color(0xFF181B28),
                       style: const TextStyle(color: Colors.white, fontSize: 13),
                       items: ['Cyberpunk Neon Runner 3D', 'Lava Volcano Arena 3D', 'Medieval Castle Defense 2D']
-                          .map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                          .map((g) => DropdownMenuItem(value: g, child: Text(g)))
+                          .toList(),
                       onChanged: (val) => setModalState(() => selectedGame = val!),
                     ),
                   ),
@@ -171,7 +171,7 @@ class _InboxScreenState extends State<InboxScreen> {
                       onPressed: () {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('🚀 Стартирана $selectedPlatform компилация за $selectedGame! TipTop Bot ще изпрати QR код.')),
+                          SnackBar(content: Text('🚀 Стартирана $selectedPlatform компилация за $selectedGame! TipTop Bot ще изпрати линк в чата.')),
                         );
                       },
                     ),
@@ -185,7 +185,6 @@ class _InboxScreenState extends State<InboxScreen> {
     );
   }
 
-  // 2. МУЛТИПЛЕЙЪР QR ГЕНЕРАТОР (ПОВДИГНАТ С ДОПЪЛНИТЕЛЕН SAFEAREA ОТСТЪП)
   void _showMultiplayerQrModal() {
     showModalBottomSheet(
       context: context,
@@ -259,7 +258,7 @@ class _InboxScreenState extends State<InboxScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF0E101A),
         elevation: 0,
-        title: const Text('💬 Входящи & Чат', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white)),
+        title: const Text('💬 Входящи & Мултиплейър', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white)),
         centerTitle: true,
         actions: [
           IconButton(

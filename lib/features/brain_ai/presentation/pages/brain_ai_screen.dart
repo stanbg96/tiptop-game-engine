@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:tiptop_game_engine/core/theme/app_theme.dart';
+import 'package:tiptop_game_engine/core/models/level_model.dart';
 import 'package:tiptop_game_engine/features/brain_ai/logic/ai_service.dart';
 
-enum MessageType { user, assistant, modelSwitch, apiKeyConnected, systemAlert, engineAction, attachment }
+enum MessageType { user, assistant, levelGenerated }
 
 class ChatMessage {
   final String text;
   final MessageType type;
   final String? subtitle;
-  ChatMessage({required this.text, required this.type, this.subtitle});
+  final LevelModel? generatedLevel;
+
+  ChatMessage({
+    required this.text,
+    required this.type,
+    this.subtitle,
+    this.generatedLevel,
+  });
 }
 
 class BrainAiScreen extends StatefulWidget {
@@ -27,13 +36,9 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
 
   final List<ChatMessage> _messages = [
     ChatMessage(
-      text: 'Готов съм за TipTop Engine! Кажи какво да създадем или променим.',
+      text: 'Готов съм за TipTop Engine! Кажи какво да построим в 2D или 3D.',
       type: MessageType.assistant,
-      subtitle: '• 🎮 Геймплей и механики\n• 🗺️ 2D & 3D Filament сцени\n• ⚙️ Анимации и материали',
-    ),
-    ChatMessage(
-      text: 'Режим: ⚡ АВТОМАТИЧЕН БЕЗПЛАТЕН (100% Онлайн)',
-      type: MessageType.modelSwitch,
+      subtitle: '• 🏙️ Cyberpunk мегаполиси и градове\n• 🌋 3D Filament лава паркури\n• 🏰 2D Godot замъци и нинджи',
     ),
   ];
 
@@ -43,15 +48,17 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
   String _statusMessage = '🟢 Автоматичен режим: 6 резервни модела са онлайн.';
   bool _isSuccess = true;
 
-  final List<String> _providers = [
+  List<String> _providers = [
     '⚡ АВТОМАТИЧЕН (Free Auto-Router)',
-    '🌐 OpenRouter (100+ Модела / Free)',
+    '🌐 OpenRouter (Всички 250+ Модела)',
     '⚡ Groq (Ултра Бърз / Free)',
     '🔮 Google Gemini',
     '🤖 DeepSeek',
     '🟢 OpenAI',
     '🧠 Anthropic Claude',
+    '🦙 Meta LLaMA',
     '🌪️ Mistral AI',
+    '🐉 Qwen & Alibaba',
   ];
 
   late List<String> _models;
@@ -60,7 +67,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _models = _aiService.getDefaultModelsFor(_selectedProvider);
+    _models = _aiService.getModelsForProvider(_selectedProvider);
   }
 
   @override
@@ -82,33 +89,49 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     });
 
     String response = await _aiService.sendPrompt(text, isBuilderMode: _isBuilderMode);
+    LevelModel? generatedLevel;
+    if (_isBuilderMode) {
+      generatedLevel = _aiService.generateLevelFromPrompt(text);
+    }
 
     setState(() {
       _isLoading = false;
       _messages.add(ChatMessage(text: response, type: MessageType.assistant));
-      if (_isBuilderMode) {
+      if (generatedLevel != null) {
         _messages.add(ChatMessage(
-          text: '⚙️ TipTop Filament Engine изпълни командата!',
-          type: MessageType.engineAction,
+          text: 'Сцената е генерирана успешно!',
+          type: MessageType.levelGenerated,
+          generatedLevel: generatedLevel,
         ));
       }
     });
   }
 
-  void _syncModels() async {
+  // 🔄 СВАЛЯНЕ НА ВСИЧКИ ДОСТАВЧИЦИ И ВСИЧКИ МОДЕЛИ
+  void _syncAllProvidersAndModels() async {
     setState(() => _isLoading = true);
     _aiService.configure(key: _apiKeyController.text, selectedProvider: _selectedProvider, selectedModel: _selectedModel);
-    List<String> downloaded = await _aiService.fetchAvailableModels();
+
+    final fullCatalog = await _aiService.fetchAllProvidersAndModels();
 
     setState(() {
-      _models = downloaded;
-      if (_models.isNotEmpty) _selectedModel = _models.first;
+      _providers = fullCatalog.keys.toList();
+      if (!_providers.contains(_selectedProvider)) {
+        _selectedProvider = _providers.first;
+      }
+      _models = _aiService.getModelsForProvider(_selectedProvider);
+      if (_models.isNotEmpty && !_models.contains(_selectedModel)) {
+        _selectedModel = _models.first;
+      }
       _isLoading = false;
-      _messages.add(ChatMessage(text: 'Превключено на: $_selectedModel', type: MessageType.modelSwitch));
     });
 
+    int totalModels = fullCatalog.values.fold(0, (sum, list) => sum + list.length);
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Синхронизирани ${_models.length} модела!')),
+      SnackBar(
+        content: Text('🎉 Успешно свалени $totalModels модела от ${_providers.length} доставчика!'),
+      ),
     );
   }
 
@@ -124,21 +147,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
       _isLoading = false;
       _statusMessage = result;
       _isSuccess = result.contains('Успешна') || result.contains('🟢');
-      if (_isSuccess) {
-        _messages.add(ChatMessage(text: '🔑 Свързан към $_selectedModel!', type: MessageType.apiKeyConnected));
-      }
     });
-  }
-
-  void _saveConfiguration() {
-    _aiService.configure(key: _apiKeyController.text, selectedProvider: _selectedProvider, selectedModel: _selectedModel);
-    setState(() {
-      _statusMessage = '🟢 Конфигурацията е запазена!';
-      _isSuccess = true;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Конфигурацията е запазена!')),
-    );
   }
 
   @override
@@ -150,20 +159,20 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
         backgroundColor: const Color(0xFF10121A),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.cyanAccent, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new, color: AppTheme.sciFiCyan, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('🧠 Future Brain AI', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 17)),
+        title: const Text('🧠 Brain AI Гейм Архитект', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16)),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.purpleAccent,
+          indicatorColor: AppTheme.laserPink,
           indicatorWeight: 3,
-          labelColor: Colors.purpleAccent,
+          labelColor: AppTheme.laserPink,
           unselectedLabelColor: Colors.grey,
           tabs: const [
-            Tab(icon: Icon(Icons.chat_bubble_outline, size: 18), text: 'AI Agent'),
-            Tab(icon: Icon(Icons.vpn_key_outlined, size: 18), text: 'API Manager'),
+            Tab(icon: Icon(Icons.smart_toy_outlined, size: 18), text: 'AI Строител'),
+            Tab(icon: Icon(Icons.vpn_key_outlined, size: 18), text: 'API Мениджър'),
           ],
         ),
       ),
@@ -182,34 +191,27 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: const BoxDecoration(
-            color: Color(0xFF141622),
-            border: Border(bottom: BorderSide(color: Color(0xFF222638), width: 1)),
-          ),
+          color: const Color(0xFF141622),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
-                  Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.greenAccent, shape: BoxShape.circle)),
+                  Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFF00E676), shape: BoxShape.circle)),
                   const SizedBox(width: 6),
-                  Text(_isBuilderMode ? 'TipTop 3D Agent' : 'TipTop AI Chat', style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold)),
+                  Text(_isBuilderMode ? 'TipTop 2D/3D Builder' : 'TipTop AI Chat', style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold)),
                 ],
               ),
               Container(
                 padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.4)),
-                ),
+                decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.laserPink.withValues(alpha: 0.4))),
                 child: Row(
                   children: [
                     GestureDetector(
                       onTap: () => setState(() => _isBuilderMode = false),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(color: !_isBuilderMode ? Colors.purpleAccent : Colors.transparent, borderRadius: BorderRadius.circular(14)),
+                        decoration: BoxDecoration(color: !_isBuilderMode ? AppTheme.laserPink : Colors.transparent, borderRadius: BorderRadius.circular(14)),
                         child: Text('ЧАТ', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: !_isBuilderMode ? FontWeight.bold : FontWeight.normal)),
                       ),
                     ),
@@ -217,8 +219,8 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
                       onTap: () => setState(() => _isBuilderMode = true),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(color: _isBuilderMode ? Colors.cyanAccent : Colors.transparent, borderRadius: BorderRadius.circular(14)),
-                        child: Text('АГЕНТ', style: TextStyle(color: _isBuilderMode ? Colors.black : Colors.white70, fontSize: 10, fontWeight: _isBuilderMode ? FontWeight.bold : FontWeight.normal)),
+                        decoration: BoxDecoration(color: _isBuilderMode ? AppTheme.sciFiCyan : Colors.transparent, borderRadius: BorderRadius.circular(14)),
+                        child: Text('СТРОИТЕЛ', style: TextStyle(color: _isBuilderMode ? Colors.black : Colors.white70, fontSize: 10, fontWeight: _isBuilderMode ? FontWeight.bold : FontWeight.normal)),
                       ),
                     ),
                   ],
@@ -227,7 +229,9 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
             ],
           ),
         ),
-        if (_isLoading) const LinearProgressIndicator(color: Colors.cyanAccent, backgroundColor: Colors.black, minHeight: 2),
+
+        if (_isLoading) const LinearProgressIndicator(color: AppTheme.sciFiCyan, backgroundColor: Colors.black, minHeight: 2),
+
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -235,63 +239,34 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
             itemBuilder: (context, index) => _buildMessageItem(_messages[index]),
           ),
         ),
+
         SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.only(bottom: 10.0, left: 10, right: 10),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6.0, left: 8.0),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => setState(() => _messages.add(ChatMessage(text: '📸 Screenshot_Asset.png', type: MessageType.attachment))),
-                        child: const Icon(Icons.camera_alt, color: Colors.cyanAccent, size: 20),
+            padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(color: const Color(0xFF161824), borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.white12)),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _chatController,
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      decoration: InputDecoration(
+                        hintText: _isBuilderMode ? 'Построй Cyberpunk град, 3D лава или 2D замък...' : 'Напиши съобщение...',
+                        hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+                        border: InputBorder.none,
                       ),
-                      const SizedBox(width: 14),
-                      const Icon(Icons.attach_file, color: Colors.purpleAccent, size: 20),
-                      const SizedBox(width: 14),
-                      const Icon(Icons.warning_amber_rounded, color: Colors.amberAccent, size: 20),
-                      const SizedBox(width: 14),
-                      const Icon(Icons.sentiment_satisfied_alt, color: Colors.yellowAccent, size: 20),
-                    ],
+                      onSubmitted: (_) => _sendMessage(),
+                    ),
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(color: const Color(0xFF161824), borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.white12)),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _chatController,
-                          style: const TextStyle(color: Colors.white, fontSize: 14),
-                          decoration: InputDecoration(
-                            hintText: _isBuilderMode ? 'Команда за 3D строене...' : 'Съобщение...',
-                            hintStyle: const TextStyle(color: Colors.grey, fontSize: 13),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
-                          ),
-                        ),
-                      ),
-                      Container(
-                        margin: const EdgeInsets.only(left: 4),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: [Colors.purpleAccent, Colors.cyanAccent]),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: TextButton(
-                          style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                          onPressed: _sendMessage,
-                          child: const Text('Изпрати', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12)),
-                        ),
-                      ),
-                    ],
+                  IconButton(
+                    icon: const Icon(Icons.send_rounded, color: AppTheme.laserPink),
+                    onPressed: _sendMessage,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -300,276 +275,206 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
   }
 
   Widget _buildMessageItem(ChatMessage msg) {
-    switch (msg.type) {
-      case MessageType.modelSwitch:
-        return Container(
-          margin: const EdgeInsets.symmetric(vertical: 3),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(color: const Color(0xFF181028), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.6))),
-          child: Row(
-            children: [
-              const Text('⚡ ', style: TextStyle(fontSize: 12)),
-              Expanded(child: Text(msg.text, style: const TextStyle(color: Colors.purpleAccent, fontSize: 11, fontWeight: FontWeight.bold))),
-            ],
-          ),
-        );
-      case MessageType.apiKeyConnected:
-        return Container(
-          margin: const EdgeInsets.symmetric(vertical: 3),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(color: const Color(0xFF141926), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.6))),
-          child: Row(
-            children: [
-              const Text('🔑 ', style: TextStyle(fontSize: 12)),
-              Expanded(child: Text(msg.text, style: const TextStyle(color: Colors.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold))),
-            ],
-          ),
-        );
-      case MessageType.systemAlert:
-        return Container(
-          margin: const EdgeInsets.symmetric(vertical: 3),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(color: const Color(0xFF221A14), borderRadius: BorderRadius.circular(10), border: const Border(left: BorderSide(color: Colors.amberAccent, width: 3))),
-          child: Text(msg.text, style: const TextStyle(color: Colors.amberAccent, fontSize: 11, fontWeight: FontWeight.w600)),
-        );
-      case MessageType.engineAction:
-        return Container(
-          margin: const EdgeInsets.symmetric(vertical: 3),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(color: const Color(0xFF10221C), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.6))),
-          child: Text(msg.text, style: const TextStyle(color: Colors.greenAccent, fontSize: 11, fontWeight: FontWeight.bold)),
-        );
-      case MessageType.attachment:
-        return Align(
-          alignment: Alignment.centerRight,
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 3),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(color: const Color(0xFF0F3048), borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.cyanAccent)),
-            child: Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-          ),
-        );
-      case MessageType.user:
-        return Align(
-          alignment: Alignment.centerRight,
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF5D1D86), Color(0xFF381552)]), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.4))),
-            child: Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 12)),
-          ),
-        );
-      case MessageType.assistant:
-        return Align(
-          alignment: Alignment.centerLeft,
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(color: const Color(0xFF141724), borderRadius: BorderRadius.circular(12), border: const Border(left: BorderSide(color: Colors.cyanAccent, width: 3))),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    if (msg.type == MessageType.levelGenerated && msg.generatedLevel != null) {
+      final lvl = msg.generatedLevel!;
+      final bool is3D = lvl.dimension == LevelDimension.threeD;
+
+      return Container(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF121A28),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: is3D ? AppTheme.laserPink : const Color(0xFF00E676)),
+          boxShadow: [
+            BoxShadow(
+              color: (is3D ? AppTheme.laserPink : const Color(0xFF00E676)).withValues(alpha: 0.15),
+              blurRadius: 10,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.3)),
-                if (msg.subtitle != null) ...[
-                  const SizedBox(height: 6),
-                  Text(msg.subtitle!, style: const TextStyle(color: Colors.white70, fontSize: 11, height: 1.4)),
-                ],
+                Icon(is3D ? Icons.view_in_ar : Icons.grid_view, color: is3D ? AppTheme.laserPink : const Color(0xFF00E676), size: 22),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(lvl.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                      Text('${lvl.dimension == LevelDimension.threeD ? "3D Filament" : "2D Godot"} • ${lvl.nodes.length} генерирани обекта', style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                    ],
+                  ),
+                ),
               ],
             ),
-          ),
-        );
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 34,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: is3D ? AppTheme.laserPink : const Color(0xFF00E676),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.play_arrow, color: Colors.black, size: 18),
+                label: const Text('ОТВОРИ И ИГРАЙ В СТУДИОТО', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
+                onPressed: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('🍄 Зареждане на "${lvl.title}" в Студиото...')),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
     }
+
+    if (msg.type == MessageType.user) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [Color(0xFF5D1D86), Color(0xFF381552)]),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.laserPink.withValues(alpha: 0.4)),
+          ),
+          child: Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 13)),
+        ),
+      );
+    }
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: const BoxDecoration(
+          color: Color(0xFF141724),
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          border: Border(left: BorderSide(color: AppTheme.sciFiCyan, width: 3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.3)),
+            if (msg.subtitle != null) ...[
+              const SizedBox(height: 6),
+              Text(msg.subtitle!, style: const TextStyle(color: Colors.white70, fontSize: 11, height: 1.4)),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildApiManagerTab() {
-    return Column(
+    return ListView(
+      padding: const EdgeInsets.all(16),
       children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('ДОСТАВЧИЦИ & МОДЕЛИ (250+ LIVE)', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
+            IconButton(
+              icon: const Icon(Icons.refresh, color: AppTheme.sciFiCyan, size: 20),
+              tooltip: 'Свали всички доставчици и модели на живо',
+              onPressed: _syncAllProvidersAndModels,
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: const BoxDecoration(color: Color(0xFF12141F), border: Border(bottom: BorderSide(color: Color(0xFF222638), width: 1))),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 4,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('ДОСТАВЧИК', style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Container(
-                      height: 38,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      decoration: BoxDecoration(color: const Color(0xFF1A1D2C), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white12)),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _selectedProvider,
-                          isExpanded: true,
-                          menuMaxHeight: 380,
-                          dropdownColor: const Color(0xFF1A1D2C),
-                          style: const TextStyle(color: Colors.white, fontSize: 11),
-                          items: _providers.map((p) => DropdownMenuItem(value: p, child: Text(p, overflow: TextOverflow.ellipsis))).toList(),
-                          onChanged: (val) {
-                            setState(() {
-                              _selectedProvider = val!;
-                              _models = _aiService.getDefaultModelsFor(_selectedProvider);
-                              _selectedModel = _models.first;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 5,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('МОДЕЛ', style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Container(
-                      height: 38,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      decoration: BoxDecoration(color: const Color(0xFF1A1D2C), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.4))),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _models.contains(_selectedModel) ? _selectedModel : (_models.isNotEmpty ? _models.first : null),
-                          isExpanded: true,
-                          menuMaxHeight: 400,
-                          dropdownColor: const Color(0xFF1A1D2C),
-                          style: const TextStyle(color: Colors.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold),
-                          items: _models.map((m) => DropdownMenuItem(value: m, child: Text(m, overflow: TextOverflow.ellipsis))).toList(),
-                          onChanged: (val) => setState(() => _selectedModel = val!),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 6),
-              Padding(
-                padding: const EdgeInsets.only(top: 16.0),
-                child: Container(
-                  height: 38,
-                  width: 38,
-                  decoration: BoxDecoration(color: const Color(0xFF222638), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.5))),
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    icon: const Icon(Icons.refresh_rounded, color: Colors.cyanAccent, size: 20),
-                    tooltip: 'Свали всички модели',
-                    onPressed: _syncModels,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(color: Colors.cyanAccent.withValues(alpha: 0.25), blurRadius: 35, spreadRadius: 8),
-                        BoxShadow(color: Colors.purpleAccent.withValues(alpha: 0.25), blurRadius: 45, spreadRadius: 4),
-                      ],
-                    ),
-                    child: const Center(child: Text('🧠', style: TextStyle(fontSize: 60))),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(color: const Color(0xFF141724), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.4))),
-                    child: Text(_selectedModel, textAlign: TextAlign.center, style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 12)),
-                  ),
-                  if (_statusMessage.isNotEmpty) ...[
-                    const SizedBox(height: 14),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: _isSuccess ? const Color(0xFF0D2418) : const Color(0xFF281014),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: _isSuccess ? Colors.greenAccent : Colors.redAccent.withValues(alpha: 0.8)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(_isSuccess ? Icons.check_circle_outline : Icons.error_outline, color: _isSuccess ? Colors.greenAccent : Colors.redAccent, size: 18),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text(_statusMessage, style: TextStyle(color: _isSuccess ? Colors.greenAccent : const Color(0xFFFF6B7A), fontSize: 11, fontWeight: FontWeight.w600))),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+          height: 42,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(color: const Color(0xFF181B28), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _providers.contains(_selectedProvider) ? _selectedProvider : _providers.first,
+              isExpanded: true,
+              dropdownColor: const Color(0xFF181B28),
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+              items: _providers.map((p) => DropdownMenuItem(value: p, child: Text(p, overflow: TextOverflow.ellipsis))).toList(),
+              onChanged: (val) {
+                setState(() {
+                  _selectedProvider = val!;
+                  _models = _aiService.getModelsForProvider(_selectedProvider);
+                  if (_models.isNotEmpty) _selectedModel = _models.first;
+                });
+              },
             ),
           ),
         ),
-        SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 5,
-                  child: Container(
-                    height: 42,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(color: const Color(0xFF141724), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
-                    child: TextField(
-                      controller: _apiKeyController,
-                      obscureText: true,
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
-                      decoration: const InputDecoration(hintText: '••••••••••••••••••••••••', hintStyle: TextStyle(color: Colors.grey, fontSize: 12), border: InputBorder.none, contentPadding: EdgeInsets.only(bottom: 8)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  flex: 3,
-                  child: SizedBox(
-                    height: 42,
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.cyanAccent, width: 1.2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), padding: EdgeInsets.zero),
-                      onPressed: _testKey,
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('🧪 ', style: TextStyle(fontSize: 12)),
-                          Text('ТЕСТВАЙ', style: TextStyle(color: Colors.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  flex: 3,
-                  child: SizedBox(
-                    height: 42,
-                    child: Container(
-                      decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF2979FF), Color(0xFFAA00FF)]), borderRadius: BorderRadius.circular(10)),
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), padding: EdgeInsets.zero),
-                        onPressed: _saveConfiguration,
-                        child: const Text('СВЪРЖИ', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+        const SizedBox(height: 14),
+
+        Text('ИЗБЕРИ МОДЕЛ (${_models.length} НАЛИЧНИ)', style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 6),
+        Container(
+          height: 42,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(color: const Color(0xFF181B28), borderRadius: BorderRadius.circular(10), border: Border.all(color: AppTheme.sciFiCyan.withValues(alpha: 0.4))),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _models.contains(_selectedModel) ? _selectedModel : (_models.isNotEmpty ? _models.first : null),
+              isExpanded: true,
+              menuMaxHeight: 380,
+              dropdownColor: const Color(0xFF181B28),
+              style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 12, fontWeight: FontWeight.bold),
+              items: _models.map((m) => DropdownMenuItem(value: m, child: Text(m, overflow: TextOverflow.ellipsis))).toList(),
+              onChanged: (val) => setState(() => _selectedModel = val!),
             ),
           ),
+        ),
+        const SizedBox(height: 14),
+
+        const Text('API КЛЮЧ (По избор за платени модели)', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 6),
+        Container(
+          height: 42,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(color: const Color(0xFF181B28), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
+          child: TextField(
+            controller: _apiKeyController,
+            obscureText: true,
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+            decoration: const InputDecoration(hintText: 'sk-or-v1-••••••••••••••••', hintStyle: TextStyle(color: Colors.grey, fontSize: 12), border: InputBorder.none),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(side: const BorderSide(color: AppTheme.sciFiCyan), padding: const EdgeInsets.symmetric(vertical: 12)),
+                onPressed: _testKey,
+                child: const Text('ТЕСТВАЙ ВРЪЗКА', style: TextStyle(color: AppTheme.sciFiCyan, fontSize: 11, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.laserPink, padding: const EdgeInsets.symmetric(vertical: 12)),
+                icon: const Icon(Icons.sync, color: Colors.white, size: 16),
+                label: const Text('СВАЛИ ВСИЧКИ', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                onPressed: _syncAllProvidersAndModels,
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: _isSuccess ? const Color(0xFF0D2418) : const Color(0xFF281014), borderRadius: BorderRadius.circular(10)),
+          child: Text(_statusMessage, style: TextStyle(color: _isSuccess ? const Color(0xFF00E676) : Colors.redAccent, fontSize: 11, fontWeight: FontWeight.w600)),
         ),
       ],
     );

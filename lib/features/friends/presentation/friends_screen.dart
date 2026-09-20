@@ -12,9 +12,9 @@ class FriendsScreen extends StatefulWidget {
 class _FriendsScreenState extends State<FriendsScreen> {
   final List<Map<String, dynamic>> _activeFriends = [
     {'name': 'Твоето Стори', 'avatar': '👑', 'isLive': false, 'isMe': true, 'color': AppTheme.laserPink},
-    {'name': 'Alex_3D', 'avatar': '🎮', 'isLive': true, 'isMe': false, 'game': 'Lava Runner 3D', 'color': Color(0xFF00E676)},
+    {'name': 'Alex_3D', 'avatar': '🎮', 'isLive': true, 'isMe': false, 'game': 'Lava Runner 3D', 'color': const Color(0xFF00E676)},
     {'name': 'Maya_Dev', 'avatar': '🎨', 'isLive': true, 'isMe': false, 'game': 'Cyber Samurai Arena', 'color': AppTheme.sciFiCyan},
-    {'name': 'Kiro_Gamer', 'avatar': '🤖', 'isLive': false, 'isMe': false, 'game': 'Pixel Quest', 'color': Color(0xFFFF1744)},
+    {'name': 'Kiro_Gamer', 'avatar': '🤖', 'isLive': false, 'isMe': false, 'game': 'Pixel Quest 2D', 'color': const Color(0xFFFF1744)},
     {'name': 'Elena_Art', 'avatar': '💃', 'isLive': false, 'isMe': false, 'game': 'Dance Studio', 'color': AppTheme.neonPurple},
   ];
 
@@ -23,23 +23,24 @@ class _FriendsScreenState extends State<FriendsScreen> {
       'user': '@Alex_3D',
       'action': 'публикува нова 3D игра',
       'title': '🌋 Вулканичен Лабиринт v2.0',
+      'dimension': '3D',
       'likes': '3.4K',
       'time': 'преди 15 мин',
-      'color': Color(0xFFFF3D00),
+      'color': const Color(0xFFFF3D00),
       'tag': 'Google Filament 60FPS',
     },
     {
       'user': '@Maya_Dev',
-      'action': 'създаде нов 3D герой чрез AI',
-      'title': '🤖 Кибер Самурай с Mixamo Rig',
+      'action': 'създаде нов 2D платформер чрез AI',
+      'title': '🏰 Cyber Castle Quest 2D',
+      'dimension': '2D',
       'likes': '8.1K',
       'time': 'преди 1 ч',
       'color': AppTheme.sciFiCyan,
-      'tag': 'AI Generator & PBR',
+      'tag': 'Godot 4 CharacterBody2D',
     },
   ];
 
-  // 1. Качване на Стори (Твоето Стори)
   void _showCreateStoryModal() {
     showModalBottomSheet(
       context: context,
@@ -79,7 +80,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
     );
   }
 
-  // 2. Профил на приятел от Сторитата
   void _showFriendProfileModal(Map<String, dynamic> friend) {
     showModalBottomSheet(
       context: context,
@@ -92,9 +92,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircleAvatar(radius: 36, backgroundColor: friend['color'], child: Text(friend['avatar'], style: const TextStyle(fontSize: 36))),
+              CircleAvatar(radius: 36, backgroundColor: friend['color'] as Color, child: Text(friend['avatar'] as String, style: const TextStyle(fontSize: 36))),
               const SizedBox(height: 10),
-              Text(friend['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+              Text(friend['name'] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
               Text('Любима игра: ${friend['game'] ?? "Няма"}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
               const SizedBox(height: 18),
               Row(
@@ -131,7 +131,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
     );
   }
 
-  // 3. Намери Приятели & Геймъри
   void _showAddFriendsModal() {
     final List<Map<String, dynamic>> suggestions = [
       {'name': 'Viktor_Dev', 'avatar': '⚡', 'games': '8 игри', 'isAdded': false},
@@ -155,7 +154,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
               right: 16,
             ),
             child: SizedBox(
-              height: 480,
+              height: 440,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -184,25 +183,25 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           decoration: BoxDecoration(color: const Color(0xFF161928), borderRadius: BorderRadius.circular(12)),
                           child: Row(
                             children: [
-                              CircleAvatar(backgroundColor: AppTheme.laserPink.withValues(alpha: 0.2), child: Text(s['avatar'], style: const TextStyle(fontSize: 18))),
+                              CircleAvatar(backgroundColor: AppTheme.laserPink.withValues(alpha: 0.2), child: Text(s['avatar'] as String, style: const TextStyle(fontSize: 18))),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                  Text(s['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                                  Text(s['games'], style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                                  Text(s['name'] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                                  Text(s['games'] as String, style: const TextStyle(color: Colors.grey, fontSize: 11)),
                                 ]),
                               ),
                               ElevatedButton(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: s['isAdded'] ? const Color(0xFF1E2235) : const Color(0xFF00E676),
+                                  backgroundColor: (s['isAdded'] as bool) ? const Color(0xFF1E2235) : const Color(0xFF00E676),
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 ),
                                 onPressed: () {
-                                  setModalState(() => s['isAdded'] = !s['isAdded']);
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s['isAdded'] ? '🎉 Добавихте ${s['name']} като приятел!' : 'Премахнат.')));
+                                  setModalState(() => s['isAdded'] = !(s['isAdded'] as bool));
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text((s['isAdded'] as bool) ? '🎉 Добавихте ${s['name']} като приятел!' : 'Премахнат.')));
                                 },
-                                child: Text(s['isAdded'] ? 'ДОБАВЕН ✓' : '+ ДОБАВИ', style: TextStyle(color: s['isAdded'] ? const Color(0xFF00E676) : Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
+                                child: Text((s['isAdded'] as bool) ? 'ДОБАВЕН ✓' : '+ ДОБАВИ', style: TextStyle(color: (s['isAdded'] as bool) ? const Color(0xFF00E676) : Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
                               ),
                             ],
                           ),
@@ -219,7 +218,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
     );
   }
 
-  // 4. Скенер за QR Код (ПОВДИГНАТ)
   void _showQrScannerModal() {
     showModalBottomSheet(
       context: context,
@@ -275,142 +273,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
     );
   }
 
-  // 5. Покани Контакти
-  void _showContactsInviteModal() {
-    final List<Map<String, dynamic>> contacts = [
-      {'name': 'Георги Иванов', 'phone': '+359 888 111 222', 'isInvited': false},
-      {'name': 'Иван Петров', 'phone': '+359 889 333 444', 'isInvited': false},
-      {'name': 'Мария Димитрова', 'phone': '+359 877 555 666', 'isInvited': false},
-      {'name': 'Николай Стоянов', 'phone': '+359 898 777 888', 'isInvited': false},
-    ];
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF10121D),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
-      builder: (context) => SafeArea(
-        top: false,
-        child: StatefulBuilder(
-          builder: (context, setModalState) => Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-              top: 16,
-              left: 16,
-              right: 16,
-            ),
-            child: SizedBox(
-              height: 440,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Center(child: Text('📱 Покани Приятели от Контакти', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))),
-                  const SizedBox(height: 14),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: contacts.length,
-                      itemBuilder: (context, index) {
-                        final c = contacts[index];
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(color: const Color(0xFF161928), borderRadius: BorderRadius.circular(12)),
-                          child: Row(
-                            children: [
-                              CircleAvatar(backgroundColor: const Color(0xFF00E676).withValues(alpha: 0.2), child: Text(c['name'].toString().substring(0, 1), style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold))),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                  Text(c['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                                  Text(c['phone'], style: const TextStyle(color: Colors.grey, fontSize: 11)),
-                                ]),
-                              ),
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: c['isInvited'] ? const Color(0xFF1E2235) : const Color(0xFF00E676),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                                onPressed: () {
-                                  setModalState(() => c['isInvited'] = true);
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('📩 Изпратена покана до ${c['name']}!')));
-                                },
-                                child: Text(c['isInvited'] ? 'ИЗПРАТЕНА ✓' : 'ПОКАНИ', style: TextStyle(color: c['isInvited'] ? const Color(0xFF00E676) : Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // 6. Сподели Профил (ПОВДИГНАТ)
-  void _showShareProfileModal() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF10121D),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
-      builder: (context) => SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('👑 Твоят TipTop Профилен QR Код', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
-                child: const Icon(Icons.qr_code, size: 120, color: Colors.black),
-              ),
-              const SizedBox(height: 10),
-              const Text('@cyber_creator', style: TextStyle(color: AppTheme.laserPink, fontWeight: FontWeight.bold, fontSize: 15)),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.sciFiCyan, padding: const EdgeInsets.symmetric(vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                      icon: const Icon(Icons.link, color: Colors.black, size: 16),
-                      label: const Text('КОПИРАЙ ЛИНК', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
-                      onPressed: () {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📋 Профилният линк е копиран!')));
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.laserPink, padding: const EdgeInsets.symmetric(vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                      icon: const Icon(Icons.share, color: Colors.white, size: 16),
-                      label: const Text('СПОДЕЛИ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
-                      onPressed: () {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✉️ Изпратено през WhatsApp/Telegram!')));
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // 7. 3D Game Launcher (ПОВДИГНАТ)
   void _showLaunchGameModal(Map<String, dynamic> item) {
     showModalBottomSheet(
       context: context,
@@ -426,11 +288,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.gamepad, color: Color(0xFF00E676), size: 30),
+                  Icon(item['dimension'] == '3D' ? Icons.view_in_ar : Icons.sports_esports, color: const Color(0xFF00E676), size: 30),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(item['title'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text(item['title'] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                       Text('Създадена от ${item['user']} • ${item['tag']}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
                     ]),
                   ),
@@ -510,9 +372,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
               itemCount: _activeFriends.length,
               itemBuilder: (context, index) {
                 final friend = _activeFriends[index];
-                final Color ringColor = friend['color'];
-                final bool isLive = friend['isLive'];
-                final bool isMe = friend['isMe'];
+                final Color ringColor = friend['color'] as Color;
+                final bool isLive = friend['isLive'] as bool;
+                final bool isMe = friend['isMe'] as bool;
 
                 return GestureDetector(
                   onTap: () {
@@ -539,7 +401,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                 boxShadow: [BoxShadow(color: ringColor.withValues(alpha: 0.35), blurRadius: 8)],
                                 color: const Color(0xFF161824),
                               ),
-                              child: Center(child: Text(friend['avatar'], style: const TextStyle(fontSize: 22))),
+                              child: Center(child: Text(friend['avatar'] as String, style: const TextStyle(fontSize: 22))),
                             ),
                             if (isLive)
                               Positioned(
@@ -554,7 +416,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text(friend['name'], style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+                        Text(friend['name'] as String, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -563,52 +425,14 @@ class _FriendsScreenState extends State<FriendsScreen> {
             ),
           ),
 
-          // 2. Бутони Покани Контакти & Сподели Профил
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFF00E676), Color(0xFF00B0FF)]),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, padding: const EdgeInsets.symmetric(vertical: 8)),
-                      icon: const Icon(Icons.contacts, size: 16, color: Colors.black),
-                      label: const Text('ПОКАНИ КОНТАКТИ', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
-                      onPressed: _showContactsInviteModal,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [AppTheme.laserPink, Color(0xFFFF1744)]),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, padding: const EdgeInsets.symmetric(vertical: 8)),
-                      icon: const Icon(Icons.share, size: 16, color: Colors.white),
-                      label: const Text('СПОДЕЛИ ПРОФИЛ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
-                      onPressed: _showShareProfileModal,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // 3. Фийд с игри на приятели
+          // 2. Фийд с игри на приятели
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.all(12),
               itemCount: _friendsFeed.length,
               itemBuilder: (context, index) {
                 final item = _friendsFeed[index];
-                final Color glow = item['color'];
+                final Color glow = item['color'] as Color;
                 return Container(
                   margin: const EdgeInsets.symmetric(vertical: 6),
                   padding: const EdgeInsets.all(12),
@@ -626,12 +450,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         children: [
                           Row(
                             children: [
-                              Text(item['user'], style: const TextStyle(color: AppTheme.sciFiCyan, fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text(item['user'] as String, style: const TextStyle(color: AppTheme.sciFiCyan, fontWeight: FontWeight.bold, fontSize: 13)),
                               const SizedBox(width: 4),
-                              Text(item['action'], style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                              Text(item['action'] as String, style: const TextStyle(color: Colors.grey, fontSize: 11)),
                             ],
                           ),
-                          Text(item['time'], style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                          Text(item['time'] as String, style: const TextStyle(color: Colors.white38, fontSize: 10)),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -642,12 +466,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(item['title'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                            Text(item['title'] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
                             const SizedBox(height: 4),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(item['tag'], style: TextStyle(color: glow, fontSize: 10, fontWeight: FontWeight.bold)),
+                                Text(item['tag'] as String, style: TextStyle(color: glow, fontSize: 10, fontWeight: FontWeight.bold)),
                                 ElevatedButton(
                                   style: ElevatedButton.styleFrom(backgroundColor: glow, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
                                   onPressed: () => _showLaunchGameModal(item),
