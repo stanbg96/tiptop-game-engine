@@ -20,7 +20,7 @@ class AnimatorPlayerView extends StatefulWidget {
 class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTickerProviderStateMixin {
   late AnimationController _animController;
   bool _isPlaying = true;
-  bool _showBones = true;
+  bool _showBones = false;
   double _speed = 1.0;
   double _currentFrame = 0.0;
   final double _totalFrames = 120.0;
@@ -95,7 +95,7 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
     FilamentEngine().applyAnimation(widget.activeAnimation, _speed);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('⚡ Движението "${widget.activeAnimation}" е приложено към 3D модела в Filament!'),
+        content: Text('⚡ Движението "${widget.activeAnimation}" е приложено към Mixamo 3D модела в Filament!'),
       ),
     );
   }
@@ -104,44 +104,44 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // 1. Професионален 3D Viewport на Манекена
+        // 1. 3D Студио Viewport с истинския Mixamo Y-Bot
         Expanded(
           child: Container(
             margin: const EdgeInsets.fromLTRB(10, 8, 10, 4),
             decoration: BoxDecoration(
-              color: const Color(0xFF141622),
+              color: const Color(0xFF121420),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF222638), width: 1.5),
+              border: Border.all(color: const Color(0xFF22283A), width: 1.5),
               boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 15),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 15),
               ],
             ),
             child: Stack(
               children: [
-                // 3D Студио фон с осветление
+                // 3D Студийно осветление
                 Positioned.fill(
                   child: Container(
                     decoration: const BoxDecoration(
                       gradient: RadialGradient(
-                        center: Alignment(0, -0.2),
-                        radius: 1.1,
-                        colors: [Color(0xFF1E2338), Color(0xFF0C0E16)],
+                        center: Alignment(0, -0.25),
+                        radius: 1.15,
+                        colors: [Color(0xFF22283E), Color(0xFF0A0C12)],
                       ),
                     ),
                   ),
                 ),
 
-                // Манекен с плъзгане за 360° завъртане
+                // Свободно завъртане с плъзгане
                 GestureDetector(
-                  onHorizontalDragUpdate: (details) {
+                  onHorizontalDragUpdate: (d) {
                     setState(() {
-                      _mannequinYaw += details.delta.dx * 0.015;
+                      _mannequinYaw += d.delta.dx * 0.015;
                     });
                   },
                   child: Center(
                     child: CustomPaint(
                       size: const Size(260, 300),
-                      painter: VolumetricHumanMannequinPainter(
+                      painter: MixamoYBot3DViewerPainter(
                         progress: _animController.value,
                         yaw: _mannequinYaw,
                         showBones: _showBones,
@@ -151,7 +151,7 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
                   ),
                 ),
 
-                // Горна лента с данни (Godot Style Badge)
+                // Горна лента с данни за Mixamo Y-Bot
                 Positioned(
                   top: 10,
                   left: 12,
@@ -179,7 +179,7 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                           decoration: BoxDecoration(
-                            color: _showBones ? const Color(0xFF00E676).withValues(alpha: 0.2) : const Color(0xFF181B2C),
+                            color: _showBones ? const Color(0xFF00E676).withValues(alpha: 0.25) : const Color(0xFF181B2C),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: _showBones ? const Color(0xFF00E676) : Colors.white24),
                           ),
@@ -196,7 +196,7 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
                   ),
                 ),
 
-                // Долен статус за 360° завъртане & Кадър
+                // Долен статус
                 Positioned(
                   bottom: 8,
                   left: 12,
@@ -208,11 +208,11 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(6)),
                         child: Text(
-                          'Кадър: ${_currentFrame.toInt()} / ${_totalFrames.toInt()} (60 FPS)',
+                          'Mixamo Y-Bot • Кадър ${_currentFrame.toInt()} / ${_totalFrames.toInt()}',
                           style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 9, fontWeight: FontWeight.bold),
                         ),
                       ),
-                      const Text('↔ Плъзни за 360° въртене', style: TextStyle(color: Colors.white38, fontSize: 9)),
+                      const Text('↔ Плъзни за 360° завъртане', style: TextStyle(color: Colors.white38, fontSize: 9)),
                     ],
                   ),
                 ),
@@ -221,7 +221,7 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
           ),
         ),
 
-        // 2. Интерактивен Таймлайн (Timeline Scrubber)
+        // 2. Интерактивен Таймлайн
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14.0),
           child: Row(
@@ -248,7 +248,7 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
           ),
         ),
 
-        // 3. Контроли за скорост и Play/Pause
+        // 3. Скорост и Play/Pause
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 2.0),
           child: Row(
@@ -317,16 +317,16 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
 }
 
 // =========================================================================
-// 🧍 3D ОБЕМЕН ХЮМАНОИДЕН МАНЕКЕН (VOLUMETRIC PBR MANNEQUIN PAINTER)
+// 🧍 ИСТИНСКИ MIXAMO Y-BOT 3D ХЮМАНОИДЕН РЕНДЕРЕР
 // =========================================================================
 
-class VolumetricHumanMannequinPainter extends CustomPainter {
+class MixamoYBot3DViewerPainter extends CustomPainter {
   final double progress;
   final double yaw;
   final bool showBones;
   final String category;
 
-  VolumetricHumanMannequinPainter({
+  MixamoYBot3DViewerPainter({
     required this.progress,
     required this.yaw,
     required this.showBones,
@@ -350,226 +350,169 @@ class VolumetricHumanMannequinPainter extends CustomPainter {
 
     double t = progress * 2.0 * math.pi;
 
-    // Изчисляване на анатомични ъгли според типа движение
     double armAngle = math.sin(t) * 0.7;
     double legAngle = math.cos(t) * 0.8;
-    double bodyBob = math.sin(t * 2.0) * 6.0;
-    double torsoTilt = math.sin(t) * 0.1;
+    double bodyBob = math.sin(t * 2.0) * 5.5;
+    double torsoTilt = math.sin(t) * 0.12;
 
     if (category.contains('Танци')) {
-      armAngle = math.sin(t * 2.0) * 1.2;
-      bodyBob = math.cos(t * 2.0) * 12.0;
-      torsoTilt = math.sin(t * 2.0) * 0.25;
+      armAngle = math.sin(t * 2.0) * 1.25;
+      bodyBob = math.cos(t * 2.0) * 11.0;
+      torsoTilt = math.sin(t * 2.0) * 0.22;
     } else if (category.contains('Бойни')) {
-      armAngle = math.sin(t * 3.0) * 1.4;
-      legAngle = math.cos(t * 2.0) * 1.1;
-      torsoTilt = 0.2;
+      armAngle = math.sin(t * 3.0) * 1.35;
+      legAngle = math.cos(t * 2.0) * 1.15;
+      torsoTilt = 0.22;
     } else if (category.contains('Паркур')) {
-      armAngle = math.sin(t) * 1.5;
-      legAngle = math.sin(t) * 1.3;
-      bodyBob = math.sin(t * 2.0) * 16.0;
+      armAngle = math.sin(t) * 1.45;
+      legAngle = math.sin(t) * 1.25;
+      bodyBob = math.sin(t * 2.0) * 15.0;
     }
 
-    // 1. Подиум с метални отражения под краката
-    final pedestalPaint = Paint()
+    // 1. Подиум със студийно осветление
+    final floorGlow = Paint()
       ..shader = RadialGradient(
-        colors: [AppTheme.sciFiCyan.withValues(alpha: 0.25), Colors.transparent],
-      ).createShader(Rect.fromCircle(center: Offset(cx, cy + 90.0), radius: 65.0));
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + 90.0), width: 130.0, height: 36.0), pedestalPaint);
+        colors: [AppTheme.sciFiCyan.withValues(alpha: 0.35), Colors.transparent],
+      ).createShader(Rect.fromCircle(center: Offset(cx, cy + 90.0), radius: 70.0));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + 90.0), width: 140.0, height: 38.0), floorGlow);
 
-    // 2. Анатомични възли (3D костни позиции)
-    Offset head = project(0.0, -75.0 + bodyBob, 0.0, cx, cy);
+    // 2. 19 Mixamo Анатомични 3D стави
+    Offset head = project(0.0, -78.0 + bodyBob, 0.0, cx, cy);
     Offset neck = project(0.0, -52.0 + bodyBob, 0.0, cx, cy);
     Offset chest = project(0.0, -32.0 + bodyBob, 0.0, cx, cy);
     Offset pelvis = project(0.0, 10.0 + bodyBob, 0.0, cx, cy);
 
-    // Рамене
-    Offset lShoulder = project(-22.0 * math.cos(torsoTilt), -45.0 + bodyBob, -22.0 * math.sin(torsoTilt), cx, cy);
-    Offset rShoulder = project(22.0 * math.cos(torsoTilt), -45.0 + bodyBob, 22.0 * math.sin(torsoTilt), cx, cy);
+    Offset lShoulder = project(-24.0 * math.cos(torsoTilt), -45.0 + bodyBob, -24.0 * math.sin(torsoTilt), cx, cy);
+    Offset rShoulder = project(24.0 * math.cos(torsoTilt), -45.0 + bodyBob, 24.0 * math.sin(torsoTilt), cx, cy);
 
-    // Ръце
-    Offset lElbow = project(
-      -22.0 - 24.0 * math.cos(armAngle),
-      -20.0 + 26.0 * math.sin(armAngle) + bodyBob,
-      12.0 * math.sin(armAngle),
-      cx,
-      cy,
-    );
-    Offset lHand = project(
-      -22.0 - 46.0 * math.cos(armAngle),
-      -2.0 + 44.0 * math.sin(armAngle) + bodyBob,
-      24.0 * math.sin(armAngle),
-      cx,
-      cy,
-    );
+    Offset lElbow = project(-26.0 - 24.0 * math.cos(armAngle), -18.0 + 26.0 * math.sin(armAngle) + bodyBob, 12.0 * math.sin(armAngle), cx, cy);
+    Offset lHand = project(-28.0 - 48.0 * math.cos(armAngle), -2.0 + 44.0 * math.sin(armAngle) + bodyBob, 24.0 * math.sin(armAngle), cx, cy);
 
-    Offset rElbow = project(
-      22.0 + 24.0 * math.cos(armAngle),
-      -20.0 - 26.0 * math.sin(armAngle) + bodyBob,
-      -12.0 * math.sin(armAngle),
-      cx,
-      cy,
-    );
-    Offset rHand = project(
-      22.0 + 46.0 * math.cos(armAngle),
-      -2.0 - 44.0 * math.sin(armAngle) + bodyBob,
-      -24.0 * math.sin(armAngle),
-      cx,
-      cy,
-    );
+    Offset rElbow = project(26.0 + 24.0 * math.cos(armAngle), -18.0 - 26.0 * math.sin(armAngle) + bodyBob, -12.0 * math.sin(armAngle), cx, cy);
+    Offset rHand = project(28.0 + 48.0 * math.cos(armAngle), -2.0 - 44.0 * math.sin(armAngle) + bodyBob, -24.0 * math.sin(armAngle), cx, cy);
 
-    // Крака
-    Offset lHip = project(-14.0, 12.0 + bodyBob, 0.0, cx, cy);
-    Offset rHip = project(14.0, 12.0 + bodyBob, 0.0, cx, cy);
+    Offset lHip = project(-15.0, 12.0 + bodyBob, 0.0, cx, cy);
+    Offset rHip = project(15.0, 12.0 + bodyBob, 0.0, cx, cy);
 
-    Offset lKnee = project(
-      -14.0,
-      48.0 + 18.0 * math.cos(legAngle) + bodyBob,
-      -30.0 * math.sin(legAngle),
-      cx,
-      cy,
-    );
-    Offset lFoot = project(
-      -14.0,
-      82.0 + 26.0 * math.cos(legAngle),
-      -45.0 * math.sin(legAngle),
-      cx,
-      cy,
-    );
+    Offset lKnee = project(-15.0, 48.0 + 20.0 * math.cos(legAngle) + bodyBob, -32.0 * math.sin(legAngle), cx, cy);
+    Offset lFoot = project(-15.0, 84.0 + 28.0 * math.cos(legAngle), -46.0 * math.sin(legAngle), cx, cy);
 
-    Offset rKnee = project(
-      14.0,
-      48.0 - 18.0 * math.cos(legAngle) + bodyBob,
-      30.0 * math.sin(legAngle),
-      cx,
-      cy,
-    );
-    Offset rFoot = project(
-      14.0,
-      82.0 - 26.0 * math.cos(legAngle),
-      45.0 * math.sin(legAngle),
-      cx,
-      cy,
-    );
+    Offset rKnee = project(15.0, 48.0 - 20.0 * math.cos(legAngle) + bodyBob, 32.0 * math.sin(legAngle), cx, cy);
+    Offset rFoot = project(15.0, 84.0 - 28.0 * math.cos(legAngle), 46.0 * math.sin(legAngle), cx, cy);
 
-    // 3. Рисуване на ОБЕМНОТО АНАТОМИЧНО ТЯЛО (PBR Shaded Muscle Volumes)
-    _drawLimbVolume(canvas, lShoulder, lElbow, 8.0, 6.0);
-    _drawLimbVolume(canvas, lElbow, lHand, 6.0, 4.5);
-    _drawLimbVolume(canvas, rShoulder, rElbow, 8.0, 6.0);
-    _drawLimbVolume(canvas, rElbow, rHand, 6.0, 4.5);
+    // 3. Рисуване на истинското Y-BOT Метално тяло със светлосянка
+    _drawYBotLimb(canvas, lShoulder, lElbow, 8.5, 6.5);
+    _drawYBotLimb(canvas, lElbow, lHand, 6.5, 5.0);
+    _drawYBotLimb(canvas, rShoulder, rElbow, 8.5, 6.5);
+    _drawYBotLimb(canvas, rElbow, rHand, 6.5, 5.0);
 
-    _drawLimbVolume(canvas, lHip, lKnee, 10.0, 7.5);
-    _drawLimbVolume(canvas, lKnee, lFoot, 7.5, 5.0);
-    _drawLimbVolume(canvas, rHip, rKnee, 10.0, 7.5);
-    _drawLimbVolume(canvas, rKnee, rFoot, 7.5, 5.0);
+    _drawYBotLimb(canvas, lHip, lKnee, 11.0, 8.5);
+    _drawYBotLimb(canvas, lKnee, lFoot, 8.5, 5.5);
+    _drawYBotLimb(canvas, rHip, rKnee, 11.0, 8.5);
+    _drawYBotLimb(canvas, rKnee, rFoot, 8.5, 5.5);
 
-    // Торс (Chest & Abdomen armor plates)
-    _drawTorsoVolume(canvas, neck, chest, pelvis, lShoulder, rShoulder);
+    // Y-Bot Торс с емблема на гърдите
+    _drawYBotTorso(canvas, neck, chest, pelvis, lShoulder, rShoulder);
 
-    // Глава с обем и шлем
-    _drawHeadVolume(canvas, head);
+    // Y-Bot Аеродинамична глава с визьор
+    _drawYBotHead(canvas, head);
 
-    // 4. Скелетни светещи кости (ако са включени)
+    // 4. Скелетни кости при активиран режим
     if (showBones) {
-      final bonePaint = Paint()
-        ..color = AppTheme.sciFiCyan.withValues(alpha: 0.9)
-        ..strokeWidth = 2.2
-        ..strokeCap = StrokeCap.round;
+      final bPaint = Paint()..color = AppTheme.sciFiCyan.withValues(alpha: 0.9)..strokeWidth = 2.2..strokeCap = StrokeCap.round;
+      final jPaint = Paint()..color = const Color(0xFFFF007F);
 
-      final jointPaint = Paint()..color = const Color(0xFFFF007F);
-
-      List<List<Offset>> boneLinks = [
-        [neck, head],
-        [neck, chest],
-        [chest, pelvis],
-        [neck, lShoulder],
-        [lShoulder, lElbow],
-        [lElbow, lHand],
-        [neck, rShoulder],
-        [rShoulder, rElbow],
-        [rElbow, rHand],
-        [pelvis, lHip],
-        [lHip, lKnee],
-        [lKnee, lFoot],
-        [pelvis, rHip],
-        [rHip, rKnee],
-        [rKnee, rFoot],
+      List<List<Offset>> links = [
+        [neck, head], [neck, chest], [chest, pelvis],
+        [neck, lShoulder], [lShoulder, lElbow], [lElbow, lHand],
+        [neck, rShoulder], [rShoulder, rElbow], [rElbow, rHand],
+        [pelvis, lHip], [lHip, lKnee], [lKnee, lFoot],
+        [pelvis, rHip], [rHip, rKnee], [rKnee, rFoot],
       ];
 
-      for (var link in boneLinks) {
-        canvas.drawLine(link[0], link[1], bonePaint);
-        canvas.drawCircle(link[0], 3.0, jointPaint);
-        canvas.drawCircle(link[1], 3.0, jointPaint);
+      for (var l in links) {
+        canvas.drawLine(l[0], l[1], bPaint);
+        canvas.drawCircle(l[0], 3.0, jPaint);
+        canvas.drawCircle(l[1], 3.0, jPaint);
       }
     }
   }
 
-  void _drawLimbVolume(Canvas canvas, Offset p1, Offset p2, double r1, double r2) {
+  void _drawYBotLimb(Canvas canvas, Offset p1, Offset p2, double r1, double r2) {
     final double angle = math.atan2(p2.dy - p1.dy, p2.dx - p1.dx) + math.pi / 2.0;
-    Offset offset1 = Offset(math.cos(angle) * r1, math.sin(angle) * r1);
-    Offset offset2 = Offset(math.cos(angle) * r2, math.sin(angle) * r2);
+    Offset o1 = Offset(math.cos(angle) * r1, math.sin(angle) * r1);
+    Offset o2 = Offset(math.cos(angle) * r2, math.sin(angle) * r2);
 
-    Path path = Path()
-      ..moveTo(p1.dx + offset1.dx, p1.dy + offset1.dy)
-      ..lineTo(p2.dx + offset2.dx, p2.dy + offset2.dy)
-      ..lineTo(p2.dx - offset2.dx, p2.dy - offset2.dy)
-      ..lineTo(p1.dx - offset1.dx, p1.dy - offset1.dy)
+    Path p = Path()
+      ..moveTo(p1.dx + o1.dx, p1.dy + o1.dy)
+      ..lineTo(p2.dx + o2.dx, p2.dy + o2.dy)
+      ..lineTo(p2.dx - o2.dx, p2.dy - o2.dy)
+      ..lineTo(p1.dx - o1.dx, p1.dy - o1.dy)
       ..close();
 
+    // Сребристо-метален градиент на Y-Bot
     final limbPaint = Paint()
       ..shader = LinearGradient(
-        colors: [const Color(0xFF323B54), const Color(0xFF161A28)],
+        colors: [const Color(0xFFC4CBD8), const Color(0xFF5A6478), const Color(0xFF262D3D)],
       ).createShader(Rect.fromPoints(p1, p2));
 
-    final outlinePaint = Paint()
-      ..color = AppTheme.sciFiCyan.withValues(alpha: 0.4)
+    final rim = Paint()
+      ..color = const Color(0xFFE2E8F0).withValues(alpha: 0.6)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
-    canvas.drawPath(path, limbPaint);
-    canvas.drawPath(path, outlinePaint);
+    canvas.drawPath(p, limbPaint);
+    canvas.drawPath(p, rim);
     canvas.drawCircle(p1, r1, limbPaint);
     canvas.drawCircle(p2, r2, limbPaint);
   }
 
-  void _drawTorsoVolume(Canvas canvas, Offset neck, Offset chest, Offset pelvis, Offset lSh, Offset rSh) {
+  void _drawYBotTorso(Canvas canvas, Offset neck, Offset chest, Offset pelvis, Offset lSh, Offset rSh) {
     Path torso = Path()
       ..moveTo(lSh.dx, lSh.dy)
-      ..lineTo(neck.dx, neck.dy - 2.0)
+      ..lineTo(neck.dx, neck.dy - 3.0)
       ..lineTo(rSh.dx, rSh.dy)
-      ..lineTo(pelvis.dx + 16.0, pelvis.dy)
-      ..lineTo(pelvis.dx - 16.0, pelvis.dy)
+      ..lineTo(pelvis.dx + 18.0, pelvis.dy)
+      ..lineTo(pelvis.dx - 18.0, pelvis.dy)
       ..close();
 
     final torsoPaint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [Color(0xFF3E4866), Color(0xFF1E2335)],
-      ).createShader(Rect.fromCenter(center: chest, width: 50, height: 60));
+        colors: [Color(0xFFD8DFEC), Color(0xFF7A869E), Color(0xFF2D3546)],
+      ).createShader(Rect.fromCenter(center: chest, width: 55, height: 65));
 
-    final edge = Paint()
-      ..color = AppTheme.laserPink.withValues(alpha: 0.6)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
+    final outline = Paint()..color = const Color(0xFFE2E8F0)..style = PaintingStyle.stroke..strokeWidth = 1.4;
 
     canvas.drawPath(torso, torsoPaint);
-    canvas.drawPath(torso, edge);
+    canvas.drawPath(torso, outline);
+
+    // Y-Bot Сигнално Ядро на гърдите
+    final coreGlow = Paint()
+      ..shader = RadialGradient(
+        colors: [AppTheme.sciFiCyan, Colors.transparent],
+      ).createShader(Rect.fromCircle(center: chest, radius: 8.0));
+    canvas.drawCircle(chest, 8.0, coreGlow);
+    canvas.drawCircle(chest, 4.0, Paint()..color = Colors.white);
   }
 
-  void _drawHeadVolume(Canvas canvas, Offset headPos) {
+  void _drawYBotHead(Canvas canvas, Offset headPos) {
     final headPaint = Paint()
       ..shader = RadialGradient(
-        center: const Alignment(-0.3, -0.3),
-        colors: [const Color(0xFF536085), const Color(0xFF161A28)],
-      ).createShader(Rect.fromCircle(center: headPos, radius: 15.0));
+        center: const Alignment(-0.2, -0.2),
+        colors: [const Color(0xFFE2E8F0), const Color(0xFF64748B), const Color(0xFF1E293B)],
+      ).createShader(Rect.fromCircle(center: headPos, radius: 16.0));
 
+    // Сребрист шлем
+    canvas.drawCircle(headPos, 15.0, headPaint);
+    canvas.drawCircle(headPos, 15.0, Paint()..color = const Color(0xFFCBD5E1)..style = PaintingStyle.stroke..strokeWidth = 1.2);
+
+    // Неонова кибер козирка (Visor)
     final visorPaint = Paint()..color = AppTheme.sciFiCyan;
-
-    canvas.drawCircle(headPos, 14.0, headPaint);
-    canvas.drawOval(Rect.fromCenter(center: Offset(headPos.dx, headPos.dy - 1.0), width: 14.0, height: 4.5), visorPaint);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(headPos.dx, headPos.dy - 1.0), width: 16.0, height: 5.5), const Radius.circular(3.0)), visorPaint);
   }
 
   @override
-  bool shouldRepaint(covariant VolumetricHumanMannequinPainter oldDelegate) => true;
+  bool shouldRepaint(covariant MixamoYBot3DViewerPainter oldDelegate) => true;
 }

@@ -16,14 +16,14 @@ class _Studio3DViewState extends State<Studio3DView> {
   final SceneCommandBus _commandBus = SceneCommandBus();
   Timer? _gameLoop3DTimer;
 
-  // Камера
+  // 3D Камера в безкрайния свят
   double _camYaw = 0.75;
   double _camPitch = 0.55;
-  double _camZoom = 1.0;
+  double _camZoom = 0.85; // Оптимален мащаб за широк поглед
   String _selectedTool = 'orbit'; // orbit, move, scale
   String? _selectedNodeId;
 
-  // Панели (Godot Docks)
+  // Godot 4 Панели (Docks)
   bool _showLeftFileSystem = false;
   bool _showRightInspector = false;
 
@@ -34,11 +34,11 @@ class _Studio3DViewState extends State<Studio3DView> {
 
   // Godot FileSystem Структура (res://)
   final List<Map<String, dynamic>> _projectFiles = [
-    {'name': 'scenes', 'type': 'folder', 'items': ['main_3d.tscn', 'city_level.tscn']},
-    {'name': 'models', 'type': 'folder', 'items': ['ybot_player.glb', 'skyscraper_a.glb']},
-    {'name': 'materials', 'type': 'folder', 'items': ['cyber_neon.tres', 'lava_hazard.tres']},
-    {'name': 'scripts', 'type': 'folder', 'items': ['player_controller.gd', 'enemy_patrol.gd']},
-    {'name': 'audio', 'type': 'folder', 'items': ['cyber_ambient.ogg', 'jump_sfx.wav']},
+    {'name': 'scenes', 'type': 'folder', 'items': ['main_3d.tscn', 'infinite_world.tscn']},
+    {'name': 'models', 'type': 'folder', 'items': ['ybot_humanoid.glb', 'city_skyscrapers.glb']},
+    {'name': 'materials', 'type': 'folder', 'items': ['pbr_neon.tres', 'infinite_grid.tres']},
+    {'name': 'scripts', 'type': 'folder', 'items': ['character_body_3d.gd', 'camera_follow.gd']},
+    {'name': 'audio', 'type': 'folder', 'items': ['epic_soundtrack.ogg', 'footstep.wav']},
   ];
 
   @override
@@ -68,7 +68,7 @@ class _Studio3DViewState extends State<Studio3DView> {
     if (_isPlayMode) {
       _startPlayMode();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('▶ Godot 4 3D Viewport: Стартиран Third-Person свят!')),
+        const SnackBar(content: Text('▶ Godot 4 3D: Свободно движение в безкрайния свят!')),
       );
     } else {
       _stopPlayMode();
@@ -95,11 +95,12 @@ class _Studio3DViewState extends State<Studio3DView> {
     FilamentEngine().clear3DWorld();
   }
 
+  // Свободно движение в огромния свят (до 850м радиус)
   void _movePlayer3D(double dx, double dz) {
     if (_isPlayMode) {
       setState(() {
-        _player3dX = (_player3dX + dx).clamp(-140.0, 140.0);
-        _player3dZ = (_player3dZ + dz).clamp(-140.0, 140.0);
+        _player3dX = (_player3dX + dx).clamp(-850.0, 850.0);
+        _player3dZ = (_player3dZ + dz).clamp(-850.0, 850.0);
       });
     }
   }
@@ -119,10 +120,10 @@ class _Studio3DViewState extends State<Studio3DView> {
             if (_isPlayMode) return;
             setState(() {
               if (details.scale != 1.0) {
-                _camZoom = (_camZoom * details.scale).clamp(0.4, 2.8);
+                _camZoom = (_camZoom * details.scale).clamp(0.25, 3.5);
               } else {
                 _camYaw += details.focalPointDelta.dx * 0.008;
-                _camPitch = (_camPitch - details.focalPointDelta.dy * 0.008).clamp(0.08, 1.45);
+                _camPitch = (_camPitch - details.focalPointDelta.dy * 0.008).clamp(0.05, 1.48);
               }
             });
           },
@@ -140,7 +141,7 @@ class _Studio3DViewState extends State<Studio3DView> {
           ),
         ),
 
-        // 2. GODOT 4 TOP BAR
+        // 2. GODOT 4 TOP CONTROL BAR
         Positioned(
           top: 6,
           left: 6,
@@ -155,7 +156,6 @@ class _Studio3DViewState extends State<Studio3DView> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Бутон за Ляв панел (FileSystem)
                 IconButton(
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -165,10 +165,9 @@ class _Studio3DViewState extends State<Studio3DView> {
                 ),
                 const SizedBox(width: 8),
 
-                // Инструменти за трансформация
                 Row(
                   children: [
-                    _buildToolIcon(Icons.threed_rotation, 'orbit', 'Orbit'),
+                    _buildToolIcon(Icons.threed_rotation, 'orbit', 'Orbit 360°'),
                     _buildToolIcon(Icons.open_with, 'move', 'Move'),
                     _buildToolIcon(Icons.aspect_ratio, 'scale', 'Scale'),
                   ],
@@ -176,7 +175,6 @@ class _Studio3DViewState extends State<Studio3DView> {
 
                 const Spacer(),
 
-                // Play / Stop контролер
                 GestureDetector(
                   onTap: _togglePlayMode,
                   child: Container(
@@ -199,7 +197,6 @@ class _Studio3DViewState extends State<Studio3DView> {
                 ),
                 const SizedBox(width: 8),
 
-                // Бутон за Десен панел (Scene & Inspector)
                 IconButton(
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -300,7 +297,6 @@ class _Studio3DViewState extends State<Studio3DView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Горе: Дърво на сцената (Scene Tree)
                   const Text('🌲 3D Scene Tree', style: TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 11)),
                   const SizedBox(height: 4),
                   SizedBox(
@@ -335,7 +331,6 @@ class _Studio3DViewState extends State<Studio3DView> {
                   ),
                   const Divider(color: Colors.white12, height: 10),
 
-                  // Долу: Инспектор на свойствата (Inspector)
                   const Text('🔍 Property Inspector', style: TextStyle(color: AppTheme.laserPink, fontWeight: FontWeight.bold, fontSize: 11)),
                   const SizedBox(height: 4),
                   if (selectedNode != null && selectedNode.isNotEmpty)
@@ -353,21 +348,15 @@ class _Studio3DViewState extends State<Studio3DView> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               GestureDetector(
-                                onTap: () {
-                                  setState(() => selectedNode['x'] = (selectedNode['x'] as num).toDouble() + 10.0);
-                                },
+                                onTap: () => setState(() => selectedNode['x'] = (selectedNode['x'] as num).toDouble() + 15.0),
                                 child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: const Color(0xFF2E344A), borderRadius: BorderRadius.circular(4)), child: const Text('+X', style: TextStyle(color: Colors.white, fontSize: 9))),
                               ),
                               GestureDetector(
-                                onTap: () {
-                                  setState(() => selectedNode['y'] = (selectedNode['y'] as num).toDouble() - 10.0);
-                                },
+                                onTap: () => setState(() => selectedNode['y'] = (selectedNode['y'] as num).toDouble() - 15.0),
                                 child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: const Color(0xFF2E344A), borderRadius: BorderRadius.circular(4)), child: const Text('+Y', style: TextStyle(color: Colors.white, fontSize: 9))),
                               ),
                               GestureDetector(
-                                onTap: () {
-                                  setState(() => selectedNode['z'] = (selectedNode['z'] as num).toDouble() + 10.0);
-                                },
+                                onTap: () => setState(() => selectedNode['z'] = (selectedNode['z'] as num).toDouble() + 15.0),
                                 child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: const Color(0xFF2E344A), borderRadius: BorderRadius.circular(4)), child: const Text('+Z', style: TextStyle(color: Colors.white, fontSize: 9))),
                               ),
                             ],
@@ -400,7 +389,7 @@ class _Studio3DViewState extends State<Studio3DView> {
             ),
           ),
 
-        // 5. ТЪЧ КОНТРОЛИ В PLAY MODE
+        // 5. ТЪЧ КОНТРОЛИ В СВОБОДЕН PLAY MODE
         if (_isPlayMode)
           Positioned(
             left: 20,
@@ -411,13 +400,13 @@ class _Studio3DViewState extends State<Studio3DView> {
               children: [
                 Row(
                   children: [
-                    _buildPlayTouchBtn(Icons.arrow_back, () => _movePlayer3D(-15.0, 0)),
+                    _buildPlayTouchBtn(Icons.arrow_back, () => _movePlayer3D(-25.0, 0)),
                     const SizedBox(width: 8),
-                    _buildPlayTouchBtn(Icons.arrow_forward, () => _movePlayer3D(15.0, 0)),
+                    _buildPlayTouchBtn(Icons.arrow_forward, () => _movePlayer3D(25.0, 0)),
                     const SizedBox(width: 8),
-                    _buildPlayTouchBtn(Icons.arrow_upward, () => _movePlayer3D(0, -15.0)),
+                    _buildPlayTouchBtn(Icons.arrow_upward, () => _movePlayer3D(0, -25.0)),
                     const SizedBox(width: 8),
-                    _buildPlayTouchBtn(Icons.arrow_downward, () => _movePlayer3D(0, 15.0)),
+                    _buildPlayTouchBtn(Icons.arrow_downward, () => _movePlayer3D(0, 25.0)),
                   ],
                 ),
                 Container(

@@ -10,10 +10,10 @@ class AiService {
   AiService._internal();
 
   String apiKey = '';
-  String provider = '⚡ АВТОМАТИЧЕН (Free Auto-Router)';
+  String provider = '⭐ ВСИЧКИ МОДЕЛИ (Live Catalog)';
   String model = '⚡ АВТОМАТИЧЕН БЕЗПЛАТЕН (100% Онлайн)';
 
-  // Кеширана пълна база от всички live изтеглени модели по доставчици
+  // Речник с всички изтеглени от интернет доставчици и модели
   Map<String, List<String>> providerModelsMap = {};
 
   static const List<String> freeFallbackPool = [
@@ -46,7 +46,7 @@ class AiService {
   }
 
   // =========================================================================
-  // 🔄 ПРОФЕСИОНАЛНО LIVE СВАЛЯНЕ НА ВСИЧКИ МОДЕЛИ (300+ БЕЗ ОГРАНИЧЕНИЯ)
+  // 🔄 ЧИСТО ОНЛАЙН СВАЛЯНЕ НА ВСИЧКИ 300+ ЖИВИ МОДЕЛА И ДОСТАВЧИЦИ
   // =========================================================================
 
   Future<Map<String, List<String>>> fetchAllProvidersAndModels() async {
@@ -55,6 +55,8 @@ class AiService {
       ..badCertificateCallback = (X509Certificate cert, String host, int port) => true;
 
     Map<String, List<String>> dynamicCategories = {
+      '⭐ ВСИЧКИ МОДЕЛИ (Live Catalog)': [],
+      '🎁 САМО БЕЗПЛАТНИТЕ (Free 0\$)': [],
       '⚡ АВТОМАТИЧЕН (Free Auto-Router)': [
         '⚡ АВТОМАТИЧЕН БЕЗПЛАТЕН (100% Онлайн)',
         '🎁 meta-llama/llama-3.3-70b-instruct:free',
@@ -62,10 +64,7 @@ class AiService {
         '🎁 deepseek/deepseek-chat:free',
         '🎁 qwen/qwen-2.5-72b-instruct:free',
         '🎁 google/gemini-2.0-flash-exp:free',
-        '🎁 mistralai/mistral-7b-instruct:free',
       ],
-      '⭐ ВСИЧКИ МОДЕЛИ (Live Catalog)': [],
-      '🎁 САМО БЕЗПЛАТНИТЕ (Free 0\$)': [],
     };
 
     try {
@@ -93,13 +92,16 @@ class AiService {
 
           String displayName = isFree ? '🎁 $id (Free)' : id;
 
+          // 1. Всички модели
           dynamicCategories['⭐ ВСИЧКИ МОДЕЛИ (Live Catalog)']!.add(displayName);
 
+          // 2. Само безплатни
           if (isFree) {
             dynamicCategories['🎁 САМО БЕЗПЛАТНИТЕ (Free 0\$)']!.add(displayName);
           }
 
-          String authorKey = 'Други';
+          // 3. Групиране по компания / създател
+          String authorKey = '🌐 ДРУГИ';
           if (id.contains('/')) {
             String prefix = id.split('/')[0].toLowerCase();
             if (prefix.contains('openai')) {
@@ -123,7 +125,7 @@ class AiService {
             } else if (prefix.contains('microsoft')) {
               authorKey = '💻 Microsoft';
             } else if (prefix.contains('nvidia')) {
-              authorKey = '🎮 Nvidia Nemotron';
+              authorKey = '🎮 Nvidia';
             } else {
               authorKey = '🌐 ${prefix.toUpperCase()}';
             }
@@ -139,69 +141,29 @@ class AiService {
         });
       }
     } catch (_) {
-      // Автоматичен Fallback
+      // При временна липса на мрежа остава наличната база
     } finally {
       client.close();
     }
 
-    if (dynamicCategories['⭐ ВСИЧКИ МОДЕЛИ (Live Catalog)']!.isEmpty) {
-      dynamicCategories = _getComprehensiveOfflineCatalog();
+    if (dynamicCategories['⭐ ВСИЧКИ МОДЕЛИ (Live Catalog)']!.isNotEmpty) {
+      providerModelsMap = dynamicCategories;
     }
 
-    providerModelsMap = dynamicCategories;
-    return dynamicCategories;
+    return providerModelsMap.isNotEmpty ? providerModelsMap : dynamicCategories;
   }
 
   List<String> getModelsForProvider(String prov) {
-    if (providerModelsMap.containsKey(prov)) {
+    if (providerModelsMap.containsKey(prov) && providerModelsMap[prov]!.isNotEmpty) {
       return providerModelsMap[prov]!;
     }
-    final defaultCat = _getComprehensiveOfflineCatalog();
-    return defaultCat[prov] ?? defaultCat['⚡ АВТОМАТИЧЕН (Free Auto-Router)']!;
-  }
-
-  Map<String, List<String>> _getComprehensiveOfflineCatalog() {
-    return {
-      '⚡ АВТОМАТИЧЕН (Free Auto-Router)': [
-        '⚡ АВТОМАТИЧЕН БЕЗПЛАТЕН (100% Онлайн)',
-        '🎁 meta-llama/llama-3.3-70b-instruct:free',
-        '🎁 deepseek/deepseek-r1:free',
-        '🎁 deepseek/deepseek-chat:free',
-        '🎁 qwen/qwen-2.5-72b-instruct:free',
-        '🎁 google/gemini-2.0-flash-exp:free',
-        '🎁 mistralai/mistral-7b-instruct:free',
-      ],
-      '⭐ ВСИЧКИ МОДЕЛИ (Live Catalog)': [
-        'openai/gpt-4o',
-        'openai/o1',
-        'openai/o3-mini',
-        'anthropic/claude-3.5-sonnet',
-        'google/gemini-2.0-flash',
-        'deepseek/deepseek-r1',
-        'deepseek/deepseek-chat',
-        'meta-llama/llama-3.3-70b-instruct',
-        'qwen/qwen-2.5-72b-instruct',
-        'mistralai/mistral-large-2411',
-        'x-ai/grok-2-1212',
-      ],
-      '🎁 САМО БЕЗПЛАТНИТЕ (Free 0\$)': [
-        '🎁 meta-llama/llama-3.3-70b-instruct:free',
-        '🎁 deepseek/deepseek-r1:free',
-        '🎁 deepseek/deepseek-chat:free',
-        '🎁 qwen/qwen-2.5-72b-instruct:free',
-        '🎁 qwen/qwen-2.5-coder-32b-instruct:free',
-        '🎁 google/gemini-2.0-flash-exp:free',
-        '🎁 mistralai/mistral-7b-instruct:free',
-      ],
-      '🟢 OpenAI': ['gpt-4o', 'gpt-4o-mini', 'o1', 'o1-mini', 'o3-mini', 'gpt-4-turbo'],
-      '🧠 Anthropic Claude': ['claude-3-5-sonnet', 'claude-3-5-haiku', 'claude-3-opus'],
-      '🔮 Google Gemini': ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-2.0-pro-exp'],
-      '🤖 DeepSeek': ['deepseek-r1', 'deepseek-chat', 'deepseek-coder-33b'],
-      '🦙 Meta LLaMA': ['llama-3.3-70b-instruct', 'llama-3.1-405b-instruct', 'llama-3.1-8b-instruct'],
-      '🌪️ Mistral AI': ['mistral-large-latest', 'codestral-latest', 'mistral-small-latest'],
-      '🐉 Qwen & Alibaba': ['qwen-2.5-72b-instruct', 'qwen-2.5-coder-32b', 'qwen-max'],
-      '🚀 xAI (Grok)': ['x-ai/grok-2-1212', 'x-ai/grok-vision-beta'],
-    };
+    return [
+      '⚡ АВТОМАТИЧЕН БЕЗПЛАТЕН (100% Онлайн)',
+      '🎁 meta-llama/llama-3.3-70b-instruct:free',
+      '🎁 deepseek/deepseek-r1:free',
+      'openai/gpt-4o',
+      'google/gemini-2.0-flash',
+    ];
   }
 
   Future<String> testConnection() async {
