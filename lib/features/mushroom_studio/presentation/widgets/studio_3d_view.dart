@@ -1,9 +1,7 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:tiptop_game_engine/core/theme/app_theme.dart';
-import 'package:tiptop_game_engine/engine_bridge/filament_bindings.dart';
+import 'package:tiptop_game_engine/engine_bridge/godot_view.dart';
 import 'package:tiptop_game_engine/core/services/scene_command_bus.dart';
-import 'package:tiptop_game_engine/features/mushroom_studio/presentation/widgets/studio_3d_painter.dart';
 
 class Studio3DView extends StatefulWidget {
   const Studio3DView({Key? key}) : super(key: key);
@@ -14,31 +12,23 @@ class Studio3DView extends StatefulWidget {
 
 class _Studio3DViewState extends State<Studio3DView> {
   final SceneCommandBus _commandBus = SceneCommandBus();
-  Timer? _gameLoop3DTimer;
 
-  // 3D Камера в безкрайния свят
-  double _camYaw = 0.75;
-  double _camPitch = 0.55;
-  double _camZoom = 0.85; // Оптимален мащаб за широк поглед
-  String _selectedTool = 'orbit'; // orbit, move, scale
+  String _selectedTool = 'orbit';
   String? _selectedNodeId;
 
-  // Godot 4 Панели (Docks)
+  // Панели (Godot Docks)
   bool _showLeftFileSystem = false;
   bool _showRightInspector = false;
 
   // 3D Play Mode
   bool _isPlayMode = false;
-  double _player3dX = 0.0;
-  double _player3dZ = 0.0;
 
   // Godot FileSystem Структура (res://)
   final List<Map<String, dynamic>> _projectFiles = [
-    {'name': 'scenes', 'type': 'folder', 'items': ['main_3d.tscn', 'infinite_world.tscn']},
-    {'name': 'models', 'type': 'folder', 'items': ['ybot_humanoid.glb', 'city_skyscrapers.glb']},
-    {'name': 'materials', 'type': 'folder', 'items': ['pbr_neon.tres', 'infinite_grid.tres']},
-    {'name': 'scripts', 'type': 'folder', 'items': ['character_body_3d.gd', 'camera_follow.gd']},
-    {'name': 'audio', 'type': 'folder', 'items': ['epic_soundtrack.ogg', 'footstep.wav']},
+    {'name': 'scenes', 'type': 'folder', 'items': ['main_3d.tscn', 'city_level.tscn']},
+    {'name': 'models', 'type': 'folder', 'items': ['ybot_player.glb', 'skyscraper_a.glb']},
+    {'name': 'materials', 'type': 'folder', 'items': ['cyber_neon.tres', 'lava_hazard.tres']},
+    {'name': 'scripts', 'type': 'folder', 'items': ['player_controller.gd', 'enemy_patrol.gd']},
   ];
 
   @override
@@ -50,7 +40,6 @@ class _Studio3DViewState extends State<Studio3DView> {
   @override
   void dispose() {
     _commandBus.removeListener(_onSceneUpdated);
-    _gameLoop3DTimer?.cancel();
     super.dispose();
   }
 
@@ -58,51 +47,13 @@ class _Studio3DViewState extends State<Studio3DView> {
     if (mounted) setState(() {});
   }
 
-  // =========================================================================
-  // 🎮 PLAYABLE 3D JOLT PHYSICS LOOP
-  // =========================================================================
-
   void _togglePlayMode() {
     setState(() => _isPlayMode = !_isPlayMode);
-
-    if (_isPlayMode) {
-      _startPlayMode();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('▶ Godot 4 3D: Свободно движение в безкрайния свят!')),
-      );
-    } else {
-      _stopPlayMode();
-    }
-  }
-
-  void _startPlayMode() {
-    _gameLoop3DTimer?.cancel();
-    _player3dX = 0.0;
-    _player3dZ = 0.0;
-
-    FilamentEngine().create3DWorld(gravityY: -9.81);
-
-    _gameLoop3DTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
-      if (!_isPlayMode) return;
-      setState(() {
-        FilamentEngine().step3D(0.016);
-      });
-    });
-  }
-
-  void _stopPlayMode() {
-    _gameLoop3DTimer?.cancel();
-    FilamentEngine().clear3DWorld();
-  }
-
-  // Свободно движение в огромния свят (до 850м радиус)
-  void _movePlayer3D(double dx, double dz) {
-    if (_isPlayMode) {
-      setState(() {
-        _player3dX = (_player3dX + dx).clamp(-850.0, 850.0);
-        _player3dZ = (_player3dZ + dz).clamp(-850.0, 850.0);
-      });
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_isPlayMode ? '▶ Godot 4: Стартиран Play Mode в енджина!' : '⏹ Godot 4: Спрян Play Mode.'),
+      ),
+    );
   }
 
   @override
@@ -114,34 +65,20 @@ class _Studio3DViewState extends State<Studio3DView> {
 
     return Stack(
       children: [
-        // 1. ЦЕНТРАЛЕН БЕЗКРАЕН 3D СВЯТ
-        GestureDetector(
-          onScaleUpdate: (details) {
-            if (_isPlayMode) return;
-            setState(() {
-              if (details.scale != 1.0) {
-                _camZoom = (_camZoom * details.scale).clamp(0.25, 3.5);
-              } else {
-                _camYaw += details.focalPointDelta.dx * 0.008;
-                _camPitch = (_camPitch - details.focalPointDelta.dy * 0.008).clamp(0.05, 1.48);
-              }
-            });
-          },
-          child: CustomPaint(
-            size: Size.infinite,
-            painter: Studio3DEnginePainter(
-              yaw: _camYaw,
-              pitch: _camPitch,
-              zoom: _camZoom,
-              objects: liveNodes,
-              selectedNodeId: _selectedNodeId,
-              isPlayMode: _isPlayMode,
-              playerPos3D: Offset(_player3dX, _player3dZ),
-            ),
-          ),
+        // 1. ИСТИНСКИЯТ GODOT 4 ЕНДЖИН (NATIVE VIEWPORT)
+        const Positioned.fill(
+          child: GodotNativeView(),
         ),
 
-        // 2. GODOT 4 TOP CONTROL BAR
+        // Ако GodotNativeView зарежда, показваме лек тъмен филтър
+        if (!_isPlayMode)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.1),
+            ),
+          ),
+
+        // 2. GODOT 4 TOP BAR
         Positioned(
           top: 6,
           left: 6,
@@ -167,7 +104,7 @@ class _Studio3DViewState extends State<Studio3DView> {
 
                 Row(
                   children: [
-                    _buildToolIcon(Icons.threed_rotation, 'orbit', 'Orbit 360°'),
+                    _buildToolIcon(Icons.threed_rotation, 'orbit', 'Orbit'),
                     _buildToolIcon(Icons.open_with, 'move', 'Move'),
                     _buildToolIcon(Icons.aspect_ratio, 'scale', 'Scale'),
                   ],
@@ -262,19 +199,6 @@ class _Studio3DViewState extends State<Studio3DView> {
                       },
                     ),
                   ),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 26,
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(side: const BorderSide(color: AppTheme.sciFiCyan), padding: EdgeInsets.zero),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('📂 Отвори файлов мениджър за импорт в res://')),
-                        );
-                      },
-                      child: const Text('+ ИМПОРТ', style: TextStyle(color: AppTheme.sciFiCyan, fontSize: 9, fontWeight: FontWeight.bold)),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -343,38 +267,6 @@ class _Studio3DViewState extends State<Studio3DView> {
                           _buildPropRow('Y:', (selectedNode['y'] as num).toInt().toString()),
                           _buildPropRow('Z:', (selectedNode['z'] as num).toInt().toString()),
                           _buildPropRow('Size:', (selectedNode['size'] as num).toInt().toString()),
-                          const SizedBox(height: 6),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              GestureDetector(
-                                onTap: () => setState(() => selectedNode['x'] = (selectedNode['x'] as num).toDouble() + 15.0),
-                                child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: const Color(0xFF2E344A), borderRadius: BorderRadius.circular(4)), child: const Text('+X', style: TextStyle(color: Colors.white, fontSize: 9))),
-                              ),
-                              GestureDetector(
-                                onTap: () => setState(() => selectedNode['y'] = (selectedNode['y'] as num).toDouble() - 15.0),
-                                child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: const Color(0xFF2E344A), borderRadius: BorderRadius.circular(4)), child: const Text('+Y', style: TextStyle(color: Colors.white, fontSize: 9))),
-                              ),
-                              GestureDetector(
-                                onTap: () => setState(() => selectedNode['z'] = (selectedNode['z'] as num).toDouble() + 15.0),
-                                child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: const Color(0xFF2E344A), borderRadius: BorderRadius.circular(4)), child: const Text('+Z', style: TextStyle(color: Colors.white, fontSize: 9))),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            height: 24,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, padding: EdgeInsets.zero),
-                              onPressed: () {
-                                setState(() {
-                                  liveNodes.removeWhere((n) => n['id'] == selectedNode['id']);
-                                  _selectedNodeId = null;
-                                });
-                              },
-                              child: const Text('ИЗТРИЙ ВЪЗЕЛ', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
-                            ),
-                          ),
                         ],
                       ),
                     )
@@ -386,40 +278,6 @@ class _Studio3DViewState extends State<Studio3DView> {
                     ),
                 ],
               ),
-            ),
-          ),
-
-        // 5. ТЪЧ КОНТРОЛИ В СВОБОДЕН PLAY MODE
-        if (_isPlayMode)
-          Positioned(
-            left: 20,
-            right: 20,
-            bottom: 24,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    _buildPlayTouchBtn(Icons.arrow_back, () => _movePlayer3D(-25.0, 0)),
-                    const SizedBox(width: 8),
-                    _buildPlayTouchBtn(Icons.arrow_forward, () => _movePlayer3D(25.0, 0)),
-                    const SizedBox(width: 8),
-                    _buildPlayTouchBtn(Icons.arrow_upward, () => _movePlayer3D(0, -25.0)),
-                    const SizedBox(width: 8),
-                    _buildPlayTouchBtn(Icons.arrow_downward, () => _movePlayer3D(0, 25.0)),
-                  ],
-                ),
-                Container(
-                  width: 58,
-                  height: 58,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(colors: [AppTheme.laserPink, AppTheme.sciFiCyan]),
-                    boxShadow: [BoxShadow(color: AppTheme.laserPink.withValues(alpha: 0.6), blurRadius: 15)],
-                  ),
-                  child: const Center(child: Text('СКОК 🚀', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold))),
-                ),
-              ],
             ),
           ),
       ],
@@ -458,22 +316,6 @@ class _Studio3DViewState extends State<Studio3DView> {
           Text(label, style: const TextStyle(color: Colors.grey, fontSize: 9)),
           Text(value, style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 9, fontWeight: FontWeight.bold)),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPlayTouchBtn(IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: const Color(0xDD181B28),
-          shape: BoxShape.circle,
-          border: Border.all(color: AppTheme.sciFiCyan, width: 1.2),
-        ),
-        child: Icon(icon, color: AppTheme.sciFiCyan, size: 20),
       ),
     );
   }
