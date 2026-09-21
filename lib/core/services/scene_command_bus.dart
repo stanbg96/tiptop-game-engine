@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:tiptop_game_engine/engine_bridge/filament_bindings.dart';
 
 class CommandExecutionResult {
   final bool isSuccess;
@@ -21,7 +20,7 @@ class SceneCommandBus extends ChangeNotifier {
   factory SceneCommandBus() => _instance;
   SceneCommandBus._internal();
 
-  // Живи 3D възли в сцената
+  // Чиста сцена само с 3D играч (БЕЗ гигантски черни блокове пред камерата!)
   final List<Map<String, dynamic>> _live3DNodes = [
     {
       'id': 'player_spawn',
@@ -29,190 +28,211 @@ class SceneCommandBus extends ChangeNotifier {
       'x': 0.0,
       'y': -25.0,
       'z': 0.0,
-      'size': 32.0,
+      'size': 28.0,
       'color': const Color(0xFFFF007F),
       'type': 'player',
       'glow': 0.8,
-    },
-    {
-      'id': 'ground_plane',
-      'name': 'MeshInstance3D (World Floor)',
-      'x': 0.0,
-      'y': 50.0,
-      'z': 0.0,
-      'size': 140.0,
-      'color': const Color(0xFF161A28),
-      'type': 'block',
-      'glow': 0.2,
     },
   ];
 
   List<Map<String, dynamic>> get live3DNodes => _live3DNodes;
 
   // =========================================================================
-  // ⚡ ИЗПЪЛНЕНИЕ НА КОМАНДИ ОТ AI ЧАТА
+  // ⚡ ИНТЕЛИГЕНТЕН ПАРСЕР НА БЪЛГАРСКИ КОМАНДИ (С ТОЛЕРАНТНОСТ КЪМ ПРАВОПИС)
   // =========================================================================
 
   CommandExecutionResult executeAiPrompt(String prompt) {
-    String p = prompt.toLowerCase().trim();
+    String p = prompt.toLowerCase().trim()
+        .replaceAll('създаи', 'създай')
+        .replaceAll('построи', 'построй');
 
-    // 1. ПОСТРОЙ ЦЯЛ ГРАД
+    // 1. ИЗЧИСТВАНЕ НА СЦЕНАТА
+    if (p.contains('изчисти') || p.contains('изтрий') || p.contains('изтрии') || 
+        p.contains('махни') || p.contains('clear') || p.contains('reset')) {
+      _live3DNodes.clear();
+      _live3DNodes.add({
+        'id': 'player_spawn',
+        'name': 'CharacterBody3D (Player)',
+        'x': 0.0,
+        'y': -25.0,
+        'z': 0.0,
+        'size': 28.0,
+        'color': const Color(0xFFFF007F),
+        'type': 'player',
+        'glow': 0.8,
+      });
+      notifyListeners();
+      return CommandExecutionResult(
+        isSuccess: true,
+        message: '🧹 Сцената е напълно изчистена! Остана само спаун точката на героя.',
+        nodesAffected: 1,
+        actionType: 'CLEAR_SCENE',
+      );
+    }
+
+    // 2. СЪЗДАВАНЕ НА КЪЩА (С ПОКРИВ, СТЕНИ И ВРАТА)
+    if (p.contains('къща') || p.contains('house') || p.contains('хижа') || p.contains('дом')) {
+      final id = 'house_${DateTime.now().millisecondsSinceEpoch}';
+      _live3DNodes.add({
+        'id': id,
+        'name': 'MeshInstance3D (3D House)',
+        'x': 0.0,
+        'y': 15.0,
+        'z': 0.0,
+        'size': 42.0,
+        'color': const Color(0xFFFF9100),
+        'type': 'house',
+        'glow': 0.4,
+      });
+      notifyListeners();
+      return CommandExecutionResult(
+        isSuccess: true,
+        message: '🏡 Построена 3D Къща с покрив, врата и осветени прозорци в центъра (0, 0)!',
+        nodesAffected: 1,
+        actionType: 'BUILD_HOUSE',
+      );
+    }
+
+    // 3. СЪЗДАВАНЕ НА КОЛА / БОЛИД
+    if (p.contains('кола') || p.contains('болид') || p.contains('car') || p.contains('возило')) {
+      final id = 'car_${DateTime.now().millisecondsSinceEpoch}';
+      _live3DNodes.add({
+        'id': id,
+        'name': 'CharacterBody3D (Cyber Car)',
+        'x': 25.0,
+        'y': 38.0,
+        'z': 0.0,
+        'size': 36.0,
+        'color': const Color(0xFF00E5FF),
+        'type': 'car',
+        'glow': 0.7,
+      });
+      notifyListeners();
+      return CommandExecutionResult(
+        isSuccess: true,
+        message: '🏎️ Създаден 3D Неонов Болид с кабина и колела!',
+        nodesAffected: 1,
+        actionType: 'BUILD_CAR',
+      );
+    }
+
+    // 4. СЪЗДАВАНЕ НА ДЪРВО / ГОРА
+    if (p.contains('дърво') || p.contains('гора') || p.contains('tree') || p.contains('природа')) {
+      final id = 'tree_${DateTime.now().millisecondsSinceEpoch}';
+      _live3DNodes.add({
+        'id': id,
+        'name': 'MeshInstance3D (3D Tree)',
+        'x': -30.0,
+        'y': 15.0,
+        'z': 20.0,
+        'size': 38.0,
+        'color': const Color(0xFF00E676),
+        'type': 'tree',
+        'glow': 0.3,
+      });
+      notifyListeners();
+      return CommandExecutionResult(
+        isSuccess: true,
+        message: '🌲 Засадено 3D Дърво със ствол и зелена корона!',
+        nodesAffected: 1,
+        actionType: 'BUILD_TREE',
+      );
+    }
+
+    // 5. ПОСТРОЙ ЦЯЛ CYBERPUNK ГРАД
     if (p.contains('град') || p.contains('мегаполис') || p.contains('city') || p.contains('небостъргач')) {
       return buildCyberCity(prompt);
     }
 
-    // 2. ПОСТРОЙ ЛАВА ПАРКУР
-    if (p.contains('вулкан') || p.contains('паркур') || p.contains('лава свят')) {
+    // 6. ПОСТРОЙ ЛАВА ПАРКУР
+    if (p.contains('вулкан') || p.contains('паркур') || p.contains('лава')) {
       return buildVolcanoWorld();
     }
 
-    // 3. ИЗТРИВАНЕ НА ОБЕКТИ
-    if (p.contains('изтрий') || p.contains('магни') || p.contains('delete') || p.contains('махни')) {
-      if (p.contains('всичко') || p.contains('сцената')) {
-        _live3DNodes.clear();
-        _live3DNodes.add({
-          'id': 'player_spawn',
-          'name': 'CharacterBody3D (Player)',
-          'x': 0.0,
-          'y': -25.0,
-          'z': 0.0,
-          'size': 32.0,
-          'color': const Color(0xFFFF007F),
-          'type': 'player',
-          'glow': 0.8,
-        });
-        notifyListeners();
-        return CommandExecutionResult(
-          isSuccess: true,
-          message: '🧹 Сцената беше изчистена до начален Player Spawn.',
-          nodesAffected: 1,
-          actionType: 'CLEAR_SCENE',
-        );
-      } else if (p.contains('лава')) {
-        int before = _live3DNodes.length;
-        _live3DNodes.removeWhere((n) => n['type'] == 'lava');
-        notifyListeners();
-        return CommandExecutionResult(
-          isSuccess: true,
-          message: '🔥 Изтрити ${before - _live3DNodes.length} лава зони от сцената.',
-          nodesAffected: before - _live3DNodes.length,
-          actionType: 'DELETE_LAVA',
-        );
-      } else if (p.contains('враг') || p.contains('врагове')) {
-        int before = _live3DNodes.length;
-        _live3DNodes.removeWhere((n) => n['type'] == 'enemy');
-        notifyListeners();
-        return CommandExecutionResult(
-          isSuccess: true,
-          message: '👾 Всички врагове са премахнати от сцената.',
-          nodesAffected: before - _live3DNodes.length,
-          actionType: 'DELETE_ENEMIES',
-        );
-      }
-    }
-
-    // 4. МЕСТЕНЕ НА ОБЕКТ
-    if (p.contains('премести') || p.contains('мести') || p.contains('move')) {
-      for (var node in _live3DNodes) {
-        if (node['type'] == 'player' || node['name'].toString().toLowerCase().contains('player')) {
-          node['x'] = (node['x'] as num).toDouble() + 30.0;
-          notifyListeners();
-          return CommandExecutionResult(
-            isSuccess: true,
-            message: '🎯 Играчът беше преместен с +30 по X.',
-            nodesAffected: 1,
-            actionType: 'MOVE_NODE',
-          );
-        }
-      }
-    }
-
-    // 5. ДОБАВЯНЕ НА НОВ 3D ОБЕКТ
-    if (p.contains('добави') || p.contains('създай') || p.contains('куб') || p.contains('платформа')) {
-      final newId = 'node_${DateTime.now().millisecondsSinceEpoch}';
+    // 7. МОНЕТА
+    if (p.contains('монета') || p.contains('злато') || p.contains('coin')) {
+      final id = 'coin_${DateTime.now().millisecondsSinceEpoch}';
       _live3DNodes.add({
-        'id': newId,
-        'name': 'MeshInstance3D (Custom Node)',
+        'id': id,
+        'name': 'Area3D (Star Coin)',
         'x': 0.0,
-        'y': 0.0,
+        'y': -10.0,
         'z': 0.0,
-        'size': 35.0,
-        'color': const Color(0xFF00E5FF),
-        'type': 'block',
-        'glow': 0.5,
+        'size': 18.0,
+        'color': const Color(0xFFFFD600),
+        'type': 'coin',
+        'glow': 0.9,
       });
-      FilamentEngine().add3DBox(0.0, 0.0, 0.0, 35.0, 35.0, 35.0, 0);
       notifyListeners();
       return CommandExecutionResult(
         isSuccess: true,
-        message: '✅ Добавен нов 3D PBR блок в центъра на сцената (0, 0, 0).',
+        message: '🪙 Добавена светеща златна монета във въздуха!',
         nodesAffected: 1,
-        actionType: 'CREATE_NODE',
+        actionType: 'ADD_COIN',
       );
     }
 
-    // ДЕФОЛТ: ДОБАВЯНЕ НА ИНТЕЛИГЕНТНА ПЛАТФОРМА
-    final id = 'node_${DateTime.now().millisecondsSinceEpoch}';
+    // 8. ПРЕМЕСТВАНЕ
+    if (p.contains('премести') || p.contains('мести') || p.contains('move')) {
+      if (_live3DNodes.isNotEmpty) {
+        _live3DNodes.last['x'] = (_live3DNodes.last['x'] as num).toDouble() + 30.0;
+        notifyListeners();
+        return CommandExecutionResult(
+          isSuccess: true,
+          message: '🎯 Обектът "${_live3DNodes.last['name']}" беше преместен с +30 по X.',
+          nodesAffected: 1,
+          actionType: 'MOVE_NODE',
+        );
+      }
+    }
+
+    // 9. ДЕФОЛТ: ДОБАВЯНЕ НА 3D НЕОНОВА ПЛАТФОРМА
+    final id = 'platform_${DateTime.now().millisecondsSinceEpoch}';
     _live3DNodes.add({
       'id': id,
       'name': 'MeshInstance3D ($prompt)',
-      'x': (math.Random().nextInt(80) - 40).toDouble(),
-      'y': (math.Random().nextInt(40) - 20).toDouble(),
-      'z': (math.Random().nextInt(80) - 40).toDouble(),
-      'size': 30.0,
-      'color': const Color(0xFF00E676),
+      'x': (math.Random().nextInt(60) - 30).toDouble(),
+      'y': 25.0,
+      'z': (math.Random().nextInt(60) - 30).toDouble(),
+      'size': 32.0,
+      'color': const Color(0xFF00E5FF),
       'type': 'block',
-      'glow': 0.6,
+      'glow': 0.5,
     });
     notifyListeners();
 
     return CommandExecutionResult(
       isSuccess: true,
-      message: '⚡ Сцената беше обновена за: "$prompt".',
+      message: '✅ Добавен 3D неонов обект за команда: "$prompt".',
       nodesAffected: 1,
-      actionType: 'MUTATE_SCENE',
+      actionType: 'CREATE_NODE',
     );
   }
 
   // =========================================================================
-  // 🏙️ ПРОЦЕДУРЕН СТРОИТЕЛ НА ГРАД (BUILD CYBER CITY)
+  // 🏙️ ПОСТРОЯВАНЕ НА ЦЯЛ CYBERPUNK ГРАД
   // =========================================================================
 
   CommandExecutionResult buildCyberCity(String query) {
     _live3DNodes.clear();
 
-    // 1. Играч Spawn & Градска основа
     _live3DNodes.add({
       'id': 'p_spawn',
       'name': 'CharacterBody3D (Player)',
       'x': 0.0,
       'y': -25.0,
       'z': 0.0,
-      'size': 32.0,
+      'size': 28.0,
       'color': const Color(0xFFFF007F),
       'type': 'player',
       'glow': 0.8,
     });
 
-    _live3DNodes.add({
-      'id': 'city_asphalt',
-      'name': 'MeshInstance3D (City Plaza Asphalt)',
-      'x': 0.0,
-      'y': 50.0,
-      'z': 0.0,
-      'size': 160.0,
-      'color': const Color(0xFF0F121C),
-      'type': 'block',
-      'glow': 0.1,
-    });
-
-    // 2. Небостъргачи около площада
     final buildings = [
-      {'n': 'Skyscraper Alpha', 'x': -85.0, 'y': -20.0, 'z': -75.0, 's': 45.0, 'c': const Color(0xFF00E5FF)},
-      {'n': 'Skyscraper Beta', 'x': 85.0, 'y': -40.0, 'z': -75.0, 's': 55.0, 'c': const Color(0xFFD500F9)},
-      {'n': 'Neon Tower Gamma', 'x': -80.0, 'y': 5.0, 'z': 65.0, 's': 40.0, 'c': const Color(0xFF00E676)},
-      {'n': 'Sky Platform Delta', 'x': 80.0, 'y': 15.0, 'z': 65.0, 's': 38.0, 'c': const Color(0xFFFFD600)},
-      {'n': 'Megacorp HQ Center', 'x': 0.0, 'y': -55.0, 'z': -95.0, 's': 60.0, 'c': const Color(0xFFFF007F)},
+      {'n': 'Skyscraper Alpha', 'x': -70.0, 'y': -15.0, 'z': -60.0, 's': 42.0, 'c': const Color(0xFF00E5FF)},
+      {'n': 'Skyscraper Beta', 'x': 70.0, 'y': -30.0, 'z': -60.0, 's': 48.0, 'c': const Color(0xFFD500F9)},
+      {'n': 'Neon Tower Gamma', 'x': -65.0, 'y': 5.0, 'z': 55.0, 's': 38.0, 'c': const Color(0xFF00E676)},
+      {'n': 'Sky Platform Delta', 'x': 65.0, 'y': 10.0, 'z': 55.0, 's': 36.0, 'c': const Color(0xFFFFD600)},
     ];
 
     for (var b in buildings) {
@@ -224,45 +244,32 @@ class SceneCommandBus extends ChangeNotifier {
         'z': b['z'],
         'size': b['s'],
         'color': b['c'],
-        'type': 'block',
+        'type': 'skyscraper',
         'glow': 0.6,
       });
     }
 
-    // 3. Звездни монети по покривите и цел
+    _live3DNodes.add({
+      'id': 'cyber_car',
+      'name': 'CharacterBody3D (Patrol Car)',
+      'x': 0.0,
+      'y': 38.0,
+      'z': 30.0,
+      'size': 32.0,
+      'color': const Color(0xFF00E5FF),
+      'type': 'car',
+      'glow': 0.8,
+    });
+
     _live3DNodes.add({
       'id': 'c_roof_1',
-      'name': 'Area3D (Rooftop Star Coin 1)',
-      'x': -85.0,
-      'y': -50.0,
-      'z': -75.0,
+      'name': 'Area3D (Rooftop Coin)',
+      'x': -70.0,
+      'y': -45.0,
+      'z': -60.0,
       'size': 18.0,
       'color': const Color(0xFFFFD600),
       'type': 'coin',
-      'glow': 1.0,
-    });
-
-    _live3DNodes.add({
-      'id': 'c_roof_2',
-      'name': 'Area3D (Rooftop Star Coin 2)',
-      'x': 85.0,
-      'y': -75.0,
-      'z': -75.0,
-      'size': 18.0,
-      'color': const Color(0xFFFFD600),
-      'type': 'coin',
-      'glow': 1.0,
-    });
-
-    _live3DNodes.add({
-      'id': 'goal_helipad',
-      'name': 'Area3D (Helipad Win Portal)',
-      'x': 0.0,
-      'y': -90.0,
-      'z': -95.0,
-      'size': 24.0,
-      'color': const Color(0xFF00E5FF),
-      'type': 'portal',
       'glow': 1.0,
     });
 
@@ -270,14 +277,14 @@ class SceneCommandBus extends ChangeNotifier {
 
     return CommandExecutionResult(
       isSuccess: true,
-      message: '🏙️ Успешно построен Cyberpunk град: 5 небостъргача, монети по покривите и хеликоптерна площадка!',
+      message: '🏙️ Построен Cyberpunk град: 4 небостъргача с прозорци, патрулна кола и покривна монета!',
       nodesAffected: _live3DNodes.length,
       actionType: 'BUILD_CITY',
     );
   }
 
   // =========================================================================
-  // 🌋 ПРОЦЕДУРЕН СТРОИТЕЛ НА ВУЛКАНИЧЕН СВЯТ
+  // 🌋 ПОСТРОЯВАНЕ НА ВУЛКАНИЧЕН СВЯТ
   // =========================================================================
 
   CommandExecutionResult buildVolcanoWorld() {
@@ -289,33 +296,33 @@ class SceneCommandBus extends ChangeNotifier {
       'x': 0.0,
       'y': -25.0,
       'z': 0.0,
-      'size': 32.0,
+      'size': 28.0,
       'color': const Color(0xFFFF007F),
       'type': 'player',
       'glow': 0.8,
     });
 
     _live3DNodes.add({
-      'id': 'lava_sea',
+      'id': 'lava_lake',
       'name': 'Area3D (Lava Ocean Hazard)',
       'x': 0.0,
-      'y': 60.0,
+      'y': 48.0,
       'z': 0.0,
-      'size': 120.0,
+      'size': 90.0,
       'color': const Color(0xFFFF3D00),
       'type': 'lava',
       'glow': 1.0,
     });
 
-    for (int i = 1; i <= 5; i++) {
-      double angle = i * 1.2;
+    for (int i = 1; i <= 4; i++) {
+      double angle = i * 1.3;
       _live3DNodes.add({
         'id': 'lava_step_$i',
-        'name': 'MeshInstance3D (Volcano Platform $i)',
-        'x': math.cos(angle) * 70.0,
-        'y': 40.0 - (i * 18.0),
-        'z': math.sin(angle) * 70.0,
-        'size': 28.0,
+        'name': 'MeshInstance3D (Volcano Step $i)',
+        'x': math.cos(angle) * 60.0,
+        'y': 35.0 - (i * 16.0),
+        'z': math.sin(angle) * 60.0,
+        'size': 26.0,
         'color': (i % 2 == 0) ? const Color(0xFF00E5FF) : const Color(0xFF00E676),
         'type': 'block',
         'glow': 0.6,
@@ -323,14 +330,14 @@ class SceneCommandBus extends ChangeNotifier {
     }
 
     _live3DNodes.add({
-      'id': 'volcano_goal',
-      'name': 'Area3D (Volcano Peak Goal)',
+      'id': 'coin_volcano',
+      'name': 'Area3D (Volcano Star Coin)',
       'x': 0.0,
-      'y': -70.0,
+      'y': -45.0,
       'z': 0.0,
-      'size': 24.0,
-      'color': const Color(0xFFD500F9),
-      'type': 'portal',
+      'size': 20.0,
+      'color': const Color(0xFFFFD600),
+      'type': 'coin',
       'glow': 1.0,
     });
 
@@ -338,7 +345,7 @@ class SceneCommandBus extends ChangeNotifier {
 
     return CommandExecutionResult(
       isSuccess: true,
-      message: '🌋 Построен 3D Вулканичен свят: спираловидни платформи, лава океан и финал на върха!',
+      message: '🌋 Построен 3D Лава свят: врящ лава океан, 4 спирални платформи и звездна монета!',
       nodesAffected: _live3DNodes.length,
       actionType: 'BUILD_VOLCANO',
     );
