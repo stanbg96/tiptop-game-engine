@@ -28,7 +28,7 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> {
   final List<Map<String, String>> _consoleLogs = [
     {
       'role': 'engine',
-      'text': '⚡ TipTop Engine Viewport v2.0 готов. Напиши "създай къща", "кола", "град" или "изчисти".',
+      'text': '⚡ TipTop Engine Viewport v2.5 готов. Напиши "създай къща", "кола", "град" или "изчисти".',
     },
   ];
 
@@ -62,7 +62,6 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> {
 
     _scrollToBottom();
 
-    // 1. Проверка за среда и режим
     final lower = text.toLowerCase();
     if (lower.contains('нощ') || lower.contains('night')) {
       _isNightMode = true;
@@ -76,14 +75,13 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> {
       _is3DMode = true;
     }
 
-    // 2. Изпълнение на командата на живо в сцената
     final result = _commandBus.executeAiPrompt(text);
 
     setState(() {
       _isProcessing = false;
       _consoleLogs.add({
         'role': 'engine',
-        'text': '${result.message}\n📊 Активни 3D обекти: ${_commandBus.live3DNodes.length}',
+        'text': '${result.message}\n📊 3D обекти в сцената: ${_commandBus.live3DNodes.length}',
       });
     });
 
@@ -112,13 +110,12 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> {
         child: Column(
           children: [
             // ==========================================
-            // 1. ЧИСТ VIEWPORT (ГОРНА ЧАСТ НА ЕКРАНА)
+            // 1. ЧИСТ 3D VIEWPORT (ГОРНА ЧАСТ)
             // ==========================================
             Expanded(
               flex: 11,
               child: Stack(
                 children: [
-                  // Свободна интерактивна камера без закриващи бутони
                   Positioned.fill(
                     child: GestureDetector(
                       onScaleUpdate: (details) {
@@ -133,7 +130,7 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> {
                       },
                       child: CustomPaint(
                         size: Size.infinite,
-                        painter: PureCleanEnginePainter(
+                        painter: TruePBR3DEnginePainter(
                           yaw: _camYaw,
                           pitch: _camPitch,
                           zoom: _camZoom,
@@ -199,7 +196,7 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> {
                     ),
                   ),
 
-                  // Индикатор за осветлението (Ден / Нощ)
+                  // Индикатор за осветлението
                   Positioned(
                     top: 12,
                     left: 14,
@@ -221,7 +218,7 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          _isNightMode ? 'Cyber Night • Neon Bloom' : 'Sunlit Horizon • PBR Shading',
+                          _isNightMode ? 'Cyber Night • PBR Shading' : 'Sunlit Horizon • Real 3D Culling',
                           style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold),
                         ),
                       ],
@@ -231,7 +228,7 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> {
               ),
             ),
 
-            // Неонова разделителна линия
+            // Разделителна линия
             Container(
               height: 2,
               decoration: BoxDecoration(
@@ -253,7 +250,6 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> {
                 color: const Color(0xFF0C0E16),
                 child: Column(
                   children: [
-                    // Дневник на командите
                     Expanded(
                       child: ListView.builder(
                         controller: _logScrollController,
@@ -300,7 +296,6 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> {
                         color: AppTheme.sciFiCyan,
                       ),
 
-                    // Поле за писане
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: const BoxDecoration(
@@ -365,10 +360,10 @@ class _MushroomStudioScreenState extends State<MushroomStudioScreen> {
 }
 
 // =========================================================================
-// 🎨 ЧИСТ 3D РЕНДЕРЕР С ИСТИНСКИ КЪЩИ, КОЛИ, ДЪРВЕТА И СГРАДИ
+// 🎨 ИСТИНСКИ 3D РЕНДЕРЕР С BACKFACE CULLING (БЕЗ ДУПКИ И ЛЕТЯЩИ ВРАТИ)
 // =========================================================================
 
-class PureCleanEnginePainter extends CustomPainter {
+class TruePBR3DEnginePainter extends CustomPainter {
   final double yaw;
   final double pitch;
   final double zoom;
@@ -376,7 +371,7 @@ class PureCleanEnginePainter extends CustomPainter {
   final bool isNight;
   final List<Map<String, dynamic>> nodes;
 
-  PureCleanEnginePainter({
+  TruePBR3DEnginePainter({
     required this.yaw,
     required this.pitch,
     required this.zoom,
@@ -424,9 +419,15 @@ class PureCleanEnginePainter extends CustomPainter {
     return y * sinP + rz * cosP;
   }
 
+  // Изчислява ориентацията на полигона (2D Cross Product) за Backface Culling
+  bool isFrontFacing(Offset p0, Offset p1, Offset p2) {
+    double signedArea = (p1.dx - p0.dx) * (p2.dy - p0.dy) - (p1.dy - p0.dy) * (p2.dx - p0.dx);
+    return signedArea > 0.0;
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. Атмосфера и небе
+    // 1. Небесен градиент
     final bgPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
@@ -438,14 +439,14 @@ class PureCleanEnginePainter extends CustomPainter {
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
 
     if (is3D) {
-      _paint3DWorld(canvas, size);
+      _paint3D(canvas, size);
     } else {
-      _paint2DWorld(canvas, size);
+      _paint2D(canvas, size);
     }
   }
 
-  void _paint3DWorld(Canvas canvas, Size size) {
-    // Безкрайна елегантна световна мрежа
+  void _paint3D(Canvas canvas, Size size) {
+    // Безкрайна световна мрежа
     const double extent = 750.0;
     const double step = 60.0;
     final gridColor = isNight ? const Color(0xFF162035) : const Color(0xFF2A334A);
@@ -460,7 +461,7 @@ class PureCleanEnginePainter extends CustomPainter {
     canvas.drawLine(project(-extent, 40.0, 0, size), project(extent, 40.0, 0, size), Paint()..color = const Color(0xFFFF3366)..strokeWidth = 1.8);
     canvas.drawLine(project(0, 40.0, -extent, size), project(0, 40.0, extent, size), Paint()..color = const Color(0xFF00E5FF)..strokeWidth = 1.8);
 
-    // Сортиране на обектите по дълбочина
+    // Сортиране на обектите
     List<Map<String, dynamic>> sorted = List.from(nodes);
     sorted.sort((a, b) {
       double d1 = calculateDepth((a['x'] as num).toDouble(), (a['y'] as num).toDouble(), (a['z'] as num).toDouble());
@@ -468,7 +469,6 @@ class PureCleanEnginePainter extends CustomPainter {
       return d1.compareTo(d2);
     });
 
-    // Рисуване на истинските форми
     for (var node in sorted) {
       double ox = (node['x'] as num).toDouble();
       double oy = (node['y'] as num).toDouble();
@@ -478,29 +478,24 @@ class PureCleanEnginePainter extends CustomPainter {
       String type = node['type']?.toString() ?? 'block';
 
       if (type == 'house') {
-        _draw3DHouse(canvas, size, ox, oy, oz, s, c);
+        _drawSolidCulledHouse(canvas, size, ox, oy, oz, s, c);
       } else if (type == 'car') {
-        _draw3DCyberCar(canvas, size, ox, oy, oz, s, c);
+        _drawSolidCulledCar(canvas, size, ox, oy, oz, s, c);
       } else if (type == 'tree') {
-        _draw3DTree(canvas, size, ox, oy, oz, s);
-      } else if (type == 'skyscraper') {
-        _draw3DSkyscraper(canvas, size, ox, oy, oz, s, c);
-      } else if (type == 'lava') {
-        _drawLavaLake(canvas, size, ox, oy, oz, s);
+        _drawSolidCulledTree(canvas, size, ox, oy, oz, s);
+      } else if (type == 'player') {
+        _drawCulledPlayerPawn(canvas, size, ox, oy, oz, s);
       } else if (type == 'coin') {
         _drawGoldenOrb(canvas, size, ox, oy, oz, s);
-      } else if (type == 'player') {
-        _drawHeroPawn(canvas, size, ox, oy, oz, s);
       } else {
-        _drawPBRSolidMesh(canvas, size, ox, oy, oz, s, s * 0.8, s, c);
+        _drawCulledBox(canvas, size, ox, oy, oz, s, s * 0.8, s, c);
       }
     }
   }
 
-  void _paint2DWorld(Canvas canvas, Size size) {
+  void _paint2D(Canvas canvas, Size size) {
     const double s = 40.0 * 1.5;
     final grid = Paint()..color = const Color(0xFF1B2234)..strokeWidth = 0.8;
-
     for (double x = 0; x < size.width; x += s) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), grid);
     }
@@ -521,104 +516,140 @@ class PureCleanEnginePainter extends CustomPainter {
     }
   }
 
-  // 🏡 3D КЪЩА С ПОКРИВ, СТЕНИ, ВРАТА И ПРОЗОРЦИ
-  void _draw3DHouse(Canvas canvas, Size size, double x, double y, double z, double s, Color c) {
+  // =========================================================================
+  // 🏡 3D КЪЩА С BACKFACE CULLING (ПЪЛЕН ПОКРИВ И ЗАКРЕПЕНА ВРАТА)
+  // =========================================================================
+
+  void _drawSolidCulledHouse(Canvas canvas, Size size, double x, double y, double z, double s, Color c) {
     double w = s * 0.9;
     double h = s * 0.75;
     double d = s * 0.9;
 
-    // Стени на къщата
-    _drawPBRSolidMesh(canvas, size, x, y + 8.0, z, w, h, d, c);
+    double hx = w / 2.0;
+    double hy = h / 2.0;
+    double hz = d / 2.0;
 
-    // Триъгълен покрив
-    Offset rApex = project(x, y - h * 0.85, z, size);
-    Offset rFrontL = project(x - w / 2.0, y - h / 2.0 + 8.0, z + d / 2.0, size);
-    Offset rFrontR = project(x + w / 2.0, y - h / 2.0 + 8.0, z + d / 2.0, size);
-    Offset rBackR = project(x + w / 2.0, y - h / 2.0 + 8.0, z - d / 2.0, size);
+    // 8 Върха на стените
+    List<Offset> p = [
+      project(x - hx, y - hy, z - hz, size), // 0: Top-Left-Back
+      project(x + hx, y - hy, z - hz, size), // 1: Top-Right-Back
+      project(x + hx, y - hy, z + hz, size), // 2: Top-Right-Front
+      project(x - hx, y - hy, z + hz, size), // 3: Top-Left-Front
+      project(x - hx, y + hy, z - hz, size), // 4: Bottom-Left-Back
+      project(x + hx, y + hy, z - hz, size), // 5: Bottom-Right-Back
+      project(x + hx, y + hy, z + hz, size), // 6: Bottom-Right-Front
+      project(x - hx, y + hy, z + hz, size), // 7: Bottom-Left-Front
+    ];
 
-    // Преден триъгълник на покрива
-    Path roofFront = Path()..moveTo(rApex.dx, rApex.dy)..lineTo(rFrontL.dx, rFrontL.dy)..lineTo(rFrontR.dx, rFrontR.dy)..close();
-    canvas.drawPath(roofFront, Paint()..color = const Color(0xFFD84315));
-    canvas.drawPath(roofFront, Paint()..color = Colors.white24..style = PaintingStyle.stroke);
+    // Връх на покрива (Apex)
+    double roofHeight = h * 0.7;
+    Offset apex = project(x, y - hy - roofHeight, z, size);
 
-    // Десен наклон на покрива
-    Path roofSide = Path()..moveTo(rApex.dx, rApex.dy)..lineTo(rFrontR.dx, rFrontR.dy)..lineTo(rBackR.dx, rBackR.dy)..close();
-    canvas.drawPath(roofSide, Paint()..color = const Color(0xFFBF360C));
+    final HSLColor hsl = HSLColor.fromColor(c);
+    final Color topC = hsl.withLightness((hsl.lightness + 0.15).clamp(0.0, 1.0)).toColor();
+    final Color frontC = hsl.toColor();
+    final Color sideC = hsl.withLightness((hsl.lightness - 0.20).clamp(0.0, 1.0)).toColor();
 
-    // Врата
-    Offset doorCenter = project(x, y + h * 0.25, z + d / 2.0 + 1.0, size);
-    canvas.drawRect(Rect.fromCenter(center: doorCenter, width: 8.0 * zoom, height: 14.0 * zoom), Paint()..color = const Color(0xFF3E2723));
+    // 1. ЗАДНА СТЕНА (-Z)
+    if (isFrontFacing(p[1], p[0], p[4])) {
+      _drawPolygon(canvas, [p[1], p[0], p[4], p[5]], sideC);
+    }
 
-    // Светещ прозорец
-    Offset winCenter = project(x + w * 0.25, y - h * 0.1, z + d / 2.0 + 1.0, size);
-    canvas.drawCircle(winCenter, 3.5 * zoom, Paint()..color = AppTheme.sciFiCyan);
+    // 2. ЛЯВА СТЕНА (-X)
+    if (isFrontFacing(p[0], p[3], p[7])) {
+      _drawPolygon(canvas, [p[0], p[3], p[7], p[4]], sideC);
+    }
+
+    // 3. ДЯСНА СТЕНА (+X)
+    if (isFrontFacing(p[2], p[1], p[5])) {
+      _drawPolygon(canvas, [p[2], p[1], p[5], p[6]], topC);
+    }
+
+    // 4. ПРЕДНА СТЕНА (+Z) - ВРАТАТА И ПРОЗОРЕЦЪТ СЕ РИСУВАТ САМО ТУК!
+    if (isFrontFacing(p[3], p[2], p[6])) {
+      _drawPolygon(canvas, [p[3], p[2], p[6], p[7]], frontC);
+
+      // Входна врата (закрепена плътно)
+      Offset dTopL = project(x - w * 0.15, y + hy * 0.1, z + hz + 0.5, size);
+      Offset dTopR = project(x + w * 0.15, y + hy * 0.1, z + hz + 0.5, size);
+      Offset dBotR = project(x + w * 0.15, y + hy, z + hz + 0.5, size);
+      Offset dBotL = project(x - w * 0.15, y + hy, z + hz + 0.5, size);
+      _drawPolygon(canvas, [dTopL, dTopR, dBotR, dBotL], const Color(0xFF3E2723));
+
+      // Светещ прозорец
+      Offset winPos = project(x + w * 0.25, y - hy * 0.3, z + hz + 0.5, size);
+      canvas.drawCircle(winPos, 4.0 * zoom, Paint()..color = AppTheme.sciFiCyan);
+    }
+
+    // ==========================================
+    // 4-ТЕ СКАТА НА ПОКРИВА (ПЪЛНО ПОКРИТИЕ БЕЗ ДУПКИ)
+    // ==========================================
+    const Color roofFrontColor = Color(0xFFE64A19);
+    const Color roofSideColor = Color(0xFFD84315);
+    const Color roofBackColor = Color(0xFFBF360C);
+
+    // Заден скат на покрива (-Z)
+    if (isFrontFacing(apex, p[1], p[0])) {
+      _drawPolygon(canvas, [apex, p[1], p[0]], roofBackColor);
+    }
+
+    // Ляв скат на покрива (-X)
+    if (isFrontFacing(apex, p[0], p[3])) {
+      _drawPolygon(canvas, [apex, p[0], p[3]], roofSideColor);
+    }
+
+    // Десен скат на покрива (+X)
+    if (isFrontFacing(apex, p[2], p[1])) {
+      _drawPolygon(canvas, [apex, p[2], p[1]], roofFrontColor);
+    }
+
+    // Преден скат на покрива (+Z)
+    if (isFrontFacing(apex, p[3], p[2])) {
+      _drawPolygon(canvas, [apex, p[3], p[2]], roofFrontColor);
+    }
   }
 
-  // 🏎️ 3D КОЛА С ШАСИ, КАБИНА И 4 КОЛЕЛА
-  void _draw3DCyberCar(Canvas canvas, Size size, double x, double y, double z, double s, Color c) {
+  // =========================================================================
+  // 🏎️ 3D КОЛА С CULLING И КОЛЕЛА
+  // =========================================================================
+
+  void _drawSolidCulledCar(Canvas canvas, Size size, double x, double y, double z, double s, Color c) {
     double len = s * 1.3;
     double w = s * 0.75;
     double h = s * 0.4;
 
-    _drawPBRSolidMesh(canvas, size, x, y + 6.0, z, len, h, w, c);
-    _drawPBRSolidMesh(canvas, size, x - len * 0.08, y - h * 0.55, z, len * 0.55, h * 0.75, w * 0.75, const Color(0xFF0F1A2C));
+    _drawCulledBox(canvas, size, x, y + 6.0, z, len, h, w, c);
+    _drawCulledBox(canvas, size, x - len * 0.08, y - h * 0.5, z, len * 0.55, h * 0.75, w * 0.75, const Color(0xFF0F1A2C));
 
+    // 4 Колела
     final wheel = Paint()..color = const Color(0xFF1E222B);
-    Offset wFL = project(x + len * 0.35, y + h * 0.8, z + w * 0.55, size);
-    Offset wFR = project(x + len * 0.35, y + h * 0.8, z - w * 0.55, size);
-    Offset wBL = project(x - len * 0.35, y + h * 0.8, z + w * 0.55, size);
-    Offset wBR = project(x - len * 0.35, y + h * 0.8, z - w * 0.55, size);
-
-    canvas.drawCircle(wFL, 4.5 * zoom, wheel);
-    canvas.drawCircle(wFR, 4.5 * zoom, wheel);
-    canvas.drawCircle(wBL, 4.5 * zoom, wheel);
-    canvas.drawCircle(wBR, 4.5 * zoom, wheel);
-
-    // Фарове
-    Offset fL = project(x + len * 0.5 + 1.0, y + 4.0, z + w * 0.25, size);
-    Offset fR = project(x + len * 0.5 + 1.0, y + 4.0, z - w * 0.25, size);
-    canvas.drawCircle(fL, 2.0 * zoom, Paint()..color = AppTheme.sciFiCyan);
-    canvas.drawCircle(fR, 2.0 * zoom, Paint()..color = AppTheme.sciFiCyan);
+    canvas.drawCircle(project(x + len * 0.35, y + h * 0.8, z + w * 0.55, size), 4.5 * zoom, wheel);
+    canvas.drawCircle(project(x + len * 0.35, y + h * 0.8, z - w * 0.55, size), 4.5 * zoom, wheel);
+    canvas.drawCircle(project(x - len * 0.35, y + h * 0.8, z + w * 0.55, size), 4.5 * zoom, wheel);
+    canvas.drawCircle(project(x - len * 0.35, y + h * 0.8, z - w * 0.55, size), 4.5 * zoom, wheel);
   }
 
-  // 🌲 3D ДЪРВО СЪС СТВОЛ И КОРОНА
-  void _draw3DTree(Canvas canvas, Size size, double x, double y, double z, double s) {
-    // Ствол
-    _drawPBRSolidMesh(canvas, size, x, y + s * 0.35, z, s * 0.25, s * 0.65, s * 0.25, const Color(0xFF5D4037));
+  // 🌲 3D ДЪРВО
+  void _drawSolidCulledTree(Canvas canvas, Size size, double x, double y, double z, double s) {
+    _drawCulledBox(canvas, size, x, y + s * 0.35, z, s * 0.25, s * 0.65, s * 0.25, const Color(0xFF5D4037));
 
-    // Зелена корона (2 нива пирамиди)
-    Offset topApex = project(x, y - s * 0.9, z, size);
-    Offset baseL = project(x - s * 0.5, y - s * 0.1, z + s * 0.5, size);
-    Offset baseR = project(x + s * 0.5, y - s * 0.1, z + s * 0.5, size);
-    Offset baseBack = project(x + s * 0.5, y - s * 0.1, z - s * 0.5, size);
+    Offset apex = project(x, y - s * 0.9, z, size);
+    Offset b0 = project(x - s * 0.45, y - s * 0.1, z - s * 0.45, size);
+    Offset b1 = project(x + s * 0.45, y - s * 0.1, z - s * 0.45, size);
+    Offset b2 = project(x + s * 0.45, y - s * 0.1, z + s * 0.45, size);
+    Offset b3 = project(x - s * 0.45, y - s * 0.1, z + s * 0.45, size);
 
-    Path cFront = Path()..moveTo(topApex.dx, topApex.dy)..lineTo(baseL.dx, baseL.dy)..lineTo(baseR.dx, baseR.dy)..close();
-    Path cSide = Path()..moveTo(topApex.dx, topApex.dy)..lineTo(baseR.dx, baseR.dy)..lineTo(baseBack.dx, baseBack.dy)..close();
-
-    canvas.drawPath(cFront, Paint()..color = const Color(0xFF2E7D32));
-    canvas.drawPath(cSide, Paint()..color = const Color(0xFF1B5E20));
+    if (isFrontFacing(apex, b1, b0)) _drawPolygon(canvas, [apex, b1, b0], const Color(0xFF1B5E20));
+    if (isFrontFacing(apex, b0, b3)) _drawPolygon(canvas, [apex, b0, b3], const Color(0xFF2E7D32));
+    if (isFrontFacing(apex, b2, b1)) _drawPolygon(canvas, [apex, b2, b1], const Color(0xFF388E3C));
+    if (isFrontFacing(apex, b3, b2)) _drawPolygon(canvas, [apex, b3, b2], const Color(0xFF43A047));
   }
 
-  // 🏢 3D НЕБОСТЪРГАЧ
-  void _draw3DSkyscraper(Canvas canvas, Size size, double x, double y, double z, double s, Color c) {
-    double h = s * 2.3;
-    double w = s * 0.9;
-    _drawPBRSolidMesh(canvas, size, x, y - h / 2.0 + 18.0, z, w, h, w, c);
-
-    for (int f = 1; f <= 4; f++) {
-      double fy = y + 10.0 - (f * (h / 5.0));
-      Offset w1 = project(x - w * 0.25, fy, z + w / 2.0 + 1.0, size);
-      Offset w2 = project(x + w * 0.25, fy, z + w / 2.0 + 1.0, size);
-      final p = Paint()..color = AppTheme.sciFiCyan.withValues(alpha: 0.9);
-      canvas.drawCircle(w1, 2.2 * zoom, p);
-      canvas.drawCircle(w2, 2.2 * zoom, p);
-    }
-  }
-
-  void _drawHeroPawn(Canvas canvas, Size size, double x, double y, double z, double s) {
+  // 🤖 3D ИГРАЧ СПАУН ПАУН
+  void _drawCulledPlayerPawn(Canvas canvas, Size size, double x, double y, double z, double s) {
     Offset head = project(x, y - s * 0.85, z, size);
-    _drawPBRSolidMesh(canvas, size, x, y - s * 0.2, z, s * 0.6, s * 0.75, s * 0.45, AppTheme.laserPink);
-    canvas.drawCircle(head, 8.0 * zoom, Paint()..color = Colors.white);
+    _drawCulledBox(canvas, size, x, y - s * 0.2, z, s * 0.55, s * 0.75, s * 0.45, AppTheme.laserPink);
+    canvas.drawCircle(head, 7.5 * zoom, Paint()..color = Colors.white);
     canvas.drawCircle(head, 3.5 * zoom, Paint()..color = AppTheme.sciFiCyan);
   }
 
@@ -632,57 +663,54 @@ class PureCleanEnginePainter extends CustomPainter {
     canvas.drawCircle(pos, 8.0 * zoom, Paint()..color = const Color(0xFFFFC107));
   }
 
-  void _drawLavaLake(Canvas canvas, Size size, double x, double y, double z, double s) {
-    final lava = Paint()
-      ..shader = RadialGradient(
-        colors: [const Color(0xFFFF3D00).withValues(alpha: 0.85), const Color(0xFFBF360C).withValues(alpha: 0.2)],
-      ).createShader(Rect.fromCircle(center: project(x, 39.0, z, size), radius: s * zoom));
-
-    Path p = Path()
-      ..moveTo(project(x - s, 39.5, z - s, size).dx, project(x - s, 39.5, z - s, size).dy)
-      ..lineTo(project(x + s, 39.5, z - s, size).dx, project(x + s, 39.5, z - s, size).dy)
-      ..lineTo(project(x + s, 39.5, z + s, size).dx, project(x + s, 39.5, z + s, size).dy)
-      ..lineTo(project(x - s, 39.5, z + s, size).dx, project(x - s, 39.5, z + s, size).dy)
-      ..close();
-    canvas.drawPath(p, lava);
-  }
-
-  void _drawPBRSolidMesh(Canvas canvas, Size size, double x, double y, double z, double sx, double sy, double sz, Color c) {
+  // КУБ С BACKFACE CULLING ЗА ВСИЧКИ 6 СТЕНИ
+  void _drawCulledBox(Canvas canvas, Size size, double x, double y, double z, double sx, double sy, double sz, Color color) {
     double hx = sx / 2.0;
     double hy = sy / 2.0;
     double hz = sz / 2.0;
 
-    List<Offset> v = [
-      project(x - hx, y - hy, z - hz, size),
-      project(x + hx, y - hy, z - hz, size),
-      project(x + hx, y - hy, z + hz, size),
-      project(x - hx, y - hy, z + hz, size),
-      project(x - hx, y + hy, z - hz, size),
-      project(x + hx, y + hy, z - hz, size),
-      project(x + hx, y + hy, z + hz, size),
-      project(x - hx, y + hy, z + hz, size),
+    List<Offset> p = [
+      project(x - hx, y - hy, z - hz, size), // 0
+      project(x + hx, y - hy, z - hz, size), // 1
+      project(x + hx, y - hy, z + hz, size), // 2
+      project(x - hx, y - hy, z + hz, size), // 3
+      project(x - hx, y + hy, z - hz, size), // 4
+      project(x + hx, y + hy, z - hz, size), // 5
+      project(x + hx, y + hy, z + hz, size), // 6
+      project(x - hx, y + hy, z + hz, size), // 7
     ];
 
-    final hsl = HSLColor.fromColor(c);
-    final topC = hsl.withLightness((hsl.lightness + 0.16).clamp(0.0, 1.0)).toColor();
-    final frontC = hsl.toColor();
-    final sideC = hsl.withLightness((hsl.lightness - 0.22).clamp(0.0, 1.0)).toColor();
+    final hsl = HSLColor.fromColor(color);
+    final Color topC = hsl.withLightness((hsl.lightness + 0.16).clamp(0.0, 1.0)).toColor();
+    final Color frontC = hsl.toColor();
+    final Color sideC = hsl.withLightness((hsl.lightness - 0.22).clamp(0.0, 1.0)).toColor();
 
-    Path top = Path()..moveTo(v[0].dx, v[0].dy)..lineTo(v[1].dx, v[1].dy)..lineTo(v[2].dx, v[2].dy)..lineTo(v[3].dx, v[3].dy)..close();
-    canvas.drawPath(top, Paint()..color = topC);
+    // 1. Задна (-Z)
+    if (isFrontFacing(p[1], p[0], p[4])) _drawPolygon(canvas, [p[1], p[0], p[4], p[5]], sideC);
+    // 2. Лява (-X)
+    if (isFrontFacing(p[0], p[3], p[7])) _drawPolygon(canvas, [p[0], p[3], p[7], p[4]], sideC);
+    // 3. Дясна (+X)
+    if (isFrontFacing(p[2], p[1], p[5])) _drawPolygon(canvas, [p[2], p[1], p[5], p[6]], topC);
+    // 4. Предна (+Z)
+    if (isFrontFacing(p[3], p[2], p[6])) _drawPolygon(canvas, [p[3], p[2], p[6], p[7]], frontC);
+    // 5. Горна (-Y)
+    if (isFrontFacing(p[0], p[1], p[2])) _drawPolygon(canvas, [p[0], p[1], p[2], p[3]], topC);
+    // 6. Долна (+Y)
+    if (isFrontFacing(p[7], p[6], p[5])) _drawPolygon(canvas, [p[7], p[6], p[5], p[4]], sideC);
+  }
 
-    Path front = Path()..moveTo(v[3].dx, v[3].dy)..lineTo(v[2].dx, v[2].dy)..lineTo(v[6].dx, v[6].dy)..lineTo(v[7].dx, v[7].dy)..close();
-    canvas.drawPath(front, Paint()..color = frontC);
+  void _drawPolygon(Canvas canvas, List<Offset> points, Color color) {
+    if (points.isEmpty) return;
+    Path path = Path()..moveTo(points[0].dx, points[0].dy);
+    for (int i = 1; i < points.length; i++) {
+      path.lineTo(points[i].dx, points[i].dy);
+    }
+    path.close();
 
-    Path right = Path()..moveTo(v[2].dx, v[2].dy)..lineTo(v[1].dx, v[1].dy)..lineTo(v[5].dx, v[5].dy)..lineTo(v[6].dx, v[6].dy)..close();
-    canvas.drawPath(right, Paint()..color = sideC);
-
-    final edge = Paint()..color = c.withValues(alpha: 0.35)..style = PaintingStyle.stroke..strokeWidth = 1.0;
-    canvas.drawPath(top, edge);
-    canvas.drawPath(front, edge);
-    canvas.drawPath(right, edge);
+    canvas.drawPath(path, Paint()..color = color..style = PaintingStyle.fill);
+    canvas.drawPath(path, Paint()..color = Colors.white.withValues(alpha: 0.15)..style = PaintingStyle.stroke..strokeWidth = 0.8);
   }
 
   @override
-  bool shouldRepaint(covariant PureCleanEnginePainter oldDelegate) => true;
+  bool shouldRepaint(covariant TruePBR3DEnginePainter oldDelegate) => true;
 }
