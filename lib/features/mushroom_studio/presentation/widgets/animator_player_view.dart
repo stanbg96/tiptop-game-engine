@@ -20,7 +20,7 @@ class AnimatorPlayerView extends StatefulWidget {
 class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTickerProviderStateMixin {
   late AnimationController _animController;
   bool _isPlaying = true;
-  int _viewMode = 0; // 0: Комбиниран, 1: 3D Скелет (Octahedral), 2: Y-Bot Броня
+  int _viewMode = 0; // 0: Комбиниран, 1: 3D Скелет, 2: Y-Bot Броня
   double _speed = 1.0;
   double _currentFrame = 0.0;
   final double _totalFrames = 120.0;
@@ -105,7 +105,7 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
     FilamentEngine().applyAnimation(widget.activeAnimation, _speed);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('⚡ Движението "${widget.activeAnimation}" е синхронизирано с C++ Filament енджина!'),
+        content: Text('⚡ Движението "${widget.activeAnimation}" е приложено към Mixamo 3D модела в Filament!'),
       ),
     );
   }
@@ -114,7 +114,7 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // 1. 3D Viewport с Октаедричен Скелет и Y-Bot
+        // 1. 3D Viewport с пълния анатомичен модел
         Expanded(
           child: Container(
             margin: const EdgeInsets.fromLTRB(8, 6, 8, 4),
@@ -128,7 +128,6 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
             ),
             child: Stack(
               children: [
-                // Фон със студиен градиент
                 Positioned.fill(
                   child: Container(
                     decoration: const BoxDecoration(
@@ -141,7 +140,6 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
                   ),
                 ),
 
-                // 3D Интерактивен Orbit Canvas
                 GestureDetector(
                   onPanUpdate: (d) {
                     setState(() {
@@ -152,7 +150,7 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
                   child: Center(
                     child: CustomPaint(
                       size: const Size(280, 300),
-                      painter: ProfessionalOctahedralRigPainter(
+                      painter: CompleteHumanoidRigPainter(
                         progress: _animController.value,
                         yaw: _mannequinYaw,
                         pitch: _mannequinPitch,
@@ -163,7 +161,7 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
                   ),
                 ),
 
-                // Горна лента: Име на движението + Режими на скелета
+                // Горна лента: Име на движението + Режими
                 Positioned(
                   top: 8,
                   left: 10,
@@ -188,9 +186,9 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
                       ),
                       Row(
                         children: [
-                          _buildModeChip(0, '✨ Комбиниран'),
+                          _buildModeChip(0, '✨ Пълен'),
                           const SizedBox(width: 4),
-                          _buildModeChip(1, '🦴 3D Скелет'),
+                          _buildModeChip(1, '🦴 Скелет'),
                           const SizedBox(width: 4),
                           _buildModeChip(2, '🤖 Y-Bot'),
                         ],
@@ -199,7 +197,7 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
                   ),
                 ),
 
-                // Долен статус за каданс и кадри
+                // Долен статус
                 Positioned(
                   bottom: 8,
                   left: 10,
@@ -211,7 +209,7 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(6)),
                         child: Text(
-                          'Кадър: ${_currentFrame.toInt()} / ${_totalFrames.toInt()} (60 FPS MoCap)',
+                          'Пълен MoCap Риг • Кадър ${_currentFrame.toInt()} / ${_totalFrames.toInt()}',
                           style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 9, fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -224,7 +222,7 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
           ),
         ),
 
-        // 2. Интерактивен Таймлайн със стъпкови бутони кадър по кадър
+        // 2. Таймлайн със стъпки кадър по кадър
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10.0),
           child: Row(
@@ -285,7 +283,7 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
           ),
         ),
 
-        // 4. Бутон за прилагане към 3D модела
+        // 4. Бутон за синхронизация
         SafeArea(
           top: false,
           child: Padding(
@@ -351,17 +349,17 @@ class _AnimatorPlayerViewState extends State<AnimatorPlayerView> with SingleTick
 }
 
 // =========================================================================
-// 🦴 ПРОФЕСИОНАЛЕН 3D ОКТАЕДРИЧЕН СКЕЛЕТЕН & Y-BOT РЕНДЕРЕР
+// 🦴 ПЪЛЕН 3D СКЕЛЕТЕН & Y-BOT РЕНДЕРЕР (С ПЪЛНИ КРАКА, СТЪПАЛА И ПРЪСТИ)
 // =========================================================================
 
-class ProfessionalOctahedralRigPainter extends CustomPainter {
+class CompleteHumanoidRigPainter extends CustomPainter {
   final double progress;
   final double yaw;
   final double pitch;
-  final int viewMode; // 0: Комбиниран, 1: Скелет, 2: Y-Bot
+  final int viewMode;
   final String category;
 
-  ProfessionalOctahedralRigPainter({
+  CompleteHumanoidRigPainter({
     required this.progress,
     required this.yaw,
     required this.pitch,
@@ -392,7 +390,7 @@ class ProfessionalOctahedralRigPainter extends CustomPainter {
 
     double t = progress * 2.0 * math.pi;
 
-    // Биомеханични изчисления на микро-ставите (Forward Kinematics)
+    // Пълна биомеханика
     double armAngle = math.sin(t) * 0.72;
     double forearmBend = (math.sin(t + 0.5) * 0.4).abs();
     double legAngle = math.cos(t) * 0.82;
@@ -422,52 +420,66 @@ class ProfessionalOctahedralRigPainter extends CustomPainter {
       ).createShader(Rect.fromCircle(center: Offset(cx, cy + 90.0), radius: 65.0));
     canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + 90.0), width: 130.0, height: 35.0), floorPaint);
 
-    // 2. 19 Анатомични стави (Joint Hierarchy)
+    // 2. 19 Пълни Анатомични стави
     Offset head = project(0.0, -78.0 + bodyBob, 0.0, cx, cy);
     Offset neck = project(0.0, -54.0 + bodyBob, 0.0, cx, cy);
     Offset chest = project(0.0, -32.0 + bodyBob, spineCurve * 15.0, cx, cy);
     Offset pelvis = project(0.0, 10.0 + bodyBob, 0.0, cx, cy);
 
-    // Ключици и Рамене
+    // Рамене
     Offset lClavicle = project(-8.0, -48.0 + bodyBob, 0.0, cx, cy);
     Offset rClavicle = project(8.0, -48.0 + bodyBob, 0.0, cx, cy);
     Offset lShoulder = project(-24.0 * math.cos(pelvisTilt), -46.0 + bodyBob, -24.0 * math.sin(pelvisTilt), cx, cy);
     Offset rShoulder = project(24.0 * math.cos(pelvisTilt), -46.0 + bodyBob, 24.0 * math.sin(pelvisTilt), cx, cy);
 
-    // Ръце с предмишница и китка
+    // Ръце, китки и длани
     Offset lElbow = project(-26.0 - 24.0 * math.cos(armAngle), -20.0 + 24.0 * math.sin(armAngle) + bodyBob, 12.0 * math.sin(armAngle), cx, cy);
     Offset lWrist = project(-28.0 - 46.0 * math.cos(armAngle + forearmBend), -2.0 + 44.0 * math.sin(armAngle + forearmBend) + bodyBob, 24.0 * math.sin(armAngle), cx, cy);
+    Offset lHand = project(-29.0 - 54.0 * math.cos(armAngle + forearmBend), 6.0 + 50.0 * math.sin(armAngle + forearmBend) + bodyBob, 28.0 * math.sin(armAngle), cx, cy);
+
     Offset rElbow = project(26.0 + 24.0 * math.cos(armAngle), -20.0 - 24.0 * math.sin(armAngle) + bodyBob, -12.0 * math.sin(armAngle), cx, cy);
     Offset rWrist = project(28.0 + 46.0 * math.cos(armAngle - forearmBend), -2.0 - 44.0 * math.sin(armAngle - forearmBend) + bodyBob, -24.0 * math.sin(armAngle), cx, cy);
+    Offset rHand = project(29.0 + 54.0 * math.cos(armAngle - forearmBend), 6.0 - 50.0 * math.sin(armAngle - forearmBend) + bodyBob, -28.0 * math.sin(armAngle), cx, cy);
 
-    // Таз и Крака с коляно, глезен и стъпало
+    // Крака: Бедро ➔ Коляно ➔ Глезен ➔ Стъпало ➔ Пръсти
     Offset lHip = project(-14.0, 12.0 + bodyBob, 0.0, cx, cy);
     Offset rHip = project(14.0, 12.0 + bodyBob, 0.0, cx, cy);
-    Offset lKnee = project(-14.0, 48.0 + 18.0 * math.cos(legAngle) + bodyBob, -30.0 * math.sin(legAngle), cx, cy);
-    Offset lAnkle = project(-14.0, 82.0 + 26.0 * math.cos(legAngle + kneeBend), -44.0 * math.sin(legAngle), cx, cy);
-    Offset rKnee = project(14.0, 48.0 - 18.0 * math.cos(legAngle) + bodyBob, 30.0 * math.sin(legAngle), cx, cy);
-    Offset rAnkle = project(14.0, 82.0 - 26.0 * math.cos(legAngle - kneeBend), 44.0 * math.sin(legAngle), cx, cy);
 
-    // 3. РИСУВАНЕ НА Y-BOT БРОНЯТА (Ако режимът е 0 или 2)
+    Offset lKnee = project(-14.0, 48.0 + 18.0 * math.cos(legAngle) + bodyBob, -30.0 * math.sin(legAngle), cx, cy);
+    Offset lAnkle = project(-14.0, 80.0 + 24.0 * math.cos(legAngle + kneeBend), -42.0 * math.sin(legAngle), cx, cy);
+    Offset lFoot = project(-14.0, 88.0 + 24.0 * math.cos(legAngle + kneeBend), -28.0 * math.sin(legAngle) + 12.0, cx, cy);
+    Offset lToes = project(-14.0, 89.0 + 24.0 * math.cos(legAngle + kneeBend), -16.0 * math.sin(legAngle) + 22.0, cx, cy);
+
+    Offset rKnee = project(14.0, 48.0 - 18.0 * math.cos(legAngle) + bodyBob, 30.0 * math.sin(legAngle), cx, cy);
+    Offset rAnkle = project(14.0, 80.0 - 24.0 * math.cos(legAngle - kneeBend), 42.0 * math.sin(legAngle), cx, cy);
+    Offset rFoot = project(14.0, 88.0 - 24.0 * math.cos(legAngle - kneeBend), 28.0 * math.sin(legAngle) + 12.0, cx, cy);
+    Offset rToes = project(14.0, 89.0 - 24.0 * math.cos(legAngle - kneeBend), 16.0 * math.sin(legAngle) + 22.0, cx, cy);
+
+    // 3. РИСУВАНЕ НА Y-BOT БРОНЯТА С ПЪЛНИ БОТУШИ И ДЛАНИ
     if (viewMode == 0 || viewMode == 2) {
       double alpha = (viewMode == 0) ? 0.65 : 1.0;
       _drawArmorLimb(canvas, lShoulder, lElbow, 7.5, 6.0, alpha);
       _drawArmorLimb(canvas, lElbow, lWrist, 6.0, 4.5, alpha);
+      _drawArmorLimb(canvas, lWrist, lHand, 4.5, 3.0, alpha);
+
       _drawArmorLimb(canvas, rShoulder, rElbow, 7.5, 6.0, alpha);
       _drawArmorLimb(canvas, rElbow, rWrist, 6.0, 4.5, alpha);
+      _drawArmorLimb(canvas, rWrist, rHand, 4.5, 3.0, alpha);
 
       _drawArmorLimb(canvas, lHip, lKnee, 10.0, 7.5, alpha);
       _drawArmorLimb(canvas, lKnee, lAnkle, 7.5, 5.0, alpha);
+      _drawArmorBoot(canvas, lAnkle, lFoot, lToes, alpha);
+
       _drawArmorLimb(canvas, rHip, rKnee, 10.0, 7.5, alpha);
       _drawArmorLimb(canvas, rKnee, rAnkle, 7.5, 5.0, alpha);
+      _drawArmorBoot(canvas, rAnkle, rFoot, rToes, alpha);
 
       _drawArmorTorso(canvas, neck, chest, pelvis, lShoulder, rShoulder, alpha);
       _drawArmorHead(canvas, head, alpha);
     }
 
-    // 4. РИСУВАНЕ НА ПРОФЕСИОНАЛНИЯ ОКТАЕДРИЧЕН 3D СКЕЛЕТ (Ако режимът е 0 или 1)
+    // 4. РИСУВАНЕ НА ПЪЛНИЯ ОКТАЕДРИЧЕН СКЕЛЕТ (С ПРЪСТИ И СТЪПАЛА)
     if (viewMode == 0 || viewMode == 1) {
-      // Октаедрични кости
       _drawOctahedralBone(canvas, pelvis, chest, 9.0);
       _drawOctahedralBone(canvas, chest, neck, 6.0);
       _drawOctahedralBone(canvas, neck, head, 5.0);
@@ -476,29 +488,33 @@ class ProfessionalOctahedralRigPainter extends CustomPainter {
       _drawOctahedralBone(canvas, lClavicle, lShoulder, 4.5);
       _drawOctahedralBone(canvas, lShoulder, lElbow, 6.0);
       _drawOctahedralBone(canvas, lElbow, lWrist, 4.5);
+      _drawOctahedralBone(canvas, lWrist, lHand, 3.5);
 
       _drawOctahedralBone(canvas, neck, rClavicle, 4.0);
       _drawOctahedralBone(canvas, rClavicle, rShoulder, 4.5);
       _drawOctahedralBone(canvas, rShoulder, rElbow, 6.0);
       _drawOctahedralBone(canvas, rElbow, rWrist, 4.5);
+      _drawOctahedralBone(canvas, rWrist, rHand, 3.5);
 
       _drawOctahedralBone(canvas, pelvis, lHip, 6.0);
       _drawOctahedralBone(canvas, lHip, lKnee, 7.5);
       _drawOctahedralBone(canvas, lKnee, lAnkle, 6.0);
+      _drawOctahedralBone(canvas, lAnkle, lFoot, 4.5);
+      _drawOctahedralBone(canvas, lFoot, lToes, 3.5);
 
       _drawOctahedralBone(canvas, pelvis, rHip, 6.0);
       _drawOctahedralBone(canvas, rHip, rKnee, 7.5);
       _drawOctahedralBone(canvas, rKnee, rAnkle, 6.0);
+      _drawOctahedralBone(canvas, rAnkle, rFoot, 4.5);
+      _drawOctahedralBone(canvas, rFoot, rToes, 3.5);
     }
   }
 
-  // ОКТАЕДРИЧНА 3D КОСТ (Blender / Godot Standard)
   void _drawOctahedralBone(Canvas canvas, Offset p1, Offset p2, double width) {
     final double dx = p2.dx - p1.dx;
     final double dy = p2.dy - p1.dy;
     final double angle = math.atan2(dy, dx) + math.pi / 2.0;
 
-    // Точка на максимална ширина (на 25% от костта)
     Offset mid = Offset(p1.dx + dx * 0.25, p1.dy + dy * 0.25);
     Offset side1 = Offset(mid.dx + math.cos(angle) * width, mid.dy + math.sin(angle) * width);
     Offset side2 = Offset(mid.dx - math.cos(angle) * width, mid.dy - math.sin(angle) * width);
@@ -506,8 +522,8 @@ class ProfessionalOctahedralRigPainter extends CustomPainter {
     Path boneLight = Path()..moveTo(p1.dx, p1.dy)..lineTo(side1.dx, side1.dy)..lineTo(p2.dx, p2.dy)..close();
     Path boneDark = Path()..moveTo(p1.dx, p1.dy)..lineTo(side2.dx, side2.dy)..lineTo(p2.dx, p2.dy)..close();
 
-    final lightPaint = Paint()..color = const Color(0xFF00E5FF).withValues(alpha: 0.8)..style = PaintingStyle.fill;
-    final darkPaint = Paint()..color = const Color(0xFF0091EA).withValues(alpha: 0.8)..style = PaintingStyle.fill;
+    final lightPaint = Paint()..color = const Color(0xFF00E5FF).withValues(alpha: 0.85)..style = PaintingStyle.fill;
+    final darkPaint = Paint()..color = const Color(0xFF0091EA).withValues(alpha: 0.85)..style = PaintingStyle.fill;
     final edgePaint = Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 1.0;
 
     canvas.drawPath(boneLight, lightPaint);
@@ -515,7 +531,6 @@ class ProfessionalOctahedralRigPainter extends CustomPainter {
     canvas.drawPath(boneLight, edgePaint);
     canvas.drawPath(boneDark, edgePaint);
 
-    // Ставни топчета
     canvas.drawCircle(p1, 2.5, Paint()..color = const Color(0xFFFF007F));
     canvas.drawCircle(p2, 2.5, Paint()..color = const Color(0xFFFF007F));
   }
@@ -541,13 +556,33 @@ class ProfessionalOctahedralRigPainter extends CustomPainter {
     canvas.drawPath(p, Paint()..color = const Color(0xFFE2E8F0).withValues(alpha: alpha * 0.5)..style = PaintingStyle.stroke..strokeWidth = 1.0);
   }
 
+  // 👢 ПЪЛЕН 3D МЕТАЛЕН БОТУШ С ПОДМЕТКА И ПРЪСТИ
+  void _drawArmorBoot(Canvas canvas, Offset ankle, Offset foot, Offset toes, double alpha) {
+    Path boot = Path()
+      ..moveTo(ankle.dx - 5.0, ankle.dy)
+      ..lineTo(ankle.dx + 5.0, ankle.dy)
+      ..lineTo(foot.dx + 6.0, foot.dy)
+      ..lineTo(toes.dx + 4.0, toes.dy)
+      ..lineTo(toes.dx - 4.0, toes.dy)
+      ..lineTo(foot.dx - 6.0, foot.dy)
+      ..close();
+
+    final bootPaint = Paint()
+      ..shader = LinearGradient(
+        colors: [const Color(0xFFE2E8F0).withValues(alpha: alpha), const Color(0xFF1E293B).withValues(alpha: alpha)],
+      ).createShader(Rect.fromPoints(ankle, toes));
+
+    canvas.drawPath(boot, bootPaint);
+    canvas.drawPath(boot, Paint()..color = AppTheme.sciFiCyan.withValues(alpha: alpha)..style = PaintingStyle.stroke..strokeWidth = 1.0);
+  }
+
   void _drawArmorTorso(Canvas canvas, Offset neck, Offset chest, Offset pelvis, Offset lSh, Offset rSh, double alpha) {
     Path torso = Path()
       ..moveTo(lSh.dx, lSh.dy)
       ..lineTo(neck.dx, neck.dy - 3.0)
       ..lineTo(rSh.dx, rSh.dy)
-      ..lineTo(pelvis.dx + 16.0, pelvis.dy)
-      ..lineTo(pelvis.dx - 16.0, pelvis.dy)
+      ..lineTo(pelvis.dx + 18.0, pelvis.dy)
+      ..lineTo(pelvis.dx - 18.0, pelvis.dy)
       ..close();
 
     final torsoPaint = Paint()
@@ -555,10 +590,17 @@ class ProfessionalOctahedralRigPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [const Color(0xFFD8DFEC).withValues(alpha: alpha), const Color(0xFF2D3546).withValues(alpha: alpha)],
-      ).createShader(Rect.fromCenter(center: chest, width: 50, height: 60));
+      ).createShader(Rect.fromCenter(center: chest, width: 55, height: 65));
 
     canvas.drawPath(torso, torsoPaint);
     canvas.drawPath(torso, Paint()..color = const Color(0xFFE2E8F0).withValues(alpha: alpha * 0.7)..style = PaintingStyle.stroke..strokeWidth = 1.2);
+
+    final coreGlow = Paint()
+      ..shader = RadialGradient(
+        colors: [AppTheme.sciFiCyan, Colors.transparent],
+      ).createShader(Rect.fromCircle(center: chest, radius: 8.0));
+    canvas.drawCircle(chest, 8.0, coreGlow);
+    canvas.drawCircle(chest, 4.0, Paint()..color = Colors.white);
   }
 
   void _drawArmorHead(Canvas canvas, Offset headPos, double alpha) {
@@ -569,9 +611,12 @@ class ProfessionalOctahedralRigPainter extends CustomPainter {
       ).createShader(Rect.fromCircle(center: headPos, radius: 15.0));
 
     canvas.drawCircle(headPos, 14.0, headPaint);
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(headPos.dx, headPos.dy - 1.0), width: 15.0, height: 5.0), const Radius.circular(3.0)), Paint()..color = AppTheme.sciFiCyan.withValues(alpha: alpha));
+    canvas.drawCircle(headPos, 14.0, Paint()..color = const Color(0xFFCBD5E1)..style = PaintingStyle.stroke..strokeWidth = 1.2);
+
+    final visorPaint = Paint()..color = AppTheme.sciFiCyan;
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(headPos.dx, headPos.dy - 1.0), width: 15.0, height: 5.0), const Radius.circular(3.0)), visorPaint);
   }
 
   @override
-  bool shouldRepaint(covariant ProfessionalOctahedralRigPainter oldDelegate) => true;
+  bool shouldRepaint(covariant CompleteHumanoidRigPainter oldDelegate) => true;
 }
