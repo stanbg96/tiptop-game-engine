@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:tiptop_game_engine/core/theme/app_theme.dart';
-import 'package:tiptop_game_engine/engine_bridge/godot_view.dart';
+import 'package:tiptop_game_engine/engine_bridge/filament_bindings.dart';
+import 'package:tiptop_game_engine/features/mushroom_studio/presentation/widgets/godot_2d_painter.dart';
 
 class Studio2DView extends StatefulWidget {
   const Studio2DView({Key? key}) : super(key: key);
@@ -10,17 +11,17 @@ class Studio2DView extends StatefulWidget {
   State<Studio2DView> createState() => _Studio2DViewState();
 }
 
-class _Studio2DViewState extends State<Studio2DView> {
-  String _editorMode = 'pencil';
+class _Studio2DViewState extends State<Studio2DView> with TickerProviderStateMixin {
+  late AnimationController _fx2DController;
+  final TextEditingController _aiPromptController = TextEditingController();
+  Timer? _gameLoopTimer;
+
+  String _editorMode = 'pencil'; // pencil, select, erase
   String _selectedTile = 'grass';
-  int _selectedLayer = 0;
   String? _selectedNodeId;
+  bool _showNodeInspector = false;
 
-  // Godot Docks (Панели)
-  bool _showLeftFileSystem = false;
-  bool _showRightInspector = false;
-
-  // 2D Play Mode
+  // 2D Симулация и физика
   bool _isSimulating = false;
   int _score = 0;
   int _playerHp = 3;
@@ -31,52 +32,71 @@ class _Studio2DViewState extends State<Studio2DView> {
   double _velX = 0.0;
   double _velY = 0.0;
   bool _isGrounded = false;
+  int _facingDirection = 1;
 
+  // 2D Сцена (Възли)
   final List<Map<String, dynamic>> _scene2DNodes = [
-    {'id': 'player', 'name': 'CharacterBody2D (Player)', 'type': 'player', 'x': 1, 'y': 2, 'hp': 3, 'speed': 4.5, 'jumpForce': 12.5},
+    {'id': 'player', 'name': 'CharacterBody2D (Hero)', 'type': 'player', 'x': 1, 'y': 2, 'hp': 3, 'speed': 4.5, 'jumpForce': 12.5},
     {'id': 'tile_0', 'name': 'TileMapLayer (Grass 0)', 'type': 'grass', 'x': 0, 'y': 5, 'isSolid': true},
     {'id': 'tile_1', 'name': 'TileMapLayer (Grass 1)', 'type': 'grass', 'x': 1, 'y': 5, 'isSolid': true},
     {'id': 'tile_2', 'name': 'TileMapLayer (Grass 2)', 'type': 'grass', 'x': 2, 'y': 5, 'isSolid': true},
     {'id': 'tile_3', 'name': 'TileMapLayer (Grass 3)', 'type': 'grass', 'x': 3, 'y': 5, 'isSolid': true},
     {'id': 'tile_4', 'name': 'TileMapLayer (Grass 4)', 'type': 'grass', 'x': 4, 'y': 5, 'isSolid': true},
-    {'id': 'coin_1', 'name': 'Area2D (Coin)', 'type': 'coin', 'x': 3, 'y': 2, 'points': 100, 'collected': false},
-    {'id': 'enemy_1', 'name': 'CharacterBody2D (Enemy)', 'type': 'enemy', 'x': 5, 'y': 4, 'curX': 5.0, 'dir': 1, 'minX': 3, 'maxX': 7},
-    {'id': 'portal_1', 'name': 'Area2D (Win Goal)', 'type': 'portal', 'x': 8, 'y': 4},
+    {'id': 'tile_5', 'name': 'TileMapLayer (Grass 5)', 'type': 'grass', 'x': 5, 'y': 5, 'isSolid': true},
+    {'id': 'tile_6', 'name': 'TileMapLayer (Grass 6)', 'type': 'grass', 'x': 6, 'y': 5, 'isSolid': true},
+    {'id': 'plat_1', 'name': 'TileMapLayer (Bridge)', 'type': 'platform', 'x': 3, 'y': 3, 'isSolid': true},
+    {'id': 'coin_1', 'name': 'Area2D (Star Coin)', 'type': 'coin', 'x': 3, 'y': 2, 'points': 100, 'collected': false},
+    {'id': 'enemy_1', 'name': 'CharacterBody2D (Slime AI)', 'type': 'enemy', 'x': 5, 'y': 4, 'curX': 5.0, 'dir': 1, 'minX': 3, 'maxX': 6},
+    {'id': 'spikes_1', 'name': 'Area2D (Spikes Trap)', 'type': 'spikes', 'x': 4, 'y': 5, 'damage': 1},
+    {'id': 'portal_1', 'name': 'Area2D (Win Goal)', 'type': 'portal', 'x': 6, 'y': 4},
   ];
 
-  final List<Map<String, dynamic>> _projectFiles = [
-    {'name': 'scenes', 'type': 'folder', 'items': ['world_2d.tscn', 'dungeon.tscn']},
-    {'name': 'tilesets', 'type': 'folder', 'items': ['terrain_set.tres', 'hazards.tres']},
-    {'name': 'scripts', 'type': 'folder', 'items': ['player_controller.gd', 'enemy_patrol.gd']},
-    {'name': 'audio', 'type': 'folder', 'items': ['bgm_cyber.ogg', 'sfx_jump.wav']},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fx2DController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..repeat(reverse: true);
+  }
 
-  Timer? _gameLoopTimer;
+  @override
+  void dispose() {
+    _gameLoopTimer?.cancel();
+    _fx2DController.dispose();
+    _aiPromptController.dispose();
+    super.dispose();
+  }
+
+  // =========================================================================
+  // 🎮 2D PLAYTEST LOOP (60 FPS BOX2D PHYSICS)
+  // =========================================================================
 
   void _toggleSimulation() {
     setState(() => _isSimulating = !_isSimulating);
     if (_isSimulating) {
       _startSimulation();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('▶ Godot 4 2D Play Mode: Старт на физиката!')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('▶ 2D Live Engine: Старт на 60 FPS играта!')));
     } else {
       _gameLoopTimer?.cancel();
+      FilamentEngine().clear2DWorld();
     }
   }
 
   void _startSimulation() {
     _gameLoopTimer?.cancel();
-    _playerX = 36.0;
-    _playerY = 72.0;
+    final playerNode = _scene2DNodes.firstWhere((e) => e['type'] == 'player', orElse: () => {'x': 1, 'y': 2});
+    _playerX = ((playerNode['x'] as num).toDouble() * 36.0) + 18.0;
+    _playerY = ((playerNode['y'] as num).toDouble() * 36.0) + 40.0;
     _velX = 0.0;
     _velY = 0.0;
     _score = 0;
-    _playerHp = 3;
+    _playerHp = (playerNode['hp'] as num?)?.toInt() ?? 3;
     _isLevelComplete = false;
 
     for (var el in _scene2DNodes) {
       if (el['type'] == 'coin') el['collected'] = false;
       if (el['type'] == 'enemy') el['curX'] = (el['x'] as num).toDouble();
     }
+
+    FilamentEngine().create2DWorld(gravityY: 9.81);
 
     _gameLoopTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
       if (!_isSimulating) return;
@@ -117,6 +137,18 @@ class _Studio2DViewState extends State<Studio2DView> {
             }
           }
 
+          if (type == 'spikes' && playerBox.overlaps(tileBox)) {
+            _playerHp -= 1;
+            if (_playerHp <= 0) {
+              _playerX = 36.0;
+              _playerY = 72.0;
+              _playerHp = 3;
+            } else {
+              _velY = -8.0;
+              _playerX = 36.0;
+            }
+          }
+
           if (type == 'portal' && playerBox.overlaps(tileBox)) {
             _isLevelComplete = true;
           }
@@ -132,6 +164,7 @@ class _Studio2DViewState extends State<Studio2DView> {
     if (_isSimulating) {
       setState(() {
         _velX = dir * 4.5;
+        _facingDirection = dir > 0 ? 1 : -1;
       });
     }
   }
@@ -145,281 +178,326 @@ class _Studio2DViewState extends State<Studio2DView> {
     }
   }
 
+  void _executeAiCommand(String prompt) {
+    if (prompt.trim().isEmpty) return;
+    String p = prompt.toLowerCase();
+
+    setState(() {
+      if (p.contains('замък') || p.contains('castle')) {
+        _scene2DNodes.clear();
+        _scene2DNodes.addAll([
+          {'id': 'player', 'name': 'CharacterBody2D (Knight)', 'type': 'player', 'x': 1, 'y': 2, 'hp': 4},
+          {'id': 'g0', 'name': 'Castle Floor 0', 'type': 'grass', 'x': 0, 'y': 5, 'isSolid': true},
+          {'id': 'g1', 'name': 'Castle Floor 1', 'type': 'grass', 'x': 1, 'y': 5, 'isSolid': true},
+          {'id': 'g2', 'name': 'Castle Floor 2', 'type': 'grass', 'x': 2, 'y': 5, 'isSolid': true},
+          {'id': 'g3', 'name': 'Castle Floor 3', 'type': 'grass', 'x': 3, 'y': 5, 'isSolid': true},
+          {'id': 'g4', 'name': 'Castle Floor 4', 'type': 'grass', 'x': 4, 'y': 5, 'isSolid': true},
+          {'id': 'bridge', 'name': 'Drawbridge', 'type': 'platform', 'x': 3, 'y': 3, 'isSolid': true},
+          {'id': 'coin', 'name': 'Golden Crown', 'type': 'coin', 'x': 3, 'y': 2, 'points': 200, 'collected': false},
+          {'id': 'guard', 'name': 'Guard AI', 'type': 'enemy', 'x': 4, 'y': 4, 'curX': 4.0, 'dir': 1, 'minX': 2, 'maxX': 6},
+          {'id': 'win', 'name': 'Throne Portal', 'type': 'portal', 'x': 7, 'y': 4},
+        ]);
+      } else if (p.contains('изчисти') || p.contains('изтрий')) {
+        _scene2DNodes.clear();
+        _scene2DNodes.add({'id': 'player', 'name': 'Player Spawn', 'type': 'player', 'x': 1, 'y': 2, 'hp': 3});
+      } else {
+        _scene2DNodes.add({
+          'id': 'node_${DateTime.now().millisecondsSinceEpoch}',
+          'name': 'Node ($prompt)',
+          'type': 'platform',
+          'x': 3,
+          'y': 3,
+          'isSolid': true,
+        });
+      }
+    });
+
+    _aiPromptController.clear();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('⚡ 2D AI Copilot: Сцената беше обновена за "$prompt"!')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> mock2DNodes = [
-      {'id': 'player_2d', 'name': 'CharacterBody2D (Player)', 'type': 'player', 'x': 36, 'y': 72, 'speed': 4.5, 'layer': _selectedLayer},
-      {'id': 'tilemap', 'name': 'TileMapLayer ($_selectedTile)', 'type': 'tilemap', 'x': 0, 'y': 0, 'layer': _selectedLayer},
-      {'id': 'enemy_1', 'name': 'CharacterBody2D (Enemy)', 'type': 'enemy', 'x': 180, 'y': 72, 'speed': 2.0},
-    ];
-
     final selectedNode = _selectedNodeId != null
-        ? mock2DNodes.firstWhere((e) => e['id'] == _selectedNodeId, orElse: () => {})
+        ? _scene2DNodes.firstWhere((e) => e['id'] == _selectedNodeId, orElse: () => {})
         : null;
 
     return Stack(
       children: [
-        // 1. ИСТИНСКИЯТ GODOT 4 ЕНДЖИН (2D NATIVE VIEWPORT)
-        const Positioned.fill(
-          child: GodotNativeView(),
+        // 1. БЕЗКРАЕН 2D VIEWPORT (95% от екрана)
+        Positioned.fill(
+          child: GestureDetector(
+            onTapDown: (details) {
+              if (_isSimulating) return;
+              final local = details.localPosition;
+              int col = (local.dx / 36.0).floor();
+              int row = ((local.dy - 40.0) / 36.0).floor();
+              if (row < 0 || col < 0 || col > 9) return;
+
+              setState(() {
+                if (_editorMode == 'select') {
+                  final found = _scene2DNodes.firstWhere((e) => e['x'] == col && e['y'] == row, orElse: () => {});
+                  if (found.isNotEmpty) {
+                    _selectedNodeId = found['id'];
+                    _showNodeInspector = true;
+                  } else {
+                    _selectedNodeId = null;
+                  }
+                } else if (_editorMode == 'erase') {
+                  _scene2DNodes.removeWhere((e) => e['x'] == col && e['y'] == row);
+                } else {
+                  _scene2DNodes.removeWhere((e) => e['x'] == col && e['y'] == row);
+                  String id = 'node_${DateTime.now().millisecondsSinceEpoch}';
+                  Map<String, dynamic> newNode = {'id': id, 'name': 'Node ($col, $row)', 'type': _selectedTile, 'x': col, 'y': row};
+                  if (_selectedTile == 'grass' || _selectedTile == 'dirt' || _selectedTile == 'platform') {
+                    newNode['isSolid'] = true;
+                    newNode['name'] = 'TileMapLayer ($_selectedTile)';
+                  } else if (_selectedTile == 'coin') {
+                    newNode['name'] = 'Area2D (Coin)';
+                    newNode['collected'] = false;
+                  } else if (_selectedTile == 'enemy') {
+                    newNode['name'] = 'CharacterBody2D (Enemy)';
+                    newNode['dir'] = 1;
+                    newNode['minX'] = 1;
+                    newNode['maxX'] = 8;
+                    newNode['curX'] = col.toDouble();
+                  } else if (_selectedTile == 'spikes') {
+                    newNode['name'] = 'Area2D (Spikes)';
+                    newNode['damage'] = 1;
+                  } else if (_selectedTile == 'portal') {
+                    newNode['name'] = 'Area2D (Win Goal)';
+                  }
+                  _scene2DNodes.add(newNode);
+                }
+              });
+            },
+            child: AnimatedBuilder(
+              animation: _fx2DController,
+              builder: (context, child) {
+                return CustomPaint(
+                  size: Size.infinite,
+                  painter: Godot2DEnginePainter(
+                    nodes: _scene2DNodes,
+                    selectedNodeId: _selectedNodeId,
+                    lightColor: AppTheme.sciFiCyan,
+                    pulseValue: _fx2DController.value,
+                    isSimulating: _isSimulating,
+                    playerPos: Offset(_playerX, _playerY),
+                    playerFacing: _facingDirection,
+                  ),
+                );
+              },
+            ),
+          ),
         ),
 
-        if (!_isSimulating)
-          Positioned.fill(
-            child: Container(color: Colors.black.withValues(alpha: 0.15)),
-          ),
-
-        // 2. GODOT 4 TOP BAR
+        // 2. ГОРЕН СТАТУС И LIVE TEST БУТОН
         Positioned(
-          top: 6,
-          left: 6,
-          right: 6,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-            decoration: BoxDecoration(
-              color: const Color(0xEE1E2230),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFF2E344A)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: Icon(Icons.folder_open, color: _showLeftFileSystem ? const Color(0xFF00E676) : Colors.grey, size: 20),
-                  tooltip: 'res:// FileSystem',
-                  onPressed: () => setState(() => _showLeftFileSystem = !_showLeftFileSystem),
+          top: 8,
+          left: 10,
+          right: 10,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xCC101424),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF222A40)),
                 ),
-                const SizedBox(width: 8),
-
-                Row(
+                child: Row(
                   children: [
-                    _buildModeBtn(Icons.edit, 'pencil', 'Draw: $_selectedTile'),
-                    _buildModeBtn(Icons.near_me, 'select', 'Select'),
-                    _buildModeBtn(Icons.cleaning_services, 'erase', 'Erase'),
+                    Container(width: 7, height: 7, decoration: const BoxDecoration(color: Color(0xFF00E676), shape: BoxShape.circle)),
+                    const SizedBox(width: 6),
+                    Text('60 FPS • Godot 2D • ${_scene2DNodes.length} възела', style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
                   ],
                 ),
+              ),
 
-                const Spacer(),
-
-                GestureDetector(
-                  onTap: _toggleSimulation,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: _isSimulating ? const Color(0xFFFF1744) : const Color(0xFF00E676),
-                      borderRadius: BorderRadius.circular(6),
+              GestureDetector(
+                onTap: _toggleSimulation,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: _isSimulating
+                          ? [const Color(0xFFFF1744), const Color(0xFFFF5252)]
+                          : [const Color(0xFF00E676), const Color(0xFF00E5FF)],
                     ),
-                    child: Row(
-                      children: [
-                        Icon(_isSimulating ? Icons.stop : Icons.play_arrow, size: 14, color: Colors.black),
-                        const SizedBox(width: 4),
-                        Text(
-                          _isSimulating ? 'STOP' : 'PLAY 2D',
-                          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 10),
-                        ),
-                      ],
-                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(color: (_isSimulating ? Colors.red : const Color(0xFF00E676)).withValues(alpha: 0.4), blurRadius: 10),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(_isSimulating ? Icons.stop : Icons.play_arrow, size: 14, color: Colors.black),
+                      const SizedBox(width: 4),
+                      Text(
+                        _isSimulating ? 'STOP' : 'TEST 2D',
+                        style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
+              ),
+            ],
+          ),
+        ),
 
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: Icon(Icons.account_tree_outlined, color: _showRightInspector ? const Color(0xFF00E676) : Colors.grey, size: 20),
-                  tooltip: 'Scene & Inspector',
-                  onPressed: () => setState(() => _showRightInspector = !_showRightInspector),
+        // 3. ПЛАВАЩ СМАРТ ДОК ЗА 2D ИНСТРУМЕНТИ (ОТЛЯВО)
+        if (!_isSimulating)
+          Positioned(
+            left: 10,
+            top: 60,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: const Color(0xCC141828),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: const Color(0xFF242C44)),
+              ),
+              child: Column(
+                children: [
+                  _buildSmart2DToolBtn(Icons.crop_square, 'grass', 'Земя'),
+                  const SizedBox(height: 6),
+                  _buildSmart2DToolBtn(Icons.layers, 'platform', 'Мост'),
+                  const SizedBox(height: 6),
+                  _buildSmart2DToolBtn(Icons.monetization_on, 'coin', 'Монета'),
+                  const SizedBox(height: 6),
+                  _buildSmart2DToolBtn(Icons.pest_control, 'enemy', 'Враг'),
+                  const SizedBox(height: 6),
+                  _buildSmart2DToolBtn(Icons.warning_amber, 'spikes', 'Шип'),
+                  const SizedBox(height: 6),
+                  _buildSmart2DToolBtn(Icons.vpn_key, 'portal', 'Цел'),
+                  const SizedBox(height: 6),
+                  _buildSmart2DToolBtn(Icons.cleaning_services, 'erase', 'Изтрий'),
+                ],
+              ),
+            ),
+          ),
+
+        // 4. ИНСПЕКТОР НА ИЗБРАНИЯ ВЪЗЕЛ (КАРТА В ЪГЪЛА)
+        if (_showNodeInspector && selectedNode != null && selectedNode.isNotEmpty && !_isSimulating)
+          Positioned(
+            right: 10,
+            top: 60,
+            width: 175,
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xEE121626),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppTheme.laserPink.withValues(alpha: 0.6)),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 10)],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(selectedNode['name'] ?? 'Node', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11), overflow: TextOverflow.ellipsis),
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() => _showNodeInspector = false),
+                        child: const Icon(Icons.close, size: 14, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Colors.white12, height: 10),
+                  _buildCompactProp('Grid X:', selectedNode['x'].toString()),
+                  _buildCompactProp('Grid Y:', selectedNode['y'].toString()),
+                  _buildCompactProp('Тип:', selectedNode['type'].toString()),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 24,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, padding: EdgeInsets.zero),
+                      onPressed: () {
+                        setState(() {
+                          _scene2DNodes.removeWhere((n) => n['id'] == selectedNode['id']);
+                          _selectedNodeId = null;
+                          _showNodeInspector = false;
+                        });
+                      },
+                      child: const Text('ИЗТРИЙ ВЪЗЕЛ', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // 5. 🪄 ПЛАВАЩА 2D AI COPILOT ЛЕНТА ОТДОЛУ
+        if (!_isSimulating)
+          Positioned(
+            left: 10,
+            right: 10,
+            bottom: 12,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  height: 28,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      _buildAiPromptChip('🏰 2D Замък', 'построй 2d замък с платформи и рицар'),
+                      _buildAiPromptChip('🪙 Златна Пътека', 'добави 5 монети във въздуха'),
+                      _buildAiPromptChip('👾 AI Патрул', 'добави патрулиращ враг'),
+                      _buildAiPromptChip('🧹 Изчисти Сцената', 'изчисти сцената'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xEE161A2C),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.5)),
+                    boxShadow: [
+                      BoxShadow(color: const Color(0xFF00E676).withValues(alpha: 0.15), blurRadius: 10),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.auto_awesome, color: Color(0xFF00E676), size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _aiPromptController,
+                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                          decoration: const InputDecoration(
+                            hintText: '2D AI Copilot: Напиши "построй замък", "добави монети"...',
+                            hintStyle: TextStyle(color: Colors.grey, fontSize: 11),
+                            border: InputBorder.none,
+                          ),
+                          onSubmitted: (val) => _executeAiCommand(val),
+                        ),
+                      ),
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: const Icon(Icons.arrow_upward_rounded, color: Color(0xFF00E676), size: 22),
+                        onPressed: () => _executeAiCommand(_aiPromptController.text),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-        ),
 
-        // 3. 📁 ЛЯВ ПАНЕЛ: GODOT 4 FILESYSTEM DOCK (res://)
-        if (_showLeftFileSystem && !_isSimulating)
-          Positioned(
-            left: 6,
-            top: 48,
-            bottom: 120,
-            width: 170,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xF2181C28),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF2E344A)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('📁 res://', style: TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 12)),
-                      Icon(Icons.create_new_folder, size: 14, color: Colors.grey),
-                    ],
-                  ),
-                  const Divider(color: Colors.white12, height: 10),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: _projectFiles.length,
-                      itemBuilder: (context, index) {
-                        final folder = _projectFiles[index];
-                        final items = folder['items'] as List<String>;
-                        return Theme(
-                          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                          child: ExpansionTile(
-                            tilePadding: EdgeInsets.zero,
-                            dense: true,
-                            leading: const Icon(Icons.folder, size: 14, color: Color(0xFFFFD600)),
-                            title: Text(folder['name'], style: const TextStyle(color: Colors.white70, fontSize: 11)),
-                            children: items.map((file) => Padding(
-                              padding: const EdgeInsets.only(left: 18.0, bottom: 4.0),
-                              child: Row(
-                                children: [
-                                  Icon(file.endsWith('.tscn') ? Icons.grid_view : Icons.insert_drive_file, size: 12, color: Colors.grey),
-                                  const SizedBox(width: 4),
-                                  Text(file, style: const TextStyle(color: Colors.white60, fontSize: 9)),
-                                ],
-                              ),
-                            )).toList(),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-        // 4. 🌲 ДЕСЕН ПАНЕЛ: SCENE TREE + INSPECTOR
-        if (_showRightInspector && !_isSimulating)
-          Positioned(
-            right: 6,
-            top: 48,
-            bottom: 120,
-            width: 190,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xF2181C28),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF2E344A)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('🌲 2D Scene Tree', style: TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 11)),
-                  const SizedBox(height: 4),
-                  SizedBox(
-                    height: 120,
-                    child: ListView.builder(
-                      itemCount: mock2DNodes.length,
-                      itemBuilder: (context, index) {
-                        final node = mock2DNodes[index];
-                        final isSel = node['id'] == _selectedNodeId;
-                        return GestureDetector(
-                          onTap: () => setState(() => _selectedNodeId = node['id']),
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(vertical: 2),
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: isSel ? const Color(0xFF00E676).withValues(alpha: 0.3) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.grid_on, size: 12, color: Colors.white70),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(node['name'], style: TextStyle(color: isSel ? Colors.white : Colors.white70, fontSize: 9, fontWeight: isSel ? FontWeight.bold : FontWeight.normal), overflow: TextOverflow.ellipsis),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const Divider(color: Colors.white12, height: 10),
-
-                  const Text('🔍 2D Inspector', style: TextStyle(color: AppTheme.laserPink, fontWeight: FontWeight.bold, fontSize: 11)),
-                  const SizedBox(height: 4),
-                  if (selectedNode != null && selectedNode.isNotEmpty)
-                    Expanded(
-                      child: ListView(
-                        children: [
-                          Text(selectedNode['name'], style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
-                          _buildPropRow('Active Layer:', 'Layer $_selectedLayer'),
-                          _buildPropRow('Selected Tile:', _selectedTile),
-                          if (selectedNode['speed'] != null)
-                            _buildPropRow('Speed:', selectedNode['speed'].toString()),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            height: 24,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, padding: EdgeInsets.zero),
-                              onPressed: () {
-                                setState(() => _selectedNodeId = null);
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('🗑️ Възелът изтрит!')));
-                              },
-                              child: const Text('ИЗТРИЙ ВЪЗЕЛ', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    const Expanded(
-                      child: Center(
-                        child: Text('Избери възел за инспекция', style: TextStyle(color: Colors.grey, fontSize: 9), textAlign: TextAlign.center),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-
-        // 5. ДОЛЕН ПАНЕЛ: TILEMAP PALETTE (Само в Edit Mode)
-        if (!_isSimulating)
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              decoration: const BoxDecoration(color: Color(0xFF10121D), border: Border(top: BorderSide(color: Color(0xFF222638)))),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    height: 28,
-                    color: const Color(0xFF0E101A),
-                    child: Row(
-                      children: [
-                        _buildLayerTab(0, '🧱 TileMap (Терен)'),
-                        _buildLayerTab(1, '🪙 Area2D (Тригери)'),
-                        _buildLayerTab(2, '👾 Actors (Герои)'),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    height: 48,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: _getPaletteForCurrentLayer(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-        // 6. ПОБЕДЕН ЕКРАН ПРИ ЗАВЪРШВАНЕ НА НИВОТО
+        // 6. ПОБЕДЕН ЕКРАН ПРИ КРАЙ НА НИВОТО
         if (_isLevelComplete)
           Positioned.fill(
             child: Container(
@@ -442,7 +520,7 @@ class _Studio2DViewState extends State<Studio2DView> {
           ),
 
         // 7. HUD И ТЪЧ КОНТРОЛИ В PLAY MODE
-        if (_isSimulating) ...[
+        if (_isSimulating && !_isLevelComplete) ...[
           Positioned(
             top: 50,
             left: 14,
@@ -488,73 +566,61 @@ class _Studio2DViewState extends State<Studio2DView> {
     );
   }
 
-  Widget _buildModeBtn(IconData icon, String mode, String label) {
-    bool isSel = _editorMode == mode;
+  Widget _buildSmart2DToolBtn(IconData icon, String tool, String label) {
+    bool isSel = _selectedTile == tool && _editorMode == 'pencil';
+    if (tool == 'erase') isSel = _editorMode == 'erase';
+
     return GestureDetector(
-      onTap: () => setState(() => _editorMode = mode),
+      onTap: () {
+        setState(() {
+          if (tool == 'erase') {
+            _editorMode = 'erase';
+          } else {
+            _editorMode = 'pencil';
+            _selectedTile = tool;
+          }
+        });
+      },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-        margin: const EdgeInsets.only(right: 3),
+        width: 36,
+        height: 36,
         decoration: BoxDecoration(
           color: isSel ? const Color(0xFF00E676).withValues(alpha: 0.25) : Colors.transparent,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(18),
           border: isSel ? Border.all(color: const Color(0xFF00E676)) : null,
         ),
-        child: Row(
-          children: [
-            Icon(icon, size: 12, color: isSel ? const Color(0xFF00E676) : Colors.grey),
-            const SizedBox(width: 3),
-            Text(label, style: TextStyle(color: isSel ? Colors.white : Colors.grey, fontSize: 8, fontWeight: FontWeight.bold)),
-          ],
-        ),
+        child: Icon(icon, size: 16, color: isSel ? const Color(0xFF00E676) : Colors.white70),
       ),
     );
   }
 
-  Widget _buildLayerTab(int index, String title) {
-    bool isSel = _selectedLayer == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedLayer = index),
-        child: Container(
-          decoration: BoxDecoration(color: isSel ? const Color(0xFF181B28) : Colors.transparent, border: Border(bottom: BorderSide(color: isSel ? const Color(0xFF00E676) : Colors.transparent, width: 2))),
-          child: Center(child: Text(title, style: TextStyle(color: isSel ? const Color(0xFF00E676) : Colors.grey, fontSize: 9, fontWeight: isSel ? FontWeight.bold : FontWeight.normal))),
-        ),
-      ),
-    );
-  }
-
-  List<Widget> _getPaletteForCurrentLayer() {
-    if (_selectedLayer == 0) {
-      return [
-        _buildPaletteChip('🟩 Трева', 'grass', const Color(0xFF00E676)),
-        _buildPaletteChip('🟫 Скала', 'dirt', const Color(0xFF8D6E63)),
-        _buildPaletteChip('🟦 Платформа', 'platform', AppTheme.sciFiCyan),
-      ];
-    } else if (_selectedLayer == 1) {
-      return [
-        _buildPaletteChip('🪙 Монета', 'coin', const Color(0xFFFFD600)),
-        _buildPaletteChip('⚠️ Шипове', 'spikes', const Color(0xFFFF9100)),
-        _buildPaletteChip('🌋 Лава', 'lava', const Color(0xFFFF3D00)),
-        _buildPaletteChip('🏁 Финал', 'portal', const Color(0xFFD500F9)),
-      ];
-    } else {
-      return [
-        _buildPaletteChip('🤖 Играч', 'player', AppTheme.laserPink),
-        _buildPaletteChip('👾 Враг', 'enemy', const Color(0xFFFF1744)),
-      ];
-    }
-  }
-
-  Widget _buildPaletteChip(String label, String tile, Color c) {
-    bool isSel = _selectedTile == tile && _editorMode == 'pencil';
+  Widget _buildAiPromptChip(String label, String prompt) {
     return GestureDetector(
-      onTap: () => setState(() { _selectedTile = tile; _editorMode = 'pencil'; }),
+      onTap: () => _executeAiCommand(prompt),
       child: Container(
         margin: const EdgeInsets.only(right: 6),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(color: isSel ? c.withValues(alpha: 0.25) : const Color(0xFF181B28), borderRadius: BorderRadius.circular(8), border: Border.all(color: isSel ? c : Colors.white12)),
-        child: Center(child: Text(label, style: TextStyle(color: isSel ? Colors.white : Colors.grey, fontSize: 10, fontWeight: FontWeight.bold))),
+        decoration: BoxDecoration(
+          color: const Color(0xCC1A1F30),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.4)),
+        ),
+        child: Center(
+          child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactProp(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 9)),
+          Text(value, style: const TextStyle(color: Color(0xFF00E676), fontSize: 9, fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }
@@ -567,19 +633,6 @@ class _Studio2DViewState extends State<Studio2DView> {
         height: 52,
         decoration: BoxDecoration(color: const Color(0xDD181B28), shape: BoxShape.circle, border: Border.all(color: const Color(0xFF00E676), width: 1.5)),
         child: Icon(icon, color: const Color(0xFF00E676), size: 24),
-      ),
-    );
-  }
-
-  Widget _buildPropRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 9)),
-          Text(value, style: const TextStyle(color: Color(0xFF00E676), fontSize: 9, fontWeight: FontWeight.bold)),
-        ],
       ),
     );
   }

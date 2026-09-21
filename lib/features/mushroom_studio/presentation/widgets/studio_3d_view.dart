@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:tiptop_game_engine/core/theme/app_theme.dart';
-import 'package:tiptop_game_engine/engine_bridge/godot_view.dart';
+import 'package:tiptop_game_engine/engine_bridge/filament_bindings.dart';
 import 'package:tiptop_game_engine/core/services/scene_command_bus.dart';
+import 'package:tiptop_game_engine/features/mushroom_studio/presentation/widgets/studio_3d_painter.dart';
 
 class Studio3DView extends StatefulWidget {
   const Studio3DView({Key? key}) : super(key: key);
@@ -12,24 +14,21 @@ class Studio3DView extends StatefulWidget {
 
 class _Studio3DViewState extends State<Studio3DView> {
   final SceneCommandBus _commandBus = SceneCommandBus();
+  final TextEditingController _aiPromptController = TextEditingController();
+  Timer? _gameLoop3DTimer;
 
-  String _selectedTool = 'orbit';
+  // 3D Камера
+  double _camYaw = 0.75;
+  double _camPitch = 0.55;
+  double _camZoom = 0.85;
+  String _selectedTool = 'orbit'; // orbit, select, gizmo
   String? _selectedNodeId;
-
-  // Панели (Godot Docks)
-  bool _showLeftFileSystem = false;
-  bool _showRightInspector = false;
+  bool _showNodeInspector = false;
 
   // 3D Play Mode
   bool _isPlayMode = false;
-
-  // Godot FileSystem Структура (res://)
-  final List<Map<String, dynamic>> _projectFiles = [
-    {'name': 'scenes', 'type': 'folder', 'items': ['main_3d.tscn', 'city_level.tscn']},
-    {'name': 'models', 'type': 'folder', 'items': ['ybot_player.glb', 'skyscraper_a.glb']},
-    {'name': 'materials', 'type': 'folder', 'items': ['cyber_neon.tres', 'lava_hazard.tres']},
-    {'name': 'scripts', 'type': 'folder', 'items': ['player_controller.gd', 'enemy_patrol.gd']},
-  ];
+  double _player3dX = 0.0;
+  double _player3dZ = 0.0;
 
   @override
   void initState() {
@@ -40,6 +39,8 @@ class _Studio3DViewState extends State<Studio3DView> {
   @override
   void dispose() {
     _commandBus.removeListener(_onSceneUpdated);
+    _gameLoop3DTimer?.cancel();
+    _aiPromptController.dispose();
     super.dispose();
   }
 
@@ -47,12 +48,45 @@ class _Studio3DViewState extends State<Studio3DView> {
     if (mounted) setState(() {});
   }
 
+  // =========================================================================
+  // 🎮 PLAYABLE 3D JOLT PHYSICS LOOP
+  // =========================================================================
+
   void _togglePlayMode() {
     setState(() => _isPlayMode = !_isPlayMode);
+
+    if (_isPlayMode) {
+      FilamentEngine().create3DWorld(gravityY: -9.81);
+      _gameLoop3DTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
+        if (!_isPlayMode) return;
+        setState(() {
+          FilamentEngine().step3D(0.016);
+        });
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('▶ 3D Live Engine: Свободен тест в 60 FPS свят!')),
+      );
+    } else {
+      _gameLoop3DTimer?.cancel();
+      FilamentEngine().clear3DWorld();
+    }
+  }
+
+  void _movePlayer3D(double dx, double dz) {
+    if (_isPlayMode) {
+      setState(() {
+        _player3dX = (_player3dX + dx).clamp(-850.0, 850.0);
+        _player3dZ = (_player3dZ + dz).clamp(-850.0, 850.0);
+      });
+    }
+  }
+
+  void _executeAiCommand(String prompt) {
+    if (prompt.trim().isEmpty) return;
+    final res = _commandBus.executeAiPrompt(prompt);
+    _aiPromptController.clear();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_isPlayMode ? '▶ Godot 4: Стартиран Play Mode в енджина!' : '⏹ Godot 4: Спрян Play Mode.'),
-      ),
+      SnackBar(content: Text(res.message)),
     );
   }
 
@@ -65,249 +99,340 @@ class _Studio3DViewState extends State<Studio3DView> {
 
     return Stack(
       children: [
-        // 1. ИСТИНСКИЯТ GODOT 4 ЕНДЖИН (NATIVE VIEWPORT)
-        const Positioned.fill(
-          child: GodotNativeView(),
+        // 1. БЕЗКРАЕН 3D PBR VIEWPORT (95% от екрана)
+        Positioned.fill(
+          child: GestureDetector(
+            onScaleUpdate: (details) {
+              if (_isPlayMode) return;
+              setState(() {
+                if (details.scale != 1.0) {
+                  _camZoom = (_camZoom * details.scale).clamp(0.25, 3.5);
+                } else {
+                  _camYaw += details.focalPointDelta.dx * 0.008;
+                  _camPitch = (_camPitch - details.focalPointDelta.dy * 0.008).clamp(0.05, 1.48);
+                }
+              });
+            },
+            onTapDown: (details) {
+              if (_isPlayMode) return;
+              // Интелигентна селекция на обекти в 3D
+              if (liveNodes.isNotEmpty) {
+                setState(() {
+                  _selectedNodeId = liveNodes.first['id'];
+                  _showNodeInspector = true;
+                });
+              }
+            },
+            child: CustomPaint(
+              size: Size.infinite,
+              painter: Studio3DEnginePainter(
+                yaw: _camYaw,
+                pitch: _camPitch,
+                zoom: _camZoom,
+                objects: liveNodes,
+                selectedNodeId: _selectedNodeId,
+                isPlayMode: _isPlayMode,
+                playerPos3D: Offset(_player3dX, _player3dZ),
+              ),
+            ),
+          ),
         ),
 
-        // Ако GodotNativeView зарежда, показваме лек тъмен филтър
+        // 2. ГОРИСТАТУС И LIVE TEST БУТОН
+        Positioned(
+          top: 8,
+          left: 10,
+          right: 10,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Тънък статус бейдж от бъдещето
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xCC101424),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF222A40)),
+                ),
+                child: Row(
+                  children: [
+                    Container(width: 7, height: 7, decoration: const BoxDecoration(color: Color(0xFF00E676), shape: BoxShape.circle)),
+                    const SizedBox(width: 6),
+                    Text('60 FPS • Vulkan PBR • ${liveNodes.length} обекта', style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+
+              // Live Playtest бутон
+              GestureDetector(
+                onTap: _togglePlayMode,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: _isPlayMode
+                          ? [const Color(0xFFFF1744), const Color(0xFFFF5252)]
+                          : [AppTheme.laserPink, AppTheme.sciFiCyan],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(color: (_isPlayMode ? Colors.red : AppTheme.laserPink).withValues(alpha: 0.4), blurRadius: 10),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(_isPlayMode ? Icons.stop : Icons.play_arrow, size: 14, color: Colors.black),
+                      const SizedBox(width: 4),
+                      Text(
+                        _isPlayMode ? 'STOP' : 'TEST LIVE',
+                        style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // 3. ПЛАВАЩ СМАРТ ДОК ЗА ТЪЧ УПРАВЛЕНИЕ (ОТЛЯВО)
         if (!_isPlayMode)
-          Positioned.fill(
+          Positioned(
+            left: 10,
+            top: 60,
             child: Container(
-              color: Colors.black.withValues(alpha: 0.1),
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: const Color(0xCC141828),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: const Color(0xFF242C44)),
+              ),
+              child: Column(
+                children: [
+                  _buildSmartToolBtn(Icons.threed_rotation, 'orbit', '360°'),
+                  const SizedBox(height: 6),
+                  _buildSmartToolBtn(Icons.touch_app, 'select', 'Select'),
+                  const SizedBox(height: 6),
+                  _buildSmartToolBtn(Icons.open_with, 'gizmo', 'Gizmo'),
+                  const SizedBox(height: 6),
+                  _buildSmartToolBtn(Icons.layers, 'inspector', 'Nodes', onTapCustom: () {
+                    setState(() => _showNodeInspector = !_showNodeInspector);
+                  }),
+                ],
+              ),
             ),
           ),
 
-        // 2. GODOT 4 TOP BAR
-        Positioned(
-          top: 6,
-          left: 6,
-          right: 6,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-            decoration: BoxDecoration(
-              color: const Color(0xEE1E2230),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFF2E344A)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: Icon(Icons.folder_open, color: _showLeftFileSystem ? AppTheme.sciFiCyan : Colors.grey, size: 20),
-                  tooltip: 'res:// FileSystem',
-                  onPressed: () => setState(() => _showLeftFileSystem = !_showLeftFileSystem),
-                ),
-                const SizedBox(width: 8),
-
-                Row(
-                  children: [
-                    _buildToolIcon(Icons.threed_rotation, 'orbit', 'Orbit'),
-                    _buildToolIcon(Icons.open_with, 'move', 'Move'),
-                    _buildToolIcon(Icons.aspect_ratio, 'scale', 'Scale'),
-                  ],
-                ),
-
-                const Spacer(),
-
-                GestureDetector(
-                  onTap: _togglePlayMode,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: _isPlayMode ? const Color(0xFFFF1744) : const Color(0xFF00E676),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(_isPlayMode ? Icons.stop : Icons.play_arrow, size: 14, color: Colors.black),
-                        const SizedBox(width: 4),
-                        Text(
-                          _isPlayMode ? 'STOP' : 'PLAY 3D',
-                          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 10),
-                        ),
-                      ],
+        // 4. ИНСПЕКТОР НА СВОЙСТВАТА НА ИЗБРАНИЯ ОБЕКТ (КАРТА В ЪГЪЛА)
+        if (_showNodeInspector && selectedNode != null && selectedNode.isNotEmpty && !_isPlayMode)
+          Positioned(
+            right: 10,
+            top: 60,
+            width: 175,
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xEE121626),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: (selectedNode['color'] as Color? ?? AppTheme.laserPink).withValues(alpha: 0.6)),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 10),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(selectedNode['name'] ?? 'Node', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11), overflow: TextOverflow.ellipsis),
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() => _showNodeInspector = false),
+                        child: const Icon(Icons.close, size: 14, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Colors.white12, height: 10),
+                  _buildCompactProp('X:', (selectedNode['x'] as num).toInt().toString()),
+                  _buildCompactProp('Y:', (selectedNode['y'] as num).toInt().toString()),
+                  _buildCompactProp('Z:', (selectedNode['z'] as num).toInt().toString()),
+                  _buildCompactProp('Size:', (selectedNode['size'] as num).toInt().toString()),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildQuickAdjustBtn('+X', () => setState(() => selectedNode['x'] = (selectedNode['x'] as num).toDouble() + 15.0)),
+                      _buildQuickAdjustBtn('+Y', () => setState(() => selectedNode['y'] = (selectedNode['y'] as num).toDouble() - 15.0)),
+                      _buildQuickAdjustBtn('+Z', () => setState(() => selectedNode['z'] = (selectedNode['z'] as num).toDouble() + 15.0)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 24,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, padding: EdgeInsets.zero),
+                      onPressed: () {
+                        setState(() {
+                          liveNodes.removeWhere((n) => n['id'] == selectedNode['id']);
+                          _selectedNodeId = null;
+                          _showNodeInspector = false;
+                        });
+                      },
+                      child: const Text('ИЗТРИЙ ВЪЗЕЛ', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
+                ],
+              ),
+            ),
+          ),
 
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: Icon(Icons.tune, color: _showRightInspector ? AppTheme.laserPink : Colors.grey, size: 20),
-                  tooltip: 'Inspector & Scene',
-                  onPressed: () => setState(() => _showRightInspector = !_showRightInspector),
+        // 5. 🪄 ПЛАВАЩА AI COPILOT ЛЕНТА ОТДОЛУ (ВСИЧКО СЕ СТРОИ ОТ ТУК)
+        if (!_isPlayMode)
+          Positioned(
+            left: 10,
+            right: 10,
+            bottom: 12,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Бързи бутони за моментални светове
+                SizedBox(
+                  height: 28,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      _buildAiPromptChip('🏙️ Cyberpunk Град', 'построй cyberpunk град с небостъргачи'),
+                      _buildAiPromptChip('🌋 Лава Паркур', 'построй лава свят с платформи'),
+                      _buildAiPromptChip('➕ Добави 3D Блок', 'добави нов блок в центъра'),
+                      _buildAiPromptChip('🧹 Изчисти Сцената', 'изтрий всичко от сцената'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+
+                // Стъклено поле за писане на AI команди
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xEE161A2C),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: AppTheme.sciFiCyan.withValues(alpha: 0.5)),
+                    boxShadow: [
+                      BoxShadow(color: AppTheme.sciFiCyan.withValues(alpha: 0.15), blurRadius: 10),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.auto_awesome, color: AppTheme.sciFiCyan, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _aiPromptController,
+                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                          decoration: const InputDecoration(
+                            hintText: 'AI Copilot: Напиши "построй град", "премести", "добави"...',
+                            hintStyle: TextStyle(color: Colors.grey, fontSize: 11),
+                            border: InputBorder.none,
+                          ),
+                          onSubmitted: (val) => _executeAiCommand(val),
+                        ),
+                      ),
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: const Icon(Icons.arrow_upward_rounded, color: AppTheme.laserPink, size: 22),
+                        onPressed: () => _executeAiCommand(_aiPromptController.text),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-        ),
 
-        // 3. 📁 ЛЯВ ПАНЕЛ: GODOT 4 FILESYSTEM DOCK (res://)
-        if (_showLeftFileSystem && !_isPlayMode)
+        // 6. ТЪЧ КОНТРОЛИ В СВОБОДЕН PLAY MODE
+        if (_isPlayMode)
           Positioned(
-            left: 6,
-            top: 48,
-            bottom: 60,
-            width: 170,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xF2181C28),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF2E344A)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [
-                      Text('📁 res://', style: TextStyle(color: AppTheme.sciFiCyan, fontWeight: FontWeight.bold, fontSize: 12)),
-                      Icon(Icons.create_new_folder, size: 14, color: Colors.grey),
-                    ],
+            left: 20,
+            right: 20,
+            bottom: 24,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    _buildPlayTouchBtn(Icons.arrow_back, () => _movePlayer3D(-25.0, 0)),
+                    const SizedBox(width: 8),
+                    _buildPlayTouchBtn(Icons.arrow_forward, () => _movePlayer3D(25.0, 0)),
+                    const SizedBox(width: 8),
+                    _buildPlayTouchBtn(Icons.arrow_upward, () => _movePlayer3D(0, -25.0)),
+                    const SizedBox(width: 8),
+                    _buildPlayTouchBtn(Icons.arrow_downward, () => _movePlayer3D(0, 25.0)),
+                  ],
+                ),
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(colors: [AppTheme.laserPink, AppTheme.sciFiCyan]),
+                    boxShadow: [BoxShadow(color: AppTheme.laserPink.withValues(alpha: 0.6), blurRadius: 15)],
                   ),
-                  const Divider(color: Colors.white12, height: 10),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: _projectFiles.length,
-                      itemBuilder: (context, index) {
-                        final folder = _projectFiles[index];
-                        final items = folder['items'] as List<String>;
-                        return Theme(
-                          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                          child: ExpansionTile(
-                            tilePadding: EdgeInsets.zero,
-                            dense: true,
-                            leading: const Icon(Icons.folder, size: 14, color: Color(0xFFFFD600)),
-                            title: Text(folder['name'], style: const TextStyle(color: Colors.white70, fontSize: 11)),
-                            children: items.map((file) => Padding(
-                              padding: const EdgeInsets.only(left: 18.0, bottom: 4.0),
-                              child: Row(
-                                children: [
-                                  Icon(file.endsWith('.tscn') ? Icons.grid_view : Icons.insert_drive_file, size: 12, color: Colors.grey),
-                                  const SizedBox(width: 4),
-                                  Text(file, style: const TextStyle(color: Colors.white60, fontSize: 9)),
-                                ],
-                              ),
-                            )).toList(),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-        // 4. 🌲 & 🔍 ДЕСЕН ПАНЕЛ: GODOT 4 SCENE TREE + INSPECTOR
-        if (_showRightInspector && !_isPlayMode)
-          Positioned(
-            right: 6,
-            top: 48,
-            bottom: 60,
-            width: 190,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xF2181C28),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF2E344A)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('🌲 3D Scene Tree', style: TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 11)),
-                  const SizedBox(height: 4),
-                  SizedBox(
-                    height: 120,
-                    child: ListView.builder(
-                      itemCount: liveNodes.length,
-                      itemBuilder: (context, index) {
-                        final node = liveNodes[index];
-                        final isSel = node['id'] == _selectedNodeId;
-                        return GestureDetector(
-                          onTap: () => setState(() => _selectedNodeId = node['id']),
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(vertical: 2),
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: isSel ? AppTheme.laserPink.withValues(alpha: 0.3) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.view_in_ar, size: 12, color: node['color'] as Color? ?? Colors.white),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(node['name'] ?? 'Node', style: TextStyle(color: isSel ? Colors.white : Colors.white70, fontSize: 9, fontWeight: isSel ? FontWeight.bold : FontWeight.normal), overflow: TextOverflow.ellipsis),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const Divider(color: Colors.white12, height: 10),
-
-                  const Text('🔍 Property Inspector', style: TextStyle(color: AppTheme.laserPink, fontWeight: FontWeight.bold, fontSize: 11)),
-                  const SizedBox(height: 4),
-                  if (selectedNode != null && selectedNode.isNotEmpty)
-                    Expanded(
-                      child: ListView(
-                        children: [
-                          Text(selectedNode['name'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
-                          _buildPropRow('X:', (selectedNode['x'] as num).toInt().toString()),
-                          _buildPropRow('Y:', (selectedNode['y'] as num).toInt().toString()),
-                          _buildPropRow('Z:', (selectedNode['z'] as num).toInt().toString()),
-                          _buildPropRow('Size:', (selectedNode['size'] as num).toInt().toString()),
-                        ],
-                      ),
-                    )
-                  else
-                    const Expanded(
-                      child: Center(
-                        child: Text('Избери 3D обект от сцената', style: TextStyle(color: Colors.grey, fontSize: 9), textAlign: TextAlign.center),
-                      ),
-                    ),
-                ],
-              ),
+                  child: const Center(child: Text('СКОК 🚀', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold))),
+                ),
+              ],
             ),
           ),
       ],
     );
   }
 
-  Widget _buildToolIcon(IconData icon, String tool, String label) {
+  Widget _buildSmartToolBtn(IconData icon, String tool, String label, {VoidCallback? onTapCustom}) {
     bool isSel = _selectedTool == tool;
     return GestureDetector(
-      onTap: () => setState(() => _selectedTool = tool),
+      onTap: () {
+        if (onTapCustom != null) {
+          onTapCustom();
+        } else {
+          setState(() => _selectedTool = tool);
+        }
+      },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-        margin: const EdgeInsets.only(right: 3),
+        width: 38,
+        height: 38,
         decoration: BoxDecoration(
           color: isSel ? AppTheme.sciFiCyan.withValues(alpha: 0.25) : Colors.transparent,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(19),
           border: isSel ? Border.all(color: AppTheme.sciFiCyan) : null,
         ),
-        child: Row(
-          children: [
-            Icon(icon, size: 12, color: isSel ? AppTheme.sciFiCyan : Colors.grey),
-            const SizedBox(width: 3),
-            Text(label, style: TextStyle(color: isSel ? Colors.white : Colors.grey, fontSize: 8, fontWeight: FontWeight.bold)),
-          ],
+        child: Icon(icon, size: 18, color: isSel ? AppTheme.sciFiCyan : Colors.white70),
+      ),
+    );
+  }
+
+  Widget _buildAiPromptChip(String label, String prompt) {
+    return GestureDetector(
+      onTap: () => _executeAiCommand(prompt),
+      child: Container(
+        margin: const EdgeInsets.only(right: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xCC1A1F30),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.laserPink.withValues(alpha: 0.4)),
+        ),
+        child: Center(
+          child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
         ),
       ),
     );
   }
 
-  Widget _buildPropRow(String label, String value) {
+  Widget _buildCompactProp(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1.0),
       child: Row(
@@ -316,6 +441,33 @@ class _Studio3DViewState extends State<Studio3DView> {
           Text(label, style: const TextStyle(color: Colors.grey, fontSize: 9)),
           Text(value, style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 9, fontWeight: FontWeight.bold)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildQuickAdjustBtn(String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(color: const Color(0xFF242C44), borderRadius: BorderRadius.circular(4)),
+        child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  Widget _buildPlayTouchBtn(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: const Color(0xDD181B28),
+          shape: BoxShape.circle,
+          border: Border.all(color: AppTheme.sciFiCyan, width: 1.2),
+        ),
+        child: Icon(icon, color: AppTheme.sciFiCyan, size: 20),
       ),
     );
   }
