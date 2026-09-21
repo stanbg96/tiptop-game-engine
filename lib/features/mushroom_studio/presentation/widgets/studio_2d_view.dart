@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:tiptop_game_engine/core/theme/app_theme.dart';
 import 'package:tiptop_game_engine/engine_bridge/godot_view.dart';
@@ -15,36 +16,140 @@ class _Studio2DViewState extends State<Studio2DView> {
   int _selectedLayer = 0;
   String? _selectedNodeId;
 
-  // Панели (Godot Docks)
+  // Godot Docks (Панели)
   bool _showLeftFileSystem = false;
   bool _showRightInspector = false;
 
   // 2D Play Mode
-  bool _isPlayMode = false;
+  bool _isSimulating = false;
+  int _score = 0;
+  int _playerHp = 3;
+  bool _isLevelComplete = false;
 
-  // Godot FileSystem Структура (res://)
-  final List<Map<String, dynamic>> _projectFiles = [
-    {'name': 'scenes', 'type': 'folder', 'items': ['level_1.tscn', 'boss_arena.tscn']},
-    {'name': 'sprites', 'type': 'folder', 'items': ['player_sheet.png', 'tileset.png']},
-    {'name': 'scripts', 'type': 'folder', 'items': ['player_2d.gd', 'enemy_ai.gd']},
-    {'name': 'audio', 'type': 'folder', 'items': ['jump.wav', 'coin.wav']},
+  double _playerX = 36.0;
+  double _playerY = 72.0;
+  double _velX = 0.0;
+  double _velY = 0.0;
+  bool _isGrounded = false;
+
+  final List<Map<String, dynamic>> _scene2DNodes = [
+    {'id': 'player', 'name': 'CharacterBody2D (Player)', 'type': 'player', 'x': 1, 'y': 2, 'hp': 3, 'speed': 4.5, 'jumpForce': 12.5},
+    {'id': 'tile_0', 'name': 'TileMapLayer (Grass 0)', 'type': 'grass', 'x': 0, 'y': 5, 'isSolid': true},
+    {'id': 'tile_1', 'name': 'TileMapLayer (Grass 1)', 'type': 'grass', 'x': 1, 'y': 5, 'isSolid': true},
+    {'id': 'tile_2', 'name': 'TileMapLayer (Grass 2)', 'type': 'grass', 'x': 2, 'y': 5, 'isSolid': true},
+    {'id': 'tile_3', 'name': 'TileMapLayer (Grass 3)', 'type': 'grass', 'x': 3, 'y': 5, 'isSolid': true},
+    {'id': 'tile_4', 'name': 'TileMapLayer (Grass 4)', 'type': 'grass', 'x': 4, 'y': 5, 'isSolid': true},
+    {'id': 'coin_1', 'name': 'Area2D (Coin)', 'type': 'coin', 'x': 3, 'y': 2, 'points': 100, 'collected': false},
+    {'id': 'enemy_1', 'name': 'CharacterBody2D (Enemy)', 'type': 'enemy', 'x': 5, 'y': 4, 'curX': 5.0, 'dir': 1, 'minX': 3, 'maxX': 7},
+    {'id': 'portal_1', 'name': 'Area2D (Win Goal)', 'type': 'portal', 'x': 8, 'y': 4},
   ];
 
-  void _togglePlayMode() {
-    setState(() => _isPlayMode = !_isPlayMode);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_isPlayMode ? '▶ Godot 4: Стартиран 2D Play Mode!' : '⏹ Godot 4: Спрян 2D Play Mode.'),
-      ),
-    );
+  final List<Map<String, dynamic>> _projectFiles = [
+    {'name': 'scenes', 'type': 'folder', 'items': ['world_2d.tscn', 'dungeon.tscn']},
+    {'name': 'tilesets', 'type': 'folder', 'items': ['terrain_set.tres', 'hazards.tres']},
+    {'name': 'scripts', 'type': 'folder', 'items': ['player_controller.gd', 'enemy_patrol.gd']},
+    {'name': 'audio', 'type': 'folder', 'items': ['bgm_cyber.ogg', 'sfx_jump.wav']},
+  ];
+
+  Timer? _gameLoopTimer;
+
+  void _toggleSimulation() {
+    setState(() => _isSimulating = !_isSimulating);
+    if (_isSimulating) {
+      _startSimulation();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('▶ Godot 4 2D Play Mode: Старт на физиката!')));
+    } else {
+      _gameLoopTimer?.cancel();
+    }
+  }
+
+  void _startSimulation() {
+    _gameLoopTimer?.cancel();
+    _playerX = 36.0;
+    _playerY = 72.0;
+    _velX = 0.0;
+    _velY = 0.0;
+    _score = 0;
+    _playerHp = 3;
+    _isLevelComplete = false;
+
+    for (var el in _scene2DNodes) {
+      if (el['type'] == 'coin') el['collected'] = false;
+      if (el['type'] == 'enemy') el['curX'] = (el['x'] as num).toDouble();
+    }
+
+    _gameLoopTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
+      if (!_isSimulating) return;
+      setState(() {
+        const double tileSize = 36.0;
+        const double gravity = 0.85;
+        const double friction = 0.78;
+
+        _velY += gravity;
+        _velX *= friction;
+
+        double nextX = _playerX + _velX;
+        double nextY = _playerY + _velY;
+        _isGrounded = false;
+
+        Rect playerBox = Rect.fromCenter(center: Offset(nextX, nextY), width: 22, height: 26);
+
+        for (var el in _scene2DNodes) {
+          String type = el['type'];
+          double tx = ((el['x'] as num).toDouble() * tileSize) + (tileSize / 2.0);
+          double ty = ((el['y'] as num).toDouble() * tileSize) + 40.0 + (tileSize / 2.0);
+          Rect tileBox = Rect.fromCenter(center: Offset(tx, ty), width: tileSize, height: tileSize);
+
+          if (el['isSolid'] == true || type == 'grass' || type == 'dirt' || type == 'platform') {
+            if (playerBox.overlaps(tileBox)) {
+              if (_velY > 0 && _playerY + 12 <= tileBox.top + 8) {
+                nextY = tileBox.top - 13;
+                _velY = 0;
+                _isGrounded = true;
+              }
+            }
+          }
+
+          if (type == 'coin' && el['collected'] != true) {
+            if (playerBox.overlaps(tileBox)) {
+              el['collected'] = true;
+              _score += 100;
+            }
+          }
+
+          if (type == 'portal' && playerBox.overlaps(tileBox)) {
+            _isLevelComplete = true;
+          }
+        }
+
+        _playerX = nextX.clamp(14.0, 360.0);
+        _playerY = nextY.clamp(20.0, 480.0);
+      });
+    });
+  }
+
+  void _movePlayer(double dir) {
+    if (_isSimulating) {
+      setState(() {
+        _velX = dir * 4.5;
+      });
+    }
+  }
+
+  void _jumpPlayer() {
+    if (_isSimulating && _isGrounded) {
+      setState(() {
+        _velY = -12.5;
+        _isGrounded = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // В реално време бихме взели възлите от енджина. Тук симулираме UI-а за Инспектора:
     final List<Map<String, dynamic>> mock2DNodes = [
-      {'id': 'player_2d', 'name': 'CharacterBody2D (Player)', 'type': 'player', 'x': 36, 'y': 72, 'speed': 4.5},
-      {'id': 'tilemap', 'name': 'TileMapLayer (Ground)', 'type': 'tilemap', 'x': 0, 'y': 0},
+      {'id': 'player_2d', 'name': 'CharacterBody2D (Player)', 'type': 'player', 'x': 36, 'y': 72, 'speed': 4.5, 'layer': _selectedLayer},
+      {'id': 'tilemap', 'name': 'TileMapLayer ($_selectedTile)', 'type': 'tilemap', 'x': 0, 'y': 0, 'layer': _selectedLayer},
       {'id': 'enemy_1', 'name': 'CharacterBody2D (Enemy)', 'type': 'enemy', 'x': 180, 'y': 72, 'speed': 2.0},
     ];
 
@@ -59,13 +164,12 @@ class _Studio2DViewState extends State<Studio2DView> {
           child: GodotNativeView(),
         ),
 
-        // Тъмен филтър докато зарежда или в Edit Mode (за да се чете UI-а по-лесно)
-        if (!_isPlayMode)
+        if (!_isSimulating)
           Positioned.fill(
             child: Container(color: Colors.black.withValues(alpha: 0.15)),
           ),
 
-        // 2. GODOT 4 TOP CONTROL BAR
+        // 2. GODOT 4 TOP BAR
         Positioned(
           top: 6,
           left: 6,
@@ -91,7 +195,7 @@ class _Studio2DViewState extends State<Studio2DView> {
 
                 Row(
                   children: [
-                    _buildModeBtn(Icons.edit, 'pencil', 'Draw'),
+                    _buildModeBtn(Icons.edit, 'pencil', 'Draw: $_selectedTile'),
                     _buildModeBtn(Icons.near_me, 'select', 'Select'),
                     _buildModeBtn(Icons.cleaning_services, 'erase', 'Erase'),
                   ],
@@ -100,19 +204,19 @@ class _Studio2DViewState extends State<Studio2DView> {
                 const Spacer(),
 
                 GestureDetector(
-                  onTap: _togglePlayMode,
+                  onTap: _toggleSimulation,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: _isPlayMode ? const Color(0xFFFF1744) : const Color(0xFF00E676),
+                      color: _isSimulating ? const Color(0xFFFF1744) : const Color(0xFF00E676),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Row(
                       children: [
-                        Icon(_isPlayMode ? Icons.stop : Icons.play_arrow, size: 14, color: Colors.black),
+                        Icon(_isSimulating ? Icons.stop : Icons.play_arrow, size: 14, color: Colors.black),
                         const SizedBox(width: 4),
                         Text(
-                          _isPlayMode ? 'STOP' : 'PLAY 2D',
+                          _isSimulating ? 'STOP' : 'PLAY 2D',
                           style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 10),
                         ),
                       ],
@@ -134,7 +238,7 @@ class _Studio2DViewState extends State<Studio2DView> {
         ),
 
         // 3. 📁 ЛЯВ ПАНЕЛ: GODOT 4 FILESYSTEM DOCK (res://)
-        if (_showLeftFileSystem && !_isPlayMode)
+        if (_showLeftFileSystem && !_isSimulating)
           Positioned(
             left: 6,
             top: 48,
@@ -175,7 +279,7 @@ class _Studio2DViewState extends State<Studio2DView> {
                               padding: const EdgeInsets.only(left: 18.0, bottom: 4.0),
                               child: Row(
                                 children: [
-                                  Icon(file.endsWith('.tscn') ? Icons.grid_view : (file.endsWith('.png') ? Icons.image : Icons.insert_drive_file), size: 12, color: Colors.grey),
+                                  Icon(file.endsWith('.tscn') ? Icons.grid_view : Icons.insert_drive_file, size: 12, color: Colors.grey),
                                   const SizedBox(width: 4),
                                   Text(file, style: const TextStyle(color: Colors.white60, fontSize: 9)),
                                 ],
@@ -192,7 +296,7 @@ class _Studio2DViewState extends State<Studio2DView> {
           ),
 
         // 4. 🌲 ДЕСЕН ПАНЕЛ: SCENE TREE + INSPECTOR
-        if (_showRightInspector && !_isPlayMode)
+        if (_showRightInspector && !_isSimulating)
           Positioned(
             right: 6,
             top: 48,
@@ -228,7 +332,7 @@ class _Studio2DViewState extends State<Studio2DView> {
                             ),
                             child: Row(
                               children: [
-                                Icon(node['type'] == 'tilemap' ? Icons.grid_on : Icons.sports_esports, size: 12, color: isSel ? Colors.white : Colors.white70),
+                                const Icon(Icons.grid_on, size: 12, color: Colors.white70),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(node['name'], style: TextStyle(color: isSel ? Colors.white : Colors.white70, fontSize: 9, fontWeight: isSel ? FontWeight.bold : FontWeight.normal), overflow: TextOverflow.ellipsis),
@@ -250,8 +354,8 @@ class _Studio2DViewState extends State<Studio2DView> {
                         children: [
                           Text(selectedNode['name'], style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 4),
-                          _buildPropRow('Position X:', selectedNode['x'].toString()),
-                          _buildPropRow('Position Y:', selectedNode['y'].toString()),
+                          _buildPropRow('Active Layer:', 'Layer $_selectedLayer'),
+                          _buildPropRow('Selected Tile:', _selectedTile),
                           if (selectedNode['speed'] != null)
                             _buildPropRow('Speed:', selectedNode['speed'].toString()),
                           const SizedBox(height: 12),
@@ -272,7 +376,7 @@ class _Studio2DViewState extends State<Studio2DView> {
                   else
                     const Expanded(
                       child: Center(
-                        child: Text('Избери 2D обект от сцената', style: TextStyle(color: Colors.grey, fontSize: 9), textAlign: TextAlign.center),
+                        child: Text('Избери възел за инспекция', style: TextStyle(color: Colors.grey, fontSize: 9), textAlign: TextAlign.center),
                       ),
                     ),
                 ],
@@ -281,7 +385,7 @@ class _Studio2DViewState extends State<Studio2DView> {
           ),
 
         // 5. ДОЛЕН ПАНЕЛ: TILEMAP PALETTE (Само в Edit Mode)
-        if (!_isPlayMode)
+        if (!_isSimulating)
           Positioned(
             bottom: 0,
             left: 0,
@@ -314,6 +418,72 @@ class _Studio2DViewState extends State<Studio2DView> {
               ),
             ),
           ),
+
+        // 6. ПОБЕДЕН ЕКРАН ПРИ ЗАВЪРШВАНЕ НА НИВОТО
+        if (_isLevelComplete)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black87,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('🎉 НИВОТО Е ЗАВЪРШЕНО!', style: TextStyle(color: Color(0xFF00E676), fontSize: 20, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.laserPink),
+                      onPressed: () => setState(() => _isLevelComplete = false),
+                      child: const Text('ПРОДЪЛЖИ', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+        // 7. HUD И ТЪЧ КОНТРОЛИ В PLAY MODE
+        if (_isSimulating) ...[
+          Positioned(
+            top: 50,
+            left: 14,
+            right: 14,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(children: List.generate(3, (i) => Icon(i < _playerHp ? Icons.favorite : Icons.favorite_border, color: const Color(0xFFFF1744), size: 22))),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFFFD600))),
+                  child: Text('🪙 Точки: $_score', style: const TextStyle(color: Color(0xFFFFD600), fontWeight: FontWeight.bold, fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 24,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(children: [
+                  _buildTouchBtn(Icons.arrow_back, () => _movePlayer(-1)),
+                  const SizedBox(width: 12),
+                  _buildTouchBtn(Icons.arrow_forward, () => _movePlayer(1)),
+                ]),
+                GestureDetector(
+                  onTap: _jumpPlayer,
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(shape: BoxShape.circle, gradient: const LinearGradient(colors: [Color(0xFF00E676), Color(0xFF00E5FF)]), boxShadow: [BoxShadow(color: const Color(0xFF00E676).withValues(alpha: 0.6), blurRadius: 16)]),
+                    child: const Center(child: Text('СКОК 🚀', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold))),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -385,6 +555,18 @@ class _Studio2DViewState extends State<Studio2DView> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(color: isSel ? c.withValues(alpha: 0.25) : const Color(0xFF181B28), borderRadius: BorderRadius.circular(8), border: Border.all(color: isSel ? c : Colors.white12)),
         child: Center(child: Text(label, style: TextStyle(color: isSel ? Colors.white : Colors.grey, fontSize: 10, fontWeight: FontWeight.bold))),
+      ),
+    );
+  }
+
+  Widget _buildTouchBtn(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(color: const Color(0xDD181B28), shape: BoxShape.circle, border: Border.all(color: const Color(0xFF00E676), width: 1.5)),
+        child: Icon(icon, color: const Color(0xFF00E676), size: 24),
       ),
     );
   }
