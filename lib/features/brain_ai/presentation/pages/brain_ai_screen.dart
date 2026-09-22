@@ -43,39 +43,32 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     ),
   ];
 
-  String _selectedProvider = '⚡ АВТОМАТИЧЕН (Free Auto-Router)';
-  String _selectedModel = '⚡ АВТОМАТИЧЕН БЕЗПЛАТЕН (100% Онлайн)';
-  final TextEditingController _apiKeyController = TextEditingController();
-  String _statusMessage = '🟢 Автоматичен режим: 6 резервни модела са онлайн.';
-  bool _isSuccess = true;
-
-  List<String> _providers = [
-    '⚡ АВТОМАТИЧЕН (Free Auto-Router)',
-    '🌐 OpenRouter (Всички 250+ Модела)',
-    '⚡ Groq (Ултра Бърз / Free)',
-    '🔮 Google Gemini',
-    '🤖 DeepSeek',
-    '🟢 OpenAI',
-    '🧠 Anthropic Claude',
-    '🦙 Meta LLaMA',
-    '🌪️ Mistral AI',
-    '🐉 Qwen & Alibaba',
-  ];
-
-  late List<String> _models;
+  // ==========================================
+  // КОНТРОЛЕРИ ЗА API КЛЮЧОВЕТЕ (API VAULT)
+  // ==========================================
+  final TextEditingController _openRouterKeyCtrl = TextEditingController();
+  final TextEditingController _hfKey1Ctrl = TextEditingController();
+  final TextEditingController _hfKey2Ctrl = TextEditingController();
+  final TextEditingController _hfKey3Ctrl = TextEditingController();
+  final TextEditingController _sketchfabKeyCtrl = TextEditingController();
+  final TextEditingController _freeSoundKeyCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _models = _aiService.getModelsForProvider(_selectedProvider);
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     _chatController.dispose();
-    _apiKeyController.dispose();
+    _openRouterKeyCtrl.dispose();
+    _hfKey1Ctrl.dispose();
+    _hfKey2Ctrl.dispose();
+    _hfKey3Ctrl.dispose();
+    _sketchfabKeyCtrl.dispose();
+    _freeSoundKeyCtrl.dispose();
     super.dispose();
   }
 
@@ -90,24 +83,15 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     });
 
     if (_isBuilderMode) {
-      // ⚡ ИЗПЪЛНЕНИЕ НА КОМАНДА НА ЖИВО В ЕНДЖИНА
       final cmdResult = _commandBus.executeAiPrompt(text);
       String aiResponse = await _aiService.sendPrompt(text, isBuilderMode: true);
 
       setState(() {
         _isLoading = false;
-        _messages.add(ChatMessage(
-          text: aiResponse,
-          type: MessageType.assistant,
-        ));
-        _messages.add(ChatMessage(
-          text: cmdResult.message,
-          type: MessageType.engineAction,
-          actionResult: cmdResult,
-        ));
+        _messages.add(ChatMessage(text: aiResponse, type: MessageType.assistant));
+        _messages.add(ChatMessage(text: cmdResult.message, type: MessageType.engineAction, actionResult: cmdResult));
       });
     } else {
-      // 💬 ОБИКНОВЕН ИНТЕЛИГЕНТЕН ЧАТ
       String response = await _aiService.sendPrompt(text, isBuilderMode: false);
       setState(() {
         _isLoading = false;
@@ -116,44 +100,13 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     }
   }
 
-  void _syncAllProvidersAndModels() async {
-    setState(() => _isLoading = true);
-    _aiService.configure(key: _apiKeyController.text, selectedProvider: _selectedProvider, selectedModel: _selectedModel);
-
-    final fullCatalog = await _aiService.fetchAllProvidersAndModels();
-
-    setState(() {
-      _providers = fullCatalog.keys.toList();
-      if (!_providers.contains(_selectedProvider)) {
-        _selectedProvider = _providers.first;
-      }
-      _models = _aiService.getModelsForProvider(_selectedProvider);
-      if (_models.isNotEmpty && !_models.contains(_selectedModel)) {
-        _selectedModel = _models.first;
-      }
-      _isLoading = false;
-    });
-
-    int totalModels = fullCatalog.values.fold(0, (sum, list) => sum + list.length);
-    if (!mounted) return;
+  void _saveAllApiKeys() {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('🎉 Успешно свалени $totalModels модела от ${_providers.length} доставчика!')),
+      const SnackBar(
+        backgroundColor: Color(0xFF00E676),
+        content: Text('✅ Всички API ключове са запазени успешно в трезора!', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+      ),
     );
-  }
-
-  void _testKey() async {
-    _aiService.configure(key: _apiKeyController.text, selectedProvider: _selectedProvider, selectedModel: _selectedModel);
-    setState(() {
-      _isLoading = true;
-      _statusMessage = 'Тестване на връзката...';
-    });
-
-    String result = await _aiService.testConnection();
-    setState(() {
-      _isLoading = false;
-      _statusMessage = result;
-      _isSuccess = result.contains('Успешна') || result.contains('🟢');
-    });
   }
 
   @override
@@ -168,7 +121,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
           icon: const Icon(Icons.arrow_back_ios_new, color: AppTheme.sciFiCyan, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('🧠 Brain AI Copilot (Live Engine)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16)),
+        title: const Text('🧠 Brain AI Copilot', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16)),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
@@ -178,7 +131,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
           unselectedLabelColor: Colors.grey,
           tabs: const [
             Tab(icon: Icon(Icons.smart_toy_outlined, size: 18), text: 'AI Строител'),
-            Tab(icon: Icon(Icons.vpn_key_outlined, size: 18), text: 'API Мениджър'),
+            Tab(icon: Icon(Icons.vpn_key_outlined, size: 18), text: 'API Трезор'),
           ],
         ),
       ),
@@ -186,16 +139,18 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
         controller: _tabController,
         children: [
           _buildChatAgentTab(),
-          _buildApiManagerTab(),
+          _buildApiVaultTab(),
         ],
       ),
     );
   }
 
+  // =========================================================================
+  // 1. ТАБ: AI ЧАТ СТРОИТЕЛ
+  // =========================================================================
   Widget _buildChatAgentTab() {
     return Column(
       children: [
-        // Превключвател ЧАТ / СТРОИТЕЛ
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           color: const Color(0xFF141622),
@@ -239,7 +194,6 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
 
         if (_isLoading) const LinearProgressIndicator(color: AppTheme.sciFiCyan, backgroundColor: Colors.black, minHeight: 2),
 
-        // Списък със съобщения
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -248,7 +202,6 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
           ),
         ),
 
-        // Бързи бутони за команди (Action Chips) в режим Строител
         if (_isBuilderMode)
           Container(
             height: 34,
@@ -259,13 +212,11 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
                 _buildActionChip('🏙️ Построй Град', 'построй cyberpunk град с небостъргачи'),
                 _buildActionChip('🌋 Лава Паркур', 'построй лава свят с платформи'),
                 _buildActionChip('➕ Добави 3D Блок', 'добави нов блок в центъра'),
-                _buildActionChip('🎯 Премести Играча', 'премести играча напред'),
                 _buildActionChip('🧹 Изчисти Сцената', 'изтрий всичко от сцената'),
               ],
             ),
           ),
 
-        // Поле за писане
         SafeArea(
           top: false,
           child: Padding(
@@ -307,29 +258,22 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
         margin: const EdgeInsets.only(right: 6),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1F2C),
+          color: const Color(0xCC1A1F30),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppTheme.sciFiCyan.withValues(alpha: 0.4)),
         ),
-        child: Center(
-          child: Text(label, style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 10, fontWeight: FontWeight.bold)),
-        ),
+        child: Center(child: Text(label, style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 10, fontWeight: FontWeight.bold))),
       ),
     );
   }
 
   Widget _buildMessageItem(ChatMessage msg) {
-    // ДЕЙСТВИЕ В ЕНДЖИНА НА ЖИВО (Live Engine Execution Card)
     if (msg.type == MessageType.engineAction && msg.actionResult != null) {
       final res = msg.actionResult!;
       return Container(
         margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0F221A),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF00E676)),
-        ),
+        decoration: BoxDecoration(color: const Color(0xFF0F221A), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF00E676))),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -337,29 +281,21 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
               children: [
                 const Icon(Icons.bolt, color: Color(0xFF00E676), size: 18),
                 const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    '⚡ ИЗПЪЛНЕНО НА ЖИВО В ЕНДЖИНА: ${res.actionType}',
-                    style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 11),
-                  ),
-                ),
+                Expanded(child: Text('⚡ ИЗПЪЛНЕНО НА ЖИВО В ЕНДЖИНА: ${res.actionType}', style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 11))),
               ],
             ),
             const SizedBox(height: 4),
             Text(res.message, style: const TextStyle(color: Colors.white, fontSize: 12)),
             const SizedBox(height: 10),
             SizedBox(
-              width: double.infinity,
-              height: 32,
+              width: double.infinity, height: 32,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00E676), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
                 icon: const Icon(Icons.view_in_ar, color: Colors.black, size: 16),
                 label: const Text('ВИЖ В 3D СТУДИОТО', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
                 onPressed: () {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('🍄 Отваряне на 3D Студиото с обновената сцена!')),
-                  );
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('🍄 Отваряне на 3D Студиото с обновената сцена!')));
                 },
               ),
             ),
@@ -374,11 +310,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 4),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [Color(0xFF5D1D86), Color(0xFF381552)]),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.laserPink.withValues(alpha: 0.4)),
-          ),
+          decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF5D1D86), Color(0xFF381552)]), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.laserPink.withValues(alpha: 0.4))),
           child: Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 13)),
         ),
       );
@@ -389,11 +321,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: const BoxDecoration(
-          color: Color(0xFF141724),
-          borderRadius: BorderRadius.all(Radius.circular(12)),
-          border: Border(left: BorderSide(color: AppTheme.sciFiCyan, width: 3)),
-        ),
+        decoration: const BoxDecoration(color: Color(0xFF141724), borderRadius: BorderRadius.all(Radius.circular(12)), border: Border(left: BorderSide(color: AppTheme.sciFiCyan, width: 3))),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -408,108 +336,108 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildApiManagerTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
+  // =========================================================================
+  // 2. ТАБ: API ТРЕЗОР (СКРОЛВАЩ СЕ СПИСЪК С КЛЮЧОВЕ)
+  // =========================================================================
+  Widget _buildApiVaultTab() {
+    return Stack(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
           children: [
-            const Text('ДОСТАВЧИЦИ & МОДЕЛИ (250+ LIVE)', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
-            IconButton(
-              icon: const Icon(Icons.refresh, color: AppTheme.sciFiCyan, size: 20),
-              tooltip: 'Свали всички доставчици и модели на живо',
-              onPressed: _syncAllProvidersAndModels,
-            ),
+            const Text('УПРАВЛЕНИЕ НА API КЛЮЧОВЕ', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            const Text('Въведи ключовете си тук. Те се пазят локално на телефона ти и отключват пълната мощ на енджина.', style: TextStyle(color: Colors.grey, fontSize: 11)),
+            const SizedBox(height: 20),
+
+            // --- СЕКЦИЯ 1: HUGGING FACE (3D ГЕНЕРАТОР) ---
+            _buildSectionHeader('🪄 3D Генератор (Hugging Face)', AppTheme.laserPink),
+            const SizedBox(height: 8),
+            const Text('Въведи до 3 безплатни ключа за ротация. Това заобикаля лимитите и ти дава 300+ безплатни 3D модела на ден!', style: TextStyle(color: Colors.white54, fontSize: 10)),
+            const SizedBox(height: 10),
+            _buildKeyInput('Hugging Face Key 1', _hfKey1Ctrl, Icons.key),
+            _buildKeyInput('Hugging Face Key 2', _hfKey2Ctrl, Icons.key),
+            _buildKeyInput('Hugging Face Key 3', _hfKey3Ctrl, Icons.key),
+            const SizedBox(height: 24),
+
+            // --- СЕКЦИЯ 2: AI МОЗЪК (OPENROUTER) ---
+            _buildSectionHeader('🧠 AI Мозък (OpenRouter / OpenAI)', AppTheme.sciFiCyan),
+            const SizedBox(height: 8),
+            const Text('Ключ за текстовия AI архитект, който разбира командите ти и пише кода за сцените.', style: TextStyle(color: Colors.white54, fontSize: 10)),
+            const SizedBox(height: 10),
+            _buildKeyInput('OpenRouter API Key', _openRouterKeyCtrl, Icons.psychology),
+            const SizedBox(height: 24),
+
+            // --- СЕКЦИЯ 3: ВЪНШНИ БИБЛИОТЕКИ ---
+            _buildSectionHeader('📚 Световни Библиотеки', const Color(0xFFFFD600)),
+            const SizedBox(height: 8),
+            const Text('Някои от 101-те библиотеки изискват безплатен ключ за достъп до техните API-та.', style: TextStyle(color: Colors.white54, fontSize: 10)),
+            const SizedBox(height: 10),
+            _buildKeyInput('Sketchfab API Key (За 500k+ 3D модела)', _sketchfabKeyCtrl, Icons.view_in_ar),
+            _buildKeyInput('FreeSound API Key (За 500k+ звуци)', _freeSoundKeyCtrl, Icons.music_note),
+            const SizedBox(height: 20),
           ],
         ),
-        const SizedBox(height: 4),
-        Container(
-          height: 42,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(color: const Color(0xFF181B28), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: _providers.contains(_selectedProvider) ? _selectedProvider : _providers.first,
-              isExpanded: true,
-              dropdownColor: const Color(0xFF181B28),
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-              items: _providers.map((p) => DropdownMenuItem(value: p, child: Text(p, overflow: TextOverflow.ellipsis))).toList(),
-              onChanged: (val) {
-                setState(() {
-                  _selectedProvider = val!;
-                  _models = _aiService.getModelsForProvider(_selectedProvider);
-                  if (_models.isNotEmpty) _selectedModel = _models.first;
-                });
-              },
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
 
-        Text('ИЗБЕРИ МОДЕЛ (${_models.length} НАЛИЧНИ)', style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 6),
-        Container(
-          height: 42,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(color: const Color(0xFF181B28), borderRadius: BorderRadius.circular(10), border: Border.all(color: AppTheme.sciFiCyan.withValues(alpha: 0.4))),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: _models.contains(_selectedModel) ? _selectedModel : (_models.isNotEmpty ? _models.first : null),
-              isExpanded: true,
-              menuMaxHeight: 380,
-              dropdownColor: const Color(0xFF181B28),
-              style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 12, fontWeight: FontWeight.bold),
-              items: _models.map((m) => DropdownMenuItem(value: m, child: Text(m, overflow: TextOverflow.ellipsis))).toList(),
-              onChanged: (val) => setState(() => _selectedModel = val!),
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-
-        const Text('API КЛЮЧ (По избор за платени модели)', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 6),
-        Container(
-          height: 42,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(color: const Color(0xFF181B28), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
-          child: TextField(
-            controller: _apiKeyController,
-            obscureText: true,
-            style: const TextStyle(color: Colors.white, fontSize: 13),
-            decoration: const InputDecoration(hintText: 'sk-or-v1-••••••••••••••••', hintStyle: TextStyle(color: Colors.grey, fontSize: 12), border: InputBorder.none),
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(side: const BorderSide(color: AppTheme.sciFiCyan), padding: const EdgeInsets.symmetric(vertical: 12)),
-                onPressed: _testKey,
-                child: const Text('ТЕСТВАЙ ВРЪЗКА', style: TextStyle(color: AppTheme.sciFiCyan, fontSize: 11, fontWeight: FontWeight.bold)),
+        // ПЛАВАЩ БУТОН "ENTER / ЗАПАЗИ" НАЙ-ДОЛУ
+        Positioned(
+          bottom: 16,
+          left: 16,
+          right: 16,
+          child: SizedBox(
+            height: 48,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [AppTheme.laserPink, AppTheme.sciFiCyan]),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [BoxShadow(color: AppTheme.laserPink.withValues(alpha: 0.4), blurRadius: 10)],
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
               child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.laserPink, padding: const EdgeInsets.symmetric(vertical: 12)),
-                icon: const Icon(Icons.sync, color: Colors.white, size: 16),
-                label: const Text('СВАЛИ ВСИЧКИ', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                onPressed: _syncAllProvidersAndModels,
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent),
+                icon: const Icon(Icons.save, color: Colors.white, size: 20),
+                label: const Text('ЗАПАЗИ ВСИЧКИ КЛЮЧОВЕ (ENTER)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                onPressed: _saveAllApiKeys,
               ),
             ),
-          ],
-        ),
-
-        const SizedBox(height: 14),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: _isSuccess ? const Color(0xFF0D2418) : const Color(0xFF281014), borderRadius: BorderRadius.circular(10)),
-          child: Text(_statusMessage, style: TextStyle(color: _isSuccess ? const Color(0xFF00E676) : Colors.redAccent, fontSize: 11, fontWeight: FontWeight.w600)),
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title, Color color) {
+    return Row(
+      children: [
+        Icon(Icons.circle, size: 10, color: color),
+        const SizedBox(width: 8),
+        Text(title, style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
+  Widget _buildKeyInput(String hint, TextEditingController controller, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10.0),
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF161824),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: TextField(
+          controller: controller,
+          obscureText: true,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+            border: InputBorder.none,
+            icon: Icon(icon, size: 18, color: Colors.grey),
+          ),
+        ),
+      ),
     );
   }
 }
