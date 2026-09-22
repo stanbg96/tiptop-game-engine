@@ -43,9 +43,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     ),
   ];
 
-  // ==========================================
-  // КОНТРОЛЕРИ ЗА API ТРЕЗОРА
-  // ==========================================
+  // Контролери за API трезора
   final TextEditingController _openRouterKeyCtrl = TextEditingController();
   final TextEditingController _hfKey1Ctrl = TextEditingController();
   final TextEditingController _hfKey2Ctrl = TextEditingController();
@@ -54,10 +52,12 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
   final TextEditingController _freeSoundKeyCtrl = TextEditingController();
   final TextEditingController _nasaKeyCtrl = TextEditingController();
   final TextEditingController _thingiverseKeyCtrl = TextEditingController();
+  final TextEditingController _modelSearchCtrl = TextEditingController();
 
   // Модели за OpenRouter
   String _selectedOpenRouterModel = '⚡ АВТОМАТИЧЕН БЕЗПЛАТЕН (100% Онлайн)';
   List<String> _openRouterModels = [];
+  String _modelFilterQuery = '';
   bool _isDownloadingModels = false;
 
   @override
@@ -79,6 +79,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     _freeSoundKeyCtrl.dispose();
     _nasaKeyCtrl.dispose();
     _thingiverseKeyCtrl.dispose();
+    _modelSearchCtrl.dispose();
     super.dispose();
   }
 
@@ -110,7 +111,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     }
   }
 
-  // 🔄 СВАЛЯНЕ НА ВСИЧКИ 300+ LIVE МОДЕЛА ЗА OPENROUTER
+  // 🔄 ИСТИНСКО СВАЛЯНЕ НА ВСИЧКИ 400+ МОДЕЛА ОТ OPENROUTER
   void _downloadOpenRouterModels() async {
     setState(() => _isDownloadingModels = true);
     _aiService.configure(
@@ -133,11 +134,21 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     });
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('🎉 Успешно свалени ${_openRouterModels.length} живи модела за OpenRouter!'),
-      ),
-    );
+    if (allList.isNotEmpty && allList.length > 20) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('🎉 Успешно свалени ${allList.length} живи модела от OpenRouter!'),
+          backgroundColor: const Color(0xFF00E676),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ Няма връзка с OpenRouter. Проверете мобилните данни или Wi-Fi!'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   void _saveAllApiKeys() {
@@ -380,9 +391,13 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
   }
 
   // =========================================================================
-  // 2. ТАБ: API ТРЕЗОР С БУТОН ЗА СВАЛЯНЕ И СЕЛЕКТОР НА МОДЕЛИ
+  // 2. ТАБ: API ТРЕЗОР С ТЪРСАЧКА СРЕД 400+ МОДЕЛА
   // =========================================================================
   Widget _buildApiVaultTab() {
+    final filteredModels = _openRouterModels.where((m) {
+      return _modelFilterQuery.isEmpty || m.toLowerCase().contains(_modelFilterQuery.toLowerCase());
+    }).toList();
+
     return Stack(
       children: [
         ListView(
@@ -403,14 +418,14 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
             _buildKeyInput('Hugging Face Key 3', _hfKey3Ctrl, Icons.key),
             const SizedBox(height: 20),
 
-            // --- СЕКЦИЯ 2: OPENROUTER AI МОЗЪК С БУТОН И СЕЛЕКТОР ---
+            // --- СЕКЦИЯ 2: OPENROUTER AI МОЗЪК С ТЪРСАЧКА И БУТОН ЗА СВАЛЯНЕ ---
             _buildSectionHeader('🧠 AI Мозък (OpenRouter / OpenAI)', AppTheme.sciFiCyan),
             const SizedBox(height: 6),
-            const Text('Ключ за текстовия AI архитект. Натисни бутона за изтегляне на всички 300+ модела!', style: TextStyle(color: Colors.white54, fontSize: 10)),
+            const Text('Ключ за текстовия AI архитект. Натисни бутона за изтегляне на всички 400+ модела!', style: TextStyle(color: Colors.white54, fontSize: 10)),
             const SizedBox(height: 8),
             _buildKeyInput('OpenRouter API Key (sk-or-v1-...)', _openRouterKeyCtrl, Icons.psychology),
 
-            // Бутон за теглене на всички 300+ модела
+            // Бутон за теглене на всички живи модели
             Row(
               children: [
                 Expanded(
@@ -425,7 +440,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
                           ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
                           : const Icon(Icons.sync, color: Colors.black, size: 16),
                       label: Text(
-                        _isDownloadingModels ? 'СВАЛЯНЕ НА МОДЕЛИ...' : '🔄 СВАЛИ ВСИЧКИ МОДЕЛИ (300+ LIVE)',
+                        _isDownloadingModels ? 'СВАЛЯНЕ НА ЖИВО...' : '🔄 СВАЛИ ВСИЧКИ МОДЕЛИ (400+ LIVE)',
                         style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold),
                       ),
                       onPressed: _isDownloadingModels ? null : _downloadOpenRouterModels,
@@ -434,13 +449,52 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
+
+            // Търсачка за модели в падащия списък
+            Container(
+              height: 36,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF141724),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.search, size: 14, color: AppTheme.sciFiCyan),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: TextField(
+                      controller: _modelSearchCtrl,
+                      style: const TextStyle(color: Colors.white, fontSize: 11),
+                      decoration: const InputDecoration(
+                        hintText: 'Търси модел (напр. gpt-4o, claude, deepseek, free)...',
+                        hintStyle: TextStyle(color: Colors.grey, fontSize: 10),
+                        border: InputBorder.none,
+                        isDense: true,
+                      ),
+                      onChanged: (v) => setState(() => _modelFilterQuery = v),
+                    ),
+                  ),
+                  if (_modelFilterQuery.isNotEmpty)
+                    GestureDetector(
+                      onTap: () {
+                        _modelSearchCtrl.clear();
+                        setState(() => _modelFilterQuery = '');
+                      },
+                      child: const Icon(Icons.close, size: 14, color: Colors.grey),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
 
             // Падащо меню за избор на активен модел
-            Text('ИЗБЕРИ АКТИВЕН МОДЕЛ (${_openRouterModels.length} НАЛИЧНИ)', style: const TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
+            Text('ИЗБЕРИ АКТИВЕН МОДЕЛ (${filteredModels.length} ФИЛТРИРАНИ ОТ ${_openRouterModels.length})', style: const TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
             Container(
-              height: 42,
+              height: 44,
               padding: const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
                 color: const Color(0xFF161824),
@@ -449,14 +503,14 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
-                  value: _openRouterModels.contains(_selectedOpenRouterModel)
+                  value: filteredModels.contains(_selectedOpenRouterModel)
                       ? _selectedOpenRouterModel
-                      : (_openRouterModels.isNotEmpty ? _openRouterModels.first : null),
+                      : (filteredModels.isNotEmpty ? filteredModels.first : null),
                   isExpanded: true,
                   menuMaxHeight: 380,
                   dropdownColor: const Color(0xFF161824),
                   style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 11, fontWeight: FontWeight.bold),
-                  items: _openRouterModels.map((m) => DropdownMenuItem(value: m, child: Text(m, overflow: TextOverflow.ellipsis))).toList(),
+                  items: filteredModels.map((m) => DropdownMenuItem(value: m, child: Text(m, overflow: TextOverflow.ellipsis))).toList(),
                   onChanged: (val) {
                     if (val != null) setState(() => _selectedOpenRouterModel = val);
                   },
