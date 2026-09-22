@@ -1,0 +1,1621 @@
+[1mdiff --git a/lib/features/mushroom_studio/presentation/pages/mushroom_studio_screen.dart b/lib/features/mushroom_studio/presentation/pages/mushroom_studio_screen.dart[m
+[1mindex d9ed697..e425ca3 100644[m
+[1m--- a/lib/features/mushroom_studio/presentation/pages/mushroom_studio_screen.dart[m
+[1m+++ b/lib/features/mushroom_studio/presentation/pages/mushroom_studio_screen.dart[m
+[36m@@ -1,1470 +1,176 @@[m
+[31m-import 'dart:math' as math;[m
+[31m-import 'package:flutter/material.dart';[m
+[31m-import 'package:tiptop_game_engine/core/theme/app_theme.dart';[m
+[31m-[m
+[31m-class MushroomStudioScreen extends StatefulWidget {[m
+[31m-  const MushroomStudioScreen({Key? key}) : super(key: key);[m
+[31m-[m
+[31m-  @override[m
+[31m-  State<MushroomStudioScreen> createState() => _MushroomStudioScreenState();[m
+[31m-}[m
+[31m-[m
+[31m-class _MushroomStudioScreenState extends State<MushroomStudioScreen> with TickerProviderStateMixin {[m
+[31m-  late TabController _tabController;[m
+[31m-  late AnimationController _animPreviewController;[m
+[31m-  late AnimationController _fx2DController;[m
+[31m-[m
+[31m-  // 3D Камера и Терен[m
+[31m-  double _camYaw = 0.6;[m
+[31m-  double _camPitch = 0.5;[m
+[31m-  double _camZoom = 1.0;[m
+[31m-  String _selected3DTool = 'orbit';[m
+[31m-[m
+[31m-  // 2D Редактор[m
+[31m-  String _selected2DTool = 'tile_grass';[m
+[31m-  bool _is2DSimulating = false;[m
+[31m-[m
+[31m-  final List<Map<String, dynamic>> _level2DGrid = [[m
+[31m-    {'pos': const Offset(0, 4), 'type': 'grass'},[m
+[31m-    {'pos': const Offset(1, 4), 'type': 'grass'},[m
+[31m-    {'pos': const Offset(2, 4), 'type': 'grass'},[m
+[31m-    {'pos': const Offset(3, 4), 'type': 'grass'},[m
+[31m-    {'pos': const Offset(4, 4), 'type': 'grass'},[m
+[31m-    {'pos': const Offset(5, 4), 'type': 'grass'},[m
+[31m-    {'pos': const Offset(6, 4), 'type': 'grass'},[m
+[31m-    {'pos': const Offset(2, 2), 'type': 'platform'},[m
+[31m-    {'pos': const Offset(3, 2), 'type': 'platform'},[m
+[31m-    {'pos': const Offset(2, 1), 'type': 'coin'},[m
+[31m-    {'pos': const Offset(3, 1), 'type': 'coin'},[m
+[31m-    {'pos': const Offset(5, 3), 'type': 'enemy'},[m
+[31m-    {'pos': const Offset(1, 1), 'type': 'light'},[m
+[31m-  ];[m
+[31m-[m
+[31m-  double _simPlayerX = 40.0;[m
+[31m-  double _simPlayerY = 120.0;[m
+[31m-[m
+[31m-  // 3D Обекти в сцената[m
+[31m-  int _selected3DObjIndex = 0;[m
+[31m-  final List<Map<String, dynamic>> _objects3D = [[m
+[31m-    {'name': '🤖 Кибер Играч', 'x': 0.0, 'y': -40.0, 'z': 0.0, 'size': 35.0, 'color': AppTheme.laserPink, 'type': 'player'},[m
+[31m-    {'name': '🌋 Лава Езеро', 'x': 0.0, 'y': 60.0, 'z': 0.0, 'size': 90.0, 'color': Color(0xFFFF3D00), 'type': 'lava'},[m
+[31m-    {'name': '🧱 Неон Блок 1', 'x': -70.0, 'y': 20.0, 'z': -40.0, 'size': 30.0, 'color': AppTheme.sciFiCyan, 'type': 'block'},[m
+[31m-    {'name': '🧱 Неон Блок 2', 'x': 70.0, 'y': -10.0, 'z': 40.0, 'size': 30.0, 'color': Color(0xFF00E676), 'type': 'block'},[m
+[31m-  ];[m
+[31m-[m
+[31m-  // Аниматор и Магазин[m
+[31m-  bool _isPlayingAnim = true;[m
+[31m-  double _playbackSpeed = 1.0;[m
+[31m-  String _activeAnimation = 'Hip Hop Dance';[m
+[31m-  String _activeAnimCategory = 'Танци';[m
+[31m-  String _animSearchQuery = '';[m
+[31m-  String _assetSearchQuery = '';[m
+[31m-  String _selectedAssetMainType = '🎲 3D Модели';[m
+[31m-  String? _playingAudioTrack;[m
+[31m-[m
+[31m-  final List<String> _animLibraries = ['Mixamo (2000+)', 'ActorCore MoCap', 'CMU Database', 'Unity Free'];[m
+[31m-  String _selectedAnimLibrary = 'Mixamo (2000+)';[m
+[31m-  final List<String> _assetMainTypes = ['🎲 3D Модели', '🎨 2D Спрайтове', '🎵 Музика & SFX', '🌋 Шейдъри & FX'];[m
+[31m-  final List<String> _storeCategories = ['Всички', '🏰 Сгради', '🤖 Герои & Кукли', '🌋 Лава & Неон', '🚗 Возила', '⚔️ Оръжия', '🌲 Природа', '📦 Пропове'];[m
+[31m-  String _selectedStoreCategory = 'Всички';[m
+[31m-  late List<Map<String, dynamic>> _assetsList;[m
+[31m-[m
+[31m-  final List<Map<String, dynamic>> _movementsList = [[m
+[31m-    {'name': 'Hip Hop Dance', 'type': '💃 Танци & Емоути', 'frames': '120 fr', 'lib': 'Mixamo', 'color': AppTheme.laserPink, 'icon': Icons.music_note},[m
+[31m-    {'name': 'Ninja Katana Slash', 'type': '⚔️ Бойни & Меч', 'frames': '45 fr', 'lib': 'ActorCore', 'color': Color(0xFFFF1744), 'icon': Icons.flash_on},[m
+[31m-    {'name': 'Cyber Sprint Run', 'type': '🏃 Ходене & Бягане', 'frames': '24 fr', 'lib': 'Mixamo', 'color': AppTheme.sciFiCyan, 'icon': Icons.directions_run},[m
+[31m-    {'name': 'Super Hero Jump', 'type': '🤸 Паркур & Скокове', 'frames': '38 fr', 'lib': 'Mixamo', 'color': Color(0xFF00E676), 'icon': Icons.flight_takeoff},[m
+[31m-    {'name': 'Zombie Crawl', 'type': '🧟 Зомбита & Чудовища', 'frames': '80 fr', 'lib': 'Mixamo', 'color': Color(0xFFFF9100), 'icon': Icons.coronavirus},[m
+[31m-    {'name': 'Victory Flip', 'type': '💃 Танци & Емоути', 'frames': '60 fr', 'lib': 'Mixamo Free', 'color': Color(0xFF00E676), 'icon': Icons.celebration},[m
+[32m+[m[32mimport 'dart:convert';[m
+[32m+[m[32mimport 'dart:io';[m
+[32m+[m
+[32m+[m[32mclass AiService {[m
+[32m+[m[32m  static final AiService _instance = AiService._internal();[m
+[32m+[m[32m  factory AiService() => _instance;[m
+[32m+[m[32m  AiService._internal();[m
+[32m+[m
+[32m+[m[32m  String apiKey = '';[m
+[32m+[m[32m  String provider = '⚡ АВТОМАТИЧЕН (Free Auto-Router)';[m
+[32m+[m[32m  String model = '⚡ АВТОМАТИЧЕН БЕЗПЛАТЕН (100% Онлайн)';[m
+[32m+[m
+[32m+[m[32m  static const List<String> freeFallbackPool = [[m
+[32m+[m[32m    'meta-llama/llama-3.3-70b-instruct:free',[m
+[32m+[m[32m    'deepseek/deepseek-r1:free',[m
+[32m+[m[32m    'deepseek/deepseek-chat:free',[m
+[32m+[m[32m    'qwen/qwen-2.5-72b-instruct:free',[m
+[32m+[m[32m    'google/gemini-2.0-flash-exp:free',[m
+[32m+[m[32m    'mistralai/mistral-7b-instruct:free',[m
+   ];[m
+ [m
+[31m-  @override[m
+[31m-  void initState() {[m
+[31m-    super.initState();[m
+[31m-    _tabController = TabController(length: 5, vsync: this);[m
+[31m-    _animPreviewController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat();[m
+[31m-    _fx2DController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..repeat(reverse: true);[m
+[31m-    _assetsList = _generateMassiveAssetCatalog();[m
+[31m-  }[m
+[31m-[m
+[31m-  @override[m
+[31m-  void dispose() {[m
+[31m-    _animPreviewController.dispose();[m
+[31m-    _fx2DController.dispose();[m
+[31m-    _tabController.dispose();[m
+[31m-    super.dispose();[m
+[31m-  }[m
+[31m-[m
+[31m-  void _toggle2DSimulation() {[m
+[31m-    setState(() {[m
+[31m-      _is2DSimulating = !_is2DSimulating;[m
+[31m-    });[m
+[31m-[m
+[31m-    if (_is2DSimulating) {[m
+[31m-      _simPlayerX = 40.0;[m
+[31m-      _simPlayerY = 120.0;[m
+[31m-      ScaffoldMessenger.of(context).showSnackBar([m
+[31m-        const SnackBar(content: Text('🎮 Стартирана 2D Godot CharacterBody2D симулация!')),[m
+[31m-      );[m
+[32m+[m[32m  // СИСТЕМЕН ПРОМПТ С ПЪЛНА ЕНЦИКЛОПЕДИЯ ЗА UNITY 2D, UNITY 3D, C# И FILAMENT[m
+[32m+[m[32m  static const String unityEnginePrompt = '''[m
+[32m+[m[32mТи си Главен Game Engine Архитект и Експерт по Unity 2D & 3D, C# (MonoBehaviour), Physics2D/Physics3D, Rigidbody, Colliders, Raycasting, Shaders (PBR) и Google Filament C++.[m
+[32m+[m[32mТвоята цел е да помагаш на потребителя да изгражда 2D и 3D светове директно от мобилното студио.[m
+[32m+[m[32mОтговаряй винаги с:[m
+[32m+[m[32m1. 🌳 Структура на Нодовете (Hierarchy).[m
+[32m+[m[32m2. ⚙️ Настройки за Инспектора (Transform, Mass, Drag, Colliders, Materials).[m
+[32m+[m[32m3. 📜 Готов чист C# скрипт за логиката.[m
+[32m+[m[32m''';[m
+[32m+[m
+[32m+[m[32m  void configure({required String key, required String selectedProvider, required String selectedModel}) {[m
+[32m+[m[32m    apiKey = key.trim();[m
+[32m+[m[32m    provider = selectedProvider;[m
+[32m+[m[32m    model = selectedModel.replaceAll('🎁 ', '').replaceAll(' (Free)', '').trim();[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  Uri _getChatEndpoint() {[m
+[32m+[m[32m    if (provider.contains('Groq')) {[m
+[32m+[m[32m      return Uri.parse('https://api.groq.com/openai/v1/chat/completions');[m
+[32m+[m[32m    } else if (provider.contains('DeepSeek')) {[m
+[32m+[m[32m      return Uri.parse('https://api.deepseek.com/chat/completions');[m
+[32m+[m[32m    } else if (provider.contains('Gemini')) {[m
+[32m+[m[32m      return Uri.parse('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions');[m
+[32m+[m[32m    } else if (provider.contains('Mistral')) {[m
+[32m+[m[32m      return Uri.parse('https://api.mistral.ai/v1/chat/completions');[m
+[32m+[m[32m    } else if (provider.contains('OpenAI')) {[m
+[32m+[m[32m      return Uri.parse('https://api.openai.com/v1/chat/completions');[m
+[32m+[m[32m    } else {[m
+[32m+[m[32m      return Uri.parse('https://openrouter.ai/api/v1/chat/completions');[m
+     }[m
+   }[m
+ [m
+[31m-  void _sim2DJump() {[m
+[31m-    if (_is2DSimulating) {[m
+[31m-      setState(() {[m
+[31m-        _simPlayerY = (_simPlayerY == 120.0) ? 70.0 : 120.0;[m
+[31m-      });[m
+[32m+[m[32m  List<String> getDefaultModelsFor(String prov) {[m
+[32m+[m[32m    if (prov.contains('Groq')) {[m
+[32m+[m[32m      return ['🎁 llama-3.3-70b-versatile (Free)', '🎁 mixtral-8x7b-32768 (Free)'];[m
+[32m+[m[32m    } else if (prov.contains('Gemini')) {[m
+[32m+[m[32m      return ['🎁 gemini-2.0-flash-exp (Free)', '🎁 gemini-1.5-flash (Free)'];[m
+[32m+[m[32m    } else {[m
+[32m+[m[32m      return [[m
+[32m+[m[32m        '⚡ АВТОМАТИЧЕН БЕЗПЛАТЕН (100% Онлайн)',[m
+[32m+[m[32m        '🎁 deepseek/deepseek-r1:free',[m
+[32m+[m[32m        '🎁 meta-llama/llama-3.3-70b-instruct:free',[m
+[32m+[m[32m      ];[m
+     }[m
+   }[m
+ [m
+[31m-  void _sim2DMove(double dx) {[m
+[31m-    if (_is2DSimulating) {[m
+[31m-      setState(() {[m
+[31m-        _simPlayerX = (_simPlayerX + dx).clamp(10.0, 320.0);[m
+[31m-      });[m
+[31m-    }[m
+[31m-  }[m
+[31m-[m
+[31m-  // БАЗА ДАННИ С РЕАЛНИ ВИЗУАЛНИ ИЗОБРАЖЕНИЯ (RENDER PREVIEWS)[m
+[31m-  static List<Map<String, dynamic>> _generateMassiveAssetCatalog() {[m
+[31m-    List<Map<String, dynamic>> list = [];[m
+[31m-[m
+[31m-    final List<Map<String, dynamic>> real3DModels = [[m
+[31m-      {[m
+[31m-        'name': 'Вулканичен Замък 3D',[m
+[31m-        'type': '3D Сграда',[m
+[31m-        'media': '3D',[m
+[31m-        'cat': '🏰 Сгради',[m
+[31m-        'color': Color(0xFFFF3D00),[m
+[31m-        'poly': '1.8k Poly',[m
+[31m-        'lib': 'Quaternius Free',[m
+[31m-        'img': 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&q=80',[m
+[31m-        'icon': Icons.castle,[m
+[31m-      },[m
+[31m-      {[m
+[31m-        'name': 'Кибер Самурай 3D',[m
+[31m-        'type': '3D Герой',[m
+[31m-        'media': '3D',[m
+[31m-        'cat': '🤖 Герои & Кукли',[m
+[31m-        'color': Color(0xFFD500F9),[m
+[31m-        'poly': '3.5k Poly',[m
+[31m-        'lib': 'Mixamo Rigged',[m
+[31m-        'img': 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=300&q=80',[m
+[31m-        'icon': Icons.accessibility_new,[m
+[31m-      },[m
+[31m-      {[m
+[31m-        'name': 'Неонов Болид GT',[m
+[31m-        'type': '3D Возило',[m
+[31m-        'media': '3D',[m
+[31m-        'cat': '🚗 Возила',[m
+[31m-        'color': Color(0xFF00E5FF),[m
+[31m-        'poly': '2.3k Poly',[m
+[31m-        'lib': 'Kenney Cars',[m
+[31m-        'img': 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=300&q=80',[m
+[31m-        'icon': Icons.directions_car,[m
+[31m-      },[m
+[31m-      {[m
+[31m-        'name': 'Плазмен Меч FX',[m
+[31m-        'type': '3D Оръжие',[m
+[31m-        'media': '3D',[m
+[31m-        'cat': '⚔️ Оръжия',[m
+[31m-        'color': Color(0xFF00E676),[m
+[31m-        'poly': '450 Poly',[m
+[31m-        'lib': 'PolyPizza',[m
+[31m-        'img': 'https://images.unsplash.com/photo-1589241062272-c0a000072dfa?w=300&q=80',[m
+[31m-        'icon': Icons.flash_on,[m
+[31m-      },[m
+[31m-      {[m
+[31m-        'name': 'Лава Дракон Бос',[m
+[31m-        'type': '3D Бос/Кукла',[m
+[31m-        'media': '3D',[m
+[31m-        'cat': '🌋 Лава & Неон',[m
+[31m-        'color': Color(0xFFFF1744),[m
+[31m-        'poly': '6.2k Poly',[m
+[31m-        'lib': 'Quaternius',[m
+[31m-        'img': 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=300&q=80',[m
+[31m-        'icon': Icons.stream,[m
+[31m-      },[m
+[31m-      {[m
+[31m-        'name': 'Космическа Совалка',[m
+[31m-        'type': '3D Возило',[m
+[31m-        'media': '3D',[m
+[31m-        'cat': '🚗 Возила',[m
+[31m-        'color': AppTheme.sciFiCyan,[m
+[31m-        'poly': '5.1k Poly',[m
+[31m-        'lib': 'PolyPizza',[m
+[31m-        'img': 'https://images.unsplash.com/photo-1517976487588-34861614742f?w=300&q=80',[m
+[31m-        'icon': Icons.rocket_launch,[m
+[31m-      },[m
+[31m-      {[m
+[31m-        'name': 'Магическа Гора',[m
+[31m-        'type': '3D Природа',[m
+[31m-        'media': '3D',[m
+[31m-        'cat': '🌲 Природа',[m
+[31m-        'color': Color(0xFF00E676),[m
+[31m-        'poly': '1.8k Poly',[m
+[31m-        'lib': 'Kenney Nature',[m
+[31m-        'img': 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=300&q=80',[m
+[31m-        'icon': Icons.park,[m
+[31m-      },[m
+[31m-      {[m
+[31m-        'name': 'Златен Сандък Проп',[m
+[31m-        'type': '3D Проп',[m
+[31m-        'media': '3D',[m
+[31m-        'cat': '📦 Пропове',[m
+[31m-        'color': Color(0xFFFFD600),[m
+[31m-        'poly': '320 Poly',[m
+[31m-        'lib': 'Kenney Props',[m
+[31m-        'img': 'https://images.unsplash.com/photo-1512353087810-25dfcd100962?w=300&q=80',[m
+[31m-        'icon': Icons.inventory_2,[m
+[31m-      },[m
+[31m-    ];[m
+[31m-[m
+[31m-    list.addAll(real3DModels);[m
+[31m-[m
+[31m-    final List<Map<String, dynamic>> real2DSprites = [[m
+[31m-      {[m
+[31m-        'name': 'Пиксел Рицар 2D',[m
+[31m-        'type': '2D Спрайт',[m
+[31m-        'media': '2D',[m
+[31m-        'cat': '🤖 Герои & Кукли',[m
+[31m-        'color': Color(0xFFFFD600),[m
+[31m-        'poly': '32x32 Sheet',[m
+[31m-        'lib': 'OpenGameArt',[m
+[31m-        'img': 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=300&q=80',[m
+[31m-        'icon': Icons.shield,[m
+[31m-      },[m
+[31m-      {[m
+[31m-        'name': 'Платформи Плочки 2D',[m
+[31m-        'type': '2D Плочки',[m
+[31m-        'media': '2D',[m
+[31m-        'cat': '🏰 Сгради',[m
+[31m-        'color': Color(0xFF00E676),[m
+[31m-        'poly': '16x16 Tileset',[m
+[31m-        'lib': 'Kenney 2D',[m
+[31m-        'img': 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&q=80',[m
+[31m-        'icon': Icons.grid_on,[m
+[31m-      },[m
+[31m-      {[m
+[31m-        'name': 'Лава Спрайт FX',[m
+[31m-        'type': '2D FX',[m
+[31m-        'media': '2D',[m
+[31m-        'cat': '🌋 Лава & Неон',[m
+[31m-        'color': Color(0xFFFF3D00),[m
+[31m-        'poly': '64x64 Frames',[m
+[31m-        'lib': 'CraftPix Free',[m
+[31m-        'img': 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=300&q=80',[m
+[31m-        'icon': Icons.local_fire_department,[m
+[31m-      },[m
+[31m-      {[m
+[31m-        'name': 'Златна Монета 2D',[m
+[31m-        'type': '2D Предмет',[m
+[31m-        'media': '2D',[m
+[31m-        'cat': '📦 Пропове',[m
+[31m-        'color': Color(0xFFFFAB00),[m
+[31m-        'poly': '16x16 Anim',[m
+[31m-        'lib': 'Kenney 2D',[m
+[31m-        'img': 'https://images.unsplash.com/photo-1621416894569-0f39ed31d247?w=300&q=80',[m
+[31m-        'icon': Icons.monetization_on,[m
+[31m-      },[m
+[31m-    ];[m
+[31m-[m
+[31m-    list.addAll(real2DSprites);[m
+[31m-[m
+[31m-    final List<Map<String, dynamic>> realAudioTracks = [[m
+[31m-      {[m
+[31m-        'name': 'Cyberpunk Action OST',[m
+[31m-        'type': 'Фонова Музика',[m
+[31m-        'media': 'Audio',[m
+[31m-        'cat': '🌋 Лава & Неон',[m
+[31m-        'color': AppTheme.laserPink,[m
+[31m-        'poly': '2:15 min • MP3',[m
+[31m-        'lib': 'Incompetech Free',[m
+[31m-        'img': 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&q=80',[m
+[31m-        'icon': Icons.music_note,[m
+[31m-      },[m
+[31m-      {[m
+[31m-        'name': 'Лазерен Бластер SFX',[m
+[31m-        'type': 'Звуков Ефект',[m
+[31m-        'media': 'Audio',[m
+[31m-        'cat': '⚔️ Оръжия',[m
+[31m-        'color': AppTheme.sciFiCyan,[m
+[31m-        'poly': '0:02 sec • WAV',[m
+[31m-        'lib': 'Kenney Audio',[m
+[31m-        'img': 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80',[m
+[31m-        'icon': Icons.volume_up,[m
+[31m-      },[m
+[31m-      {[m
+[31m-        'name': '3D Скок & Dash SFX',[m
+[31m-        'type': 'Звуков Ефект',[m
+[31m-        'media': 'Audio',[m
+[31m-        'cat': '🤖 Герои & Кукли',[m
+[31m-        'color': Color(0xFF00E676),[m
+[31m-        'poly': '0:01 sec • WAV',[m
+[31m-        'lib': 'FreeSound FX',[m
+[31m-        'img': 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&q=80',[m
+[31m-        'icon': Icons.graphic_eq,[m
+[31m-      },[m
+[31m-      {[m
+[31m-        'name': 'Lava Boss Battle Music',[m
+[31m-        'type': 'Фонова Музика',[m
+[31m-        'media': 'Audio',[m
+[31m-        'cat': '🌋 Лава & Неон',[m
+[31m-        'color': Color(0xFFFF1744),[m
+[31m-        'poly': '3:40 min • HQ',[m
+[31m-        'lib': 'Bensound Free',[m
+[31m-        'img': 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=300&q=80',[m
+[31m-        'icon': Icons.music_note,[m
+[31m-      },[m
+[31m-    ];[m
+[31m-[m
+[31m-    list.addAll(realAudioTracks);[m
+[31m-[m
+[31m-    return list;[m
+[31m-  }[m
+[31m-[m
+[31m-  void _loadMoreAssetsBatch() {[m
+[31m-    setState(() {[m
+[31m-      _assetsList.addAll([[m
+[31m-        {[m
+[31m-          'name': 'Титаниев Мех Бос 3D',[m
+[31m-          'type': '3D Бос',[m
+[31m-          'media': '3D',[m
+[31m-          'cat': '🤖 Герои & Кукли',[m
+[31m-          'color': AppTheme.laserPink,[m
+[31m-          'poly': '8.2k Poly',[m
+[31m-          'lib': 'PolyPizza',[m
+[31m-          'img': 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=300&q=80',[m
+[31m-          'icon': Icons.smart_toy,[m
+[31m-        },[m
+[31m-        {[m
+[31m-          'name': 'Кибер Дрифт Мотор',[m
+[31m-          'type': '3D Возило',[m
+[31m-          'media': '3D',[m
+[31m-          'cat': '🚗 Возила',[m
+[31m-          'color': Color(0xFF00E676),[m
+[31m-          'poly': '4.1k Poly',[m
+[31m-          'lib': 'Kenney Cars',[m
+[31m-          'img': 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=300&q=80',[m
+[31m-          'icon': Icons.two_wheeler,[m
+[31m-        },[m
+[31m-      ]);[m
+[31m-    });[m
+[31m-    ScaffoldMessenger.of(context).showSnackBar([m
+[31m-      const SnackBar(content: Text('📦 Заредени още нови 3D/2D библиотеки с реални изображения!')),[m
+[31m-    );[m
+[31m-  }[m
+[31m-[m
+[31m-  @override[m
+[31m-  Widget build(BuildContext context) {[m
+[31m-    return Scaffold([m
+[31m-      backgroundColor: const Color(0xFF07080D),[m
+[31m-      body: Column([m
+[31m-        children: [[m
+[31m-          SafeArea([m
+[31m-            bottom: false,[m
+[31m-            child: Container([m
+[31m-              height: 44,[m
+[31m-              decoration: const BoxDecoration([m
+[31m-                color: Color(0xFF0E101A),[m
+[31m-                border: Border(bottom: BorderSide(color: Color(0xFF222638), width: 1)),[m
+[31m-              ),[m
+[31m-              child: TabBar([m
+[31m-                controller: _tabController,[m
+[31m-                isScrollable: true,[m
+[31m-                tabAlignment: TabAlignment.start,[m
+[31m-                indicatorColor: AppTheme.laserPink,[m
+[31m-                indicatorWeight: 2.5,[m
+[31m-                labelColor: AppTheme.laserPink,[m
+[31m-                unselectedLabelColor: Colors.grey,[m
+[31m-                labelPadding: const EdgeInsets.symmetric(horizontal: 16),[m
+[31m-                labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),[m
+[31m-                tabs: const [[m
+[31m-                  Tab(text: '2D Godot Студио'),[m
+[31m-                  Tab(text: '3D Терен & Сцена'),[m
+[31m-                  Tab(text: 'Магазин'),[m
+[31m-                  Tab(text: 'Движения'),[m
+[31m-                  Tab(text: 'Плейър'),[m
+[31m-                ],[m
+[31m-              ),[m
+[31m-            ),[m
+[31m-          ),[m
+[31m-          Expanded([m
+[31m-            child: TabBarView([m
+[31m-              controller: _tabController,[m
+[31m-              physics: const NeverScrollableScrollPhysics(),[m
+[31m-              children: [[m
+[31m-                _buildSmartGodot2DStudio(),[m
+[31m-                _build3DPerspectiveWorld(),[m
+[31m-                _buildAssetStoreTab(),[m
+[31m-                _buildMovementsTab(),[m
+[31m-                _buildAnimationPlayerTab(),[m
+[31m-              ],[m
+[31m-            ),[m
+[31m-          ),[m
+[31m-        ],[m
+[31m-      ),[m
+[31m-    );[m
+[31m-  }[m
+[31m-[m
+[31m-  // 1. 2D GODOT STUDIO[m
+[31m-  Widget _buildSmartGodot2DStudio() {[m
+[31m-    return Stack([m
+[31m-      children: [[m
+[31m-        Column([m
+[31m-          children: [[m
+[31m-            Container([m
+[31m-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),[m
+[31m-              color: const Color(0xFF10121D),[m
+[31m-              child: Row([m
+[31m-                mainAxisAlignment: MainAxisAlignment.spaceBetween,[m
+[31m-                children: [[m
+[31m-                  _build2DQuickTool(Icons.crop_square, 'tile_grass', const Color(0xFF00E676), 'Земя'),[m
+[31m-                  _build2DQuickTool(Icons.monetization_on, 'coin', const Color(0xFFFFD600), 'Монета'),[m
+[31m-                  _build2DQuickTool(Icons.pest_control, 'enemy', const Color(0xFFFF1744), 'Враг'),[m
+[31m-                  _build2DQuickTool(Icons.lightbulb, 'light', AppTheme.sciFiCyan, '2D Светлина'),[m
+[31m-                  _build2DQuickTool(Icons.cleaning_services, 'erase', Colors.grey, 'Изтрий'),[m
+[31m-                  Container(height: 18, width: 1, color: Colors.white24),[m
+[31m-                  GestureDetector([m
+[31m-                    onTap: _toggle2DSimulation,[m
+[31m-                    child: Container([m
+[31m-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),[m
+[31m-                      decoration: BoxDecoration([m
+[31m-                        color: _is2DSimulating ? const Color(0xFFFF1744) : const Color(0xFF00E676),[m
+[31m-                        borderRadius: BorderRadius.circular(8),[m
+[31m-                      ),[m
+[31m-                      child: Row([m
+[31m-                        children: [[m
+[31m-                          Icon(_is2DSimulating ? Icons.stop : Icons.play_arrow, size: 14, color: Colors.black),[m
+[31m-                          const SizedBox(width: 3),[m
+[31m-                          Text(_is2DSimulating ? 'СТОП' : 'ТЕСТ 2D', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 10)),[m
+[31m-                        ],[m
+[31m-                      ),[m
+[31m-                    ),[m
+[31m-                  ),[m
+[31m-                ],[m
+[31m-              ),[m
+[31m-            ),[m
+[31m-            Expanded([m
+[31m-              child: Container([m
+[31m-                color: const Color(0xFF090B14),[m
+[31m-                child: GestureDetector([m
+[31m-                  onTapDown: (details) {[m
+[31m-                    if (_is2DSimulating) return;[m
+[31m-                    final local = details.localPosition;[m
+[31m-                    int col = (local.dx / 36).floor();[m
+[31m-                    int row = ((local.dy - 40) / 36).floor();[m
+[31m-                    final pos = Offset(col.toDouble(), row.toDouble());[m
+[31m-[m
+[31m-                    setState(() {[m
+[31m-                      if (_selected2DTool == 'erase') {[m
+[31m-                        _level2DGrid.removeWhere((e) => e['pos'] == pos);[m
+[31m-                      } else {[m
+[31m-                        _level2DGrid.removeWhere((e) => e['pos'] == pos);[m
+[31m-                        _level2DGrid.add({'pos': pos, 'type': _selected2DTool.replaceAll('tile_', '')});[m
+[31m-                      }[m
+[31m-                    });[m
+[31m-                  },[m
+[31m-                  child: AnimatedBuilder([m
+[31m-                    animation: _fx2DController,[m
+[31m-                    builder: (context, child) {[m
+[31m-                      return CustomPaint([m
+[31m-                        size: Size.infinite,[m
+[31m-                        painter: Godot2DCanvasPainter([m
+[31m-                          elements: _level2DGrid,[m
+[31m-                          enableShadows: true,[m
+[31m-                          lightColor: AppTheme.sciFiCyan,[m
+[31m-                          pulseValue: _fx2DController.value,[m
+[31m-                          isSimulating: _is2DSimulating,[m
+[31m-                          playerPos: Offset(_simPlayerX, _simPlayerY),[m
+[31m-                        ),[m
+[31m-                      );[m
+[31m-                    },[m
+[31m-                  ),[m
+[31m-                ),[m
+[31m-              ),[m
+[31m-            ),[m
+[31m-            if (!_is2DSimulating)[m
+[31m-              Container([m
+[31m-                height: 48,[m
+[31m-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),[m
+[31m-                decoration: const BoxDecoration([m
+[31m-                  color: Color(0xFF10121D),[m
+[31m-                  border: Border(top: BorderSide(color: Color(0xFF222638))),[m
+[31m-                ),[m
+[31m-                child: ListView([m
+[31m-                  scrollDirection: Axis.horizontal,[m
+[31m-                  children: [[m
+[31m-                    _buildPaletteChip('🟩 Трева Платформа', 'tile_grass', const Color(0xFF00E676)),[m
+[31m-                    _buildPaletteChip('🟫 Скала / Земя', 'tile_dirt', const Color(0xFF8D6E63)),[m
+[31m-                    _buildPaletteChip('🪙 Златна Монета', 'coin', const Color(0xFFFFD600)),[m
+[31m-                    _buildPaletteChip('👾 Патрулиращ Враг', 'enemy', const Color(0xFFFF1744)),[m
+[31m-                    _buildPaletteChip('💡 Неон Фенер 2D', 'light', AppTheme.sciFiCyan),[m
+[31m-                    _buildPaletteChip('🌋 Лава Зона FX', 'lava', const Color(0xFFFF3D00)),[m
+[31m-                  ],[m
+[31m-                ),[m
+[31m-              ),[m
+[32m+[m[32m  Future<String> sendPrompt(String prompt, {bool isBuilderMode = true}) async {[m
+[32m+[m[32m    if (apiKey.isNotEmpty && !provider.contains('АВТОМАТИЧЕН')) {[m
+[32m+[m[32m      final client = HttpClient()..connectionTimeout = const Duration(seconds: 20);[m
+[32m+[m[32m      try {[m
+[32m+[m[32m        final request = await client.postUrl(_getChatEndpoint());[m
+[32m+[m[32m        request.headers.set('Content-Type', 'application/json');[m
+[32m+[m[32m        request.headers.set('Authorization', 'Bearer $apiKey');[m
+[32m+[m[32m        request.headers.set('HTTP-Referer', 'https://tiptop.games');[m
+[32m+[m[32m        request.write(jsonEncode({[m
+[32m+[m[32m          'model': model,[m
+[32m+[m[32m          'messages': [[m
+[32m+[m[32m            {'role': 'system', 'content': unityEnginePrompt},[m
+[32m+[m[32m            {'role': 'user', 'content': prompt}[m
+           ],[m
+[31m-        ),[m
+[31m-        if (_is2DSimulating)[m
+[31m-          Positioned([m
+[31m-            left: 20,[m
+[31m-            right: 20,[m
+[31m-            bottom: 20,[m
+[31m-            child: Row([m
+[31m-              mainAxisAlignment: MainAxisAlignment.spaceBetween,[m
+[31m-              children: [[m
+[31m-                Row([m
+[31m-                  children: [[m
+[31m-                    _build2DTouchBtn(Icons.arrow_back, () => _sim2DMove(-20)),[m
+[31m-                    const SizedBox(width: 10),[m
+[31m-                    _build2DTouchBtn(Icons.arrow_forward, () => _sim2DMove(20)),[m
+[31m-                  ],[m
+[31m-                ),[m
+[31m-                GestureDetector([m
+[31m-                  onTap: _sim2DJump,[m
+[31m-                  child: Container([m
+[31m-                    width: 58,[m
+[31m-                    height: 58,[m
+[31m-                    decoration: BoxDecoration([m
+[31m-                      shape: BoxShape.circle,[m
+[31m-                      gradient: const LinearGradient(colors: [Color(0xFF00E676), Color(0xFF00E5FF)]),[m
+[31m-                      boxShadow: [BoxShadow(color: const Color(0xFF00E676).withValues(alpha: 0.6), blurRadius: 15)],[m
+[31m-                    ),[m
+[31m-                    child: const Center(child: Text('СКОК 🚀', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold))),[m
+[31m-                  ),[m
+[31m-                ),[m
+[31m-              ],[m
+[31m-            ),[m
+[31m-          ),[m
+[31m-      ],[m
+[31m-    );[m
+[31m-  }[m
+[32m+[m[32m          'temperature': 0.7,[m
+[32m+[m[32m        }));[m
+[32m+[m
+[32m+[m[32m        final response = await request.close();[m
+[32m+[m[32m        final responseBody = await response.transform(utf8.decoder).join();[m
+[32m+[m[32m        if (response.statusCode == 200) {[m
+[32m+[m[32m          final data = jsonDecode(responseBody);[m
+[32m+[m[32m          String ans = data['choices'][0]['message']['content'] ?? '';[m
+[32m+[m[32m          if (ans.isNotEmpty) return ans;[m
+[32m+[m[32m        }[m
+[32m+[m[32m      } catch (_) {}[m
+[32m+[m[32m    }[m
+ [m
+[31m-  Widget _build2DQuickTool(IconData icon, String tool, Color c, String label) {[m
+[31m-    bool isSel = _selected2DTool == tool;[m
+[31m-    return GestureDetector([m
+[31m-      onTap: () => setState(() => _selected2DTool = tool),[m
+[31m-      child: Container([m
+[31m-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),[m
+[31m-        decoration: BoxDecoration([m
+[31m-          color: isSel ? c.withValues(alpha: 0.25) : Colors.transparent,[m
+[31m-          borderRadius: BorderRadius.circular(6),[m
+[31m-          border: isSel ? Border.all(color: c) : null,[m
+[31m-        ),[m
+[31m-        child: Row([m
+[31m-          children: [[m
+[31m-            Icon(icon, size: 14, color: isSel ? c : Colors.grey),[m
+[31m-            const SizedBox(width: 3),[m
+[31m-            Text(label, style: TextStyle(color: isSel ? Colors.white : Colors.grey, fontSize: 9, fontWeight: FontWeight.bold)),[m
+[31m-          ],[m
+[31m-        ),[m
+[31m-      ),[m
+[31m-    );[m
+[31m-  }[m
+[32m+[m[32m    String onlineFreeAns = await _sendAutoFreePrompt(prompt);[m
+[32m+[m[32m    if (onlineFreeAns.isNotEmpty && !onlineFreeAns.contains('заети')) {[m
+[32m+[m[32m      return onlineFreeAns;[m
+[32m+[m[32m    }[m
+ [m
+[31m-  Widget _buildPaletteChip(String label, String tool, Color c) {[m
+[31m-    bool isSel = _selected2DTool == tool;[m
+[31m-    return GestureDetector([m
+[31m-      onTap: () => setState(() => _selected2DTool = tool),[m
+[31m-      child: Container([m
+[31m-        margin: const EdgeInsets.only(right: 6),[m
+[31m-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),[m
+[31m-        decoration: BoxDecoration([m
+[31m-          color: isSel ? c.withValues(alpha: 0.25) : const Color(0xFF181B28),[m
+[31m-          borderRadius: BorderRadius.circular(8),[m
+[31m-          border: Border.all(color: isSel ? c : Colors.white12),[m
+[31m-        ),[m
+[31m-        child: Center([m
+[31m-          child: Text(label, style: TextStyle(color: isSel ? Colors.white : Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),[m
+[31m-        ),[m
+[31m-      ),[m
+[31m-    );[m
+[32m+[m[32m    return _generateSmartUnityLocalResponse(prompt);[m
+   }[m
+ [m
+[31m-  Widget _build2DTouchBtn(IconData icon, VoidCallback onTap) {[m
+[31m-    return GestureDetector([m
+[31m-      onTap: onTap,[m
+[31m-      child: Container([m
+[31m-        width: 46,[m
+[31m-        height: 46,[m
+[31m-        decoration: BoxDecoration(color: const Color(0xDD181B28), shape: BoxShape.circle, border: Border.all(color: const Color(0xFF00E676))),[m
+[31m-        child: Icon(icon, color: const Color(0xFF00E676), size: 22),[m
+[31m-      ),[m
+[31m-    );[m
+[31m-  }[m
+[32m+[m[32m  Future<String> _sendAutoFreePrompt(String prompt) async {[m
+[32m+[m[32m    final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);[m
+[32m+[m[32m    final url = Uri.parse('https://openrouter.ai/api/v1/chat/completions');[m
+ [m
+[31m-  // 2. 3D ПЕРСПЕКТИВЕН СВЯТ[m
+[31m-  Widget _build3DPerspectiveWorld() {[m
+[31m-    return Stack([m
+[31m-      children: [[m
+[31m-        GestureDetector([m
+[31m-          onScaleUpdate: (details) {[m
+[31m-            setState(() {[m
+[31m-              if (details.scale != 1.0) {[m
+[31m-                _camZoom = (_camZoom * details.scale).clamp(0.5, 2.5);[m
+[31m-              } else {[m
+[31m-                _camYaw += details.focalPointDelta.dx * 0.008;[m
+[31m-                _camPitch = (_camPitch - details.focalPointDelta.dy * 0.008).clamp(0.1, 1.4);[m
+[31m-              }[m
+[31m-            });[m
+[31m-          },[m
+[31m-          child: Container([m
+[31m-            decoration: const BoxDecoration([m
+[31m-              gradient: RadialGradient([m
+[31m-                center: Alignment(0, -0.3),[m
+[31m-                radius: 1.2,[m
+[31m-                colors: [Color(0xFF191228), Color(0xFF07080D)],[m
+[31m-              ),[m
+[31m-            ),[m
+[31m-            child: CustomPaint([m
+[31m-              size: Size.infinite,[m
+[31m-              painter: Real3DWorldPainter([m
+[31m-                yaw: _camYaw,[m
+[31m-                pitch: _camPitch,[m
+[31m-                zoom: _camZoom,[m
+[31m-                objects: _objects3D,[m
+[31m-                selectedIndex: _selected3DObjIndex,[m
+[31m-              ),[m
+[31m-            ),[m
+[31m-          ),[m
+[31m-        ),[m
+[31m-        Positioned([m
+[31m-          top: 8,[m
+[31m-          left: 10,[m
+[31m-          right: 10,[m
+[31m-          child: Container([m
+[31m-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),[m
+[31m-            decoration: BoxDecoration([m
+[31m-              color: const Color(0xEE141624),[m
+[31m-              borderRadius: BorderRadius.circular(14),[m
+[31m-              border: Border.all(color: Colors.white12),[m
+[31m-            ),[m
+[31m-            child: Row([m
+[31m-              mainAxisAlignment: MainAxisAlignment.spaceBetween,[m
+[31m-              children: [[m
+[31m-                _buildStudioToolBtn(Icons.threed_rotation, 'orbit', AppTheme.sciFiCyan, '360° Orbit', () => setState(() => _selected3DTool = 'orbit')),[m
+[31m-                _buildStudioToolBtn(Icons.open_with, 'move', AppTheme.laserPink, 'Мести XYZ', () => setState(() => _selected3DTool = 'move')),[m
+[31m-                _buildStudioToolBtn(Icons.add_box, 'block', const Color(0xFF00E676), '+3D Блок', () {[m
+[31m-                  setState(() {[m
+[31m-                    _objects3D.add({[m
+[31m-                      'name': '🧱 Неон Куб ${_objects3D.length}',[m
+[31m-                      'x': 0.0,[m
+[31m-                      'y': 0.0,[m
+[31m-                      'z': 0.0,[m
+[31m-                      'size': 30.0,[m
+[31m-                      'color': AppTheme.sciFiCyan,[m
+[31m-                      'type': 'block',[m
+[31m-                    });[m
+[31m-                    _selected3DObjIndex = _objects3D.length - 1;[m
+[31m-                  });[m
+[31m-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Добавен нов 3D Куб!')));[m
+[31m-                }),[m
+[31m-                _buildStudioToolBtn(Icons.local_fire_department, 'lava', const Color(0xFFFF3D00), '+Лава', () {[m
+[31m-                  setState(() {[m
+[31m-                    _objects3D.add({[m
+[31m-                      'name': '🌋 Лава Платформа',[m
+[31m-                      'x': 0.0,[m
+[31m-                      'y': 40.0,[m
+[31m-                      'z': 0.0,[m
+[31m-                      'size': 60.0,[m
+[31m-                      'color': Color(0xFFFF3D00),[m
+[31m-                      'type': 'lava',[m
+[31m-                    });[m
+[31m-                    _selected3DObjIndex = _objects3D.length - 1;[m
+[31m-                  });[m
+[31m-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('🔥 Добавен 3D Лава терен!')));[m
+[31m-                }),[m
+[31m-              ],[m
+[31m-            ),[m
+[31m-          ),[m
+[31m-        ),[m
+[31m-        Positioned([m
+[31m-          left: 12,[m
+[31m-          bottom: 12,[m
+[31m-          child: Container([m
+[31m-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),[m
+[31m-            decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white24)),[m
+[31m-            child: const Row([m
+[31m-              children: [[m
+[31m-                Text('🔴 X  ', style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold)),[m
+[31m-                Text('🟢 Y  ', style: TextStyle(color: Colors.greenAccent, fontSize: 10, fontWeight: FontWeight.bold)),[m
+[31m-                Text('🔵 Z', style: TextStyle(color: Colors.blueAccent, fontSize: 10, fontWeight: FontWeight.bold)),[m
+[31m-              ],[m
+[31m-            ),[m
+[31m-          ),[m
+[31m-        ),[m
+[31m-        Positioned([m
+[31m-          right: 12,[m
+[31m-          bottom: 12,[m
+[31m-          child: Container([m
+[31m-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),[m
+[31m-            decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(8)),[m
+[31m-            child: Text('3D Filament PBR • Zoom: ${_camZoom.toStringAsFixed(1)}x', style: const TextStyle(color: Colors.grey, fontSize: 10)),[m
+[31m-          ),[m
+[31m-        ),[m
+[31m-      ],[m
+[31m-    );[m
+[31m-  }[m
+[32m+[m[32m    for (String fallback in freeFallbackPool) {[m
+[32m+[m[32m      try {[m
+[32m+[m[32m        final request = await client.postUrl(url);[m
+[32m+[m[32m        request.headers.set('Content-Type', 'application/json');[m
+[32m+[m[32m        request.headers.set('HTTP-Referer', 'https://tiptop.games');[m
+[32m+[m[32m        if (apiKey.isNotEmpty) request.headers.set('Authorization', 'Bearer $apiKey');[m
+ [m
+[31m-  Widget _buildStudioToolBtn(IconData icon, String tool, Color c, String label, VoidCallback onTap) {[m
+[31m-    bool isSel = _selected3DTool == tool;[m
+[31m-    return GestureDetector([m
+[31m-      onTap: onTap,[m
+[31m-      child: Container([m
+[31m-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),[m
+[31m-        decoration: BoxDecoration([m
+[31m-          color: isSel ? c.withValues(alpha: 0.25) : Colors.transparent,[m
+[31m-          borderRadius: BorderRadius.circular(8),[m
+[31m-          border: isSel ? Border.all(color: c) : null,[m
+[31m-        ),[m
+[31m-        child: Row([m
+[31m-          children: [[m
+[31m-            Icon(icon, size: 16, color: isSel ? c : Colors.grey),[m
+[31m-            const SizedBox(width: 4),[m
+[31m-            Text(label, style: TextStyle(color: isSel ? Colors.white : Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),[m
+[32m+[m[32m        request.write(jsonEncode({[m
+[32m+[m[32m          'model': fallback,[m
+[32m+[m[32m          'messages': [[m
+[32m+[m[32m            {'role': 'system', 'content': unityEnginePrompt},[m
+[32m+[m[32m            {'role': 'user', 'content': prompt}[m
+           ],[m
+[31m-        ),[m
+[31m-      ),[m
+[31m-    );[m
+[31m-  }[m
+[31m-[m
+[31m-  // 3. МАГАЗИН АСЕТИ С РЕАЛНИ ИЗОБРАЖЕНИЯ (RENDER THUMBNAILS)[m
+[31m-  Widget _buildAssetStoreTab() {[m
+[31m-    final filtered = _assetsList.where((a) {[m
+[31m-      bool matchesType = true;[m
+[31m-      if (_selectedAssetMainType == '🎲 3D Модели') matchesType = a['media'] == '3D';[m
+[31m-      if (_selectedAssetMainType == '🎨 2D Спрайтове') matchesType = a['media'] == '2D';[m
+[31m-      if (_selectedAssetMainType == '🎵 Музика & SFX') matchesType = a['media'] == 'Audio';[m
+[31m-      if (_selectedAssetMainType == '🌋 Шейдъри & FX') matchesType = a['media'] == 'Shaders';[m
+[31m-[m
+[31m-      final matchesCat = _selectedStoreCategory == 'Всички' || a['cat'] == _selectedStoreCategory;[m
+[31m-      final matchesSearch = _assetSearchQuery.isEmpty || a['name'].toString().toLowerCase().contains(_assetSearchQuery.toLowerCase());[m
+[31m-      return matchesType && matchesCat && matchesSearch;[m
+[31m-    }).toList();[m
+[31m-[m
+[31m-    return Column([m
+[31m-      children: [[m
+[31m-        Container([m
+[31m-          height: 38,[m
+[31m-          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),[m
+[31m-          decoration: BoxDecoration(color: const Color(0xFF141724), borderRadius: BorderRadius.circular(10)),[m
+[31m-          child: Row([m
+[31m-            children: _assetMainTypes.map((type) {[m
+[31m-              final isSel = type == _selectedAssetMainType;[m
+[31m-              return Expanded([m
+[31m-                child: GestureDetector([m
+[31m-                  onTap: () => setState(() => _selectedAssetMainType = type),[m
+[31m-                  child: Container([m
+[31m-                    margin: const EdgeInsets.all(2),[m
+[31m-                    decoration: BoxDecoration([m
+[31m-                      color: isSel ? AppTheme.laserPink : Colors.transparent,[m
+[31m-                      borderRadius: BorderRadius.circular(8),[m
+[31m-                    ),[m
+[31m-                    child: Center([m
+[31m-                      child: Text(type, style: TextStyle(color: isSel ? Colors.white : Colors.grey, fontSize: 10, fontWeight: isSel ? FontWeight.bold : FontWeight.normal)),[m
+[31m-                    ),[m
+[31m-                  ),[m
+[31m-                ),[m
+[31m-              );[m
+[31m-            }).toList(),[m
+[31m-          ),[m
+[31m-        ),[m
+[31m-        Padding([m
+[31m-          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),[m
+[31m-          child: Container([m
+[31m-            height: 36,[m
+[31m-            padding: const EdgeInsets.symmetric(horizontal: 10),[m
+[31m-            decoration: BoxDecoration(color: const Color(0xFF141724), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),[m
+[31m-            child: TextField([m
+[31m-              style: const TextStyle(color: Colors.white, fontSize: 12),[m
+[31m-              decoration: InputDecoration([m
+[31m-                hintText: 'Търси в ${_assetsList.length}+ $_selectedAssetMainType...',[m
+[31m-                hintStyle: const TextStyle(color: Colors.grey, fontSize: 11),[m
+[31m-                icon: const Icon(Icons.search, size: 16, color: AppTheme.sciFiCyan),[m
+[31m-                border: InputBorder.none,[m
+[31m-              ),[m
+[31m-              onChanged: (val) => setState(() => _assetSearchQuery = val),[m
+[31m-            ),[m
+[31m-          ),[m
+[31m-        ),[m
+[31m-        SizedBox([m
+[31m-          height: 32,[m
+[31m-          child: ListView.builder([m
+[31m-            scrollDirection: Axis.horizontal,[m
+[31m-            padding: const EdgeInsets.symmetric(horizontal: 8),[m
+[31m-            itemCount: _storeCategories.length,[m
+[31m-            itemBuilder: (context, index) {[m
+[31m-              final cat = _storeCategories[index];[m
+[31m-              final isSel = cat == _selectedStoreCategory;[m
+[31m-              return GestureDetector([m
+[31m-                onTap: () => setState(() => _selectedStoreCategory = cat),[m
+[31m-                child: Container([m
+[31m-                  margin: const EdgeInsets.only(right: 6),[m
+[31m-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),[m
+[31m-                  decoration: BoxDecoration([m
+[31m-                    color: isSel ? AppTheme.laserPink : const Color(0xFF161824),[m
+[31m-                    borderRadius: BorderRadius.circular(12),[m
+[31m-                    border: Border.all(color: isSel ? AppTheme.sciFiCyan : Colors.white12),[m
+[31m-                  ),[m
+[31m-                  child: Text(cat, style: TextStyle(color: isSel ? Colors.white : Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),[m
+[31m-                ),[m
+[31m-              );[m
+[31m-            },[m
+[31m-          ),[m
+[31m-        ),[m
+[31m-        Expanded([m
+[31m-          child: GridView.builder([m
+[31m-            padding: const EdgeInsets.all(8),[m
+[31m-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount([m
+[31m-              crossAxisCount: 2,[m
+[31m-              childAspectRatio: 0.72,[m
+[31m-              crossAxisSpacing: 8,[m
+[31m-              mainAxisSpacing: 8,[m
+[31m-            ),[m
+[31m-            itemCount: filtered.length,[m
+[31m-            itemBuilder: (context, index) {[m
+[31m-              final asset = filtered[index];[m
+[31m-              final Color glow = asset['color'];[m
+[31m-              final bool isAudio = asset['media'] == 'Audio';[m
+[31m-              final bool is2D = asset['media'] == '2D';[m
+[31m-              final bool isPlayingThisAudio = _playingAudioTrack == asset['name'];[m
+[31m-[m
+[31m-              return Container([m
+[31m-                decoration: BoxDecoration([m
+[31m-                  color: const Color(0xFF141724),[m
+[31m-                  borderRadius: BorderRadius.circular(14),[m
+[31m-                  border: Border.all(color: glow.withValues(alpha: 0.5)),[m
+[31m-                  boxShadow: [BoxShadow(color: glow.withValues(alpha: 0.15), blurRadius: 8)],[m
+[31m-                ),[m
+[31m-                child: Padding([m
+[31m-                  padding: const EdgeInsets.all(8.0),[m
+[31m-                  child: Column([m
+[31m-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,[m
+[31m-                    children: [[m
+[31m-                      Row([m
+[31m-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,[m
+[31m-                        children: [[m
+[31m-                          Container([m
+[31m-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),[m
+[31m-                            decoration: BoxDecoration(color: glow.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(5)),[m
+[31m-                            child: Text(asset['type'], style: TextStyle(color: glow, fontSize: 8, fontWeight: FontWeight.bold)),[m
+[31m-                          ),[m
+[31m-                          Text(asset['poly'], style: const TextStyle(color: Colors.grey, fontSize: 8)),[m
+[31m-                        ],[m
+[31m-                      ),[m
+[31m-                      [m
+[31m-                      // РЕАЛНО ИЗОБРАЖЕНИЕ НА АСЕТА (RENDER THUMBNAIL)[m
+[31m-                      Container([m
+[31m-                        height: 95,[m
+[31m-                        width: double.infinity,[m
+[31m-                        decoration: BoxDecoration([m
+[31m-                          borderRadius: BorderRadius.circular(10),[m
+[31m-                          color: const Color(0xFF0E101A),[m
+[31m-                          border: Border.all(color: glow.withValues(alpha: 0.3)),[m
+[31m-                        ),[m
+[31m-                        child: ClipRRect([m
+[31m-                          borderRadius: BorderRadius.circular(9),[m
+[31m-                          child: Stack([m
+[31m-                            fit: StackFit.expand,[m
+[31m-                            children: [[m
+[31m-                              Image.network([m
+[31m-                                asset['img'] ?? '',[m
+[31m-                                fit: BoxFit.cover,[m
+[31m-                                loadingBuilder: (context, child, loadingProgress) {[m
+[31m-                                  if (loadingProgress == null) return child;[m
+[31m-                                  return Center([m
+[31m-                                    child: SizedBox([m
+[31m-                                      width: 20,[m
+[31m-                                      height: 20,[m
+[31m-                                      child: CircularProgressIndicator(strokeWidth: 2, color: glow),[m
+[31m-                                    ),[m
+[31m-                                  );[m
+[31m-                                },[m
+[31m-                                errorBuilder: (context, error, stackTrace) {[m
+[31m-                                  return Container([m
+[31m-                                    color: glow.withValues(alpha: 0.1),[m
+[31m-                                    child: Center([m
+[31m-                                      child: Icon(asset['icon'] ?? Icons.view_in_ar, size: 36, color: glow),[m
+[31m-                                    ),[m
+[31m-                                  );[m
+[31m-                                },[m
+[31m-                              ),[m
+[31m-                              if (isAudio)[m
+[31m-                                Center([m
+[31m-                                  child: Container([m
+[31m-                                    padding: const EdgeInsets.all(8),[m
+[31m-                                    decoration: BoxDecoration([m
+[31m-                                      color: Colors.black54,[m
+[31m-                                      shape: BoxShape.circle,[m
+[31m-                                      border: Border.all(color: glow),[m
+[31m-                                    ),[m
+[31m-                                    child: Icon(isPlayingThisAudio ? Icons.graphic_eq : Icons.play_arrow, size: 22, color: glow),[m
+[31m-                                  ),[m
+[31m-                                ),[m
+[31m-                            ],[m
+[31m-                          ),[m
+[31m-                        ),[m
+[31m-                      ),[m
+[31m-[m
+[31m-                      Text(asset['name'], textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),[m
+[31m-                      Text('Библиотека: ${asset['lib']}', style: const TextStyle(color: Colors.white54, fontSize: 8), maxLines: 1, overflow: TextOverflow.ellipsis),[m
+[31m-                      [m
+[31m-                      if (isAudio) ...[[m
+[31m-                        Row([m
+[31m-                          children: [[m
+[31m-                            Expanded([m
+[31m-                              child: SizedBox([m
+[31m-                                height: 24,[m
+[31m-                                child: ElevatedButton([m
+[31m-                                  style: ElevatedButton.styleFrom(backgroundColor: isPlayingThisAudio ? Colors.redAccent : const Color(0xFF1E2235), padding: EdgeInsets.zero),[m
+[31m-                                  onPressed: () {[m
+[31m-                                    setState(() {[m
+[31m-                                      _playingAudioTrack = isPlayingThisAudio ? null : asset['name'];[m
+[31m-                                    });[m
+[31m-                                    ScaffoldMessenger.of(context).showSnackBar([m
+[31m-                                      SnackBar(content: Text(isPlayingThisAudio ? '⏹️ Спряно аудио' : '▶️ Прослушване на ${asset['name']}...')),[m
+[31m-                                    );[m
+[31m-                                  },[m
+[31m-                                  child: Text(isPlayingThisAudio ? 'СТОП' : 'ПРЕСЛУШАЙ', style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),[m
+[31m-                                ),[m
+[31m-                              ),[m
+[31m-                            ),[m
+[31m-                            const SizedBox(width: 4),[m
+[31m-                            Expanded([m
+[31m-                              child: SizedBox([m
+[31m-                                height: 24,[m
+[31m-                                child: ElevatedButton([m
+[31m-                                  style: ElevatedButton.styleFrom(backgroundColor: glow, padding: EdgeInsets.zero),[m
+[31m-                                  onPressed: () {[m
+[31m-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('🔊 ${asset['name']} е добавен към звуковия енджин!')));[m
+[31m-                                  },[m
+[31m-                                  child: const Text('ВКАРАЙ', style: TextStyle(color: Colors.black, fontSize: 8, fontWeight: FontWeight.bold)),[m
+[31m-                                ),[m
+[31m-                              ),[m
+[31m-                            ),[m
+[31m-                          ],[m
+[31m-                        ),[m
+[31m-                      ] else ...[[m
+[31m-                        SizedBox([m
+[31m-                          width: double.infinity,[m
+[31m-                          height: 24,[m
+[31m-                          child: ElevatedButton([m
+[31m-                            style: ElevatedButton.styleFrom(backgroundColor: glow, padding: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),[m
+[31m-                            onPressed: () {[m
+[31m-                              if (is2D) {[m
+[31m-                                _tabController.animateTo(0);[m
+[31m-                              } else {[m
+[31m-                                setState(() {[m
+[31m-                                  _objects3D.add({[m
+[31m-                                    'name': asset['name'],[m
+[31m-                                    'x': 0.0,[m
+[31m-                                    'y': -20.0,[m
+[31m-                                    'z': 0.0,[m
+[31m-                                    'size': 35.0,[m
+[31m-                                    'color': glow,[m
+[31m-                                    'type': 'custom',[m
+[31m-                                  });[m
+[31m-                                  _selected3DObjIndex = _objects3D.length - 1;[m
+[31m-                                });[m
+[31m-                                _tabController.animateTo(1);[m
+[31m-                              }[m
+[31m-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ Вкаран в сцената: ${asset['name']}')));[m
+[31m-                            },[m
+[31m-                            child: Text(is2D ? 'ВКАРАЙ В 2D' : 'ВКАРАЙ В 3D', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 9)),[m
+[31m-                          ),[m
+[31m-                        ),[m
+[31m-                      ],[m
+[31m-                    ],[m
+[31m-                  ),[m
+[31m-                ),[m
+[31m-              );[m
+[31m-            },[m
+[31m-          ),[m
+[31m-        ),[m
+[31m-        Padding([m
+[31m-          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),[m
+[31m-          child: SizedBox([m
+[31m-            width: double.infinity,[m
+[31m-            height: 30,[m
+[31m-            child: OutlinedButton.icon([m
+[31m-              style: OutlinedButton.styleFrom(side: const BorderSide(color: AppTheme.sciFiCyan), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),[m
+[31m-              icon: const Icon(Icons.download, size: 13, color: AppTheme.sciFiCyan),[m
+[31m-              label: const Text('ЗАРЕДИ ОЩЕ НОВИ БИБЛИОТЕКИ', style: TextStyle(color: AppTheme.sciFiCyan, fontSize: 9, fontWeight: FontWeight.bold)),[m
+[31m-              onPressed: _loadMoreAssetsBatch,[m
+[31m-            ),[m
+[31m-          ),[m
+[31m-        ),[m
+[31m-      ],[m
+[31m-    );[m
+[31m-  }[m
+[31m-[m
+[31m-  // 4. MIXAMO ДВИЖЕНИЯ[m
+[31m-  Widget _buildMovementsTab() {[m
+[31m-    final filtered = _movementsList.where((m) {[m
+[31m-      return _animSearchQuery.isEmpty || m['name']!.toLowerCase().contains(_animSearchQuery.toLowerCase());[m
+[31m-    }).toList();[m
+[31m-[m
+[31m-    return Column([m
+[31m-      children: [[m
+[31m-        Container([m
+[31m-          height: 36,[m
+[31m-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),[m
+[31m-          child: ListView.builder([m
+[31m-            scrollDirection: Axis.horizontal,[m
+[31m-            itemCount: _animLibraries.length,[m
+[31m-            itemBuilder: (context, index) {[m
+[31m-              final lib = _animLibraries[index];[m
+[31m-              final isSel = lib == _selectedAnimLibrary;[m
+[31m-              return GestureDetector([m
+[31m-                onTap: () => setState(() => _selectedAnimLibrary = lib),[m
+[31m-                child: Container([m
+[31m-                  margin: const EdgeInsets.only(right: 6),[m
+[31m-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),[m
+[31m-                  decoration: BoxDecoration([m
+[31m-                    color: isSel ? const Color(0xFF00E676) : const Color(0xFF141724),[m
+[31m-                    borderRadius: BorderRadius.circular(10),[m
+[31m-                  ),[m
+[31m-                  child: Center(child: Text(lib, style: TextStyle(color: isSel ? Colors.black : Colors.white, fontSize: 10, fontWeight: FontWeight.bold))),[m
+[31m-                ),[m
+[31m-              );[m
+[31m-            },[m
+[31m-          ),[m
+[31m-        ),[m
+[31m-        Expanded([m
+[31m-          child: ListView.builder([m
+[31m-            padding: const EdgeInsets.symmetric(horizontal: 8),[m
+[31m-            itemCount: filtered.length,[m
+[31m-            itemBuilder: (context, index) {[m
+[31m-              final move = filtered[index];[m
+[31m-              final Color glow = move['color'] ?? AppTheme.laserPink;[m
+[31m-[m
+[31m-              return Container([m
+[31m-                margin: const EdgeInsets.symmetric(vertical: 3),[m
+[31m-                padding: const EdgeInsets.all(8),[m
+[31m-                decoration: BoxDecoration([m
+[31m-                  color: const Color(0xFF141724),[m
+[31m-                  borderRadius: BorderRadius.circular(12),[m
+[31m-                  border: Border.all(color: glow.withValues(alpha: 0.35)),[m
+[31m-                ),[m
+[31m-                child: Row([m
+[31m-                  children: [[m
+[31m-                    Container([m
+[31m-                      width: 38,[m
+[31m-                      height: 38,[m
+[31m-                      decoration: BoxDecoration(color: glow.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),[m
+[31m-                      child: Icon(move['icon'] ?? Icons.directions_run, color: glow, size: 20),[m
+[31m-                    ),[m
+[31m-                    const SizedBox(width: 10),[m
+[31m-                    Expanded([m
+[31m-                      child: Column([m
+[31m-                        crossAxisAlignment: CrossAxisAlignment.start,[m
+[31m-                        children: [[m
+[31m-                          Text(move['name']!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),[m
+[31m-                          Text('${move['type']} • ${move['frames']} • ${move['lib']}', style: const TextStyle(color: Colors.grey, fontSize: 9)),[m
+[31m-                        ],[m
+[31m-                      ),[m
+[31m-                    ),[m
+[31m-                    ElevatedButton([m
+[31m-                      style: ElevatedButton.styleFrom(backgroundColor: glow, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),[m
+[31m-                      onPressed: () {[m
+[31m-                        setState(() {[m
+[31m-                          _activeAnimation = move['name']!;[m
+[31m-                          _activeAnimCategory = move['type']!;[m
+[31m-                        });[m
+[31m-                        _tabController.animateTo(4);[m
+[31m-                      },[m
+[31m-                      child: const Text('ПРЕГЛЕД ▶', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 10)),[m
+[31m-                    ),[m
+[31m-                  ],[m
+[31m-                ),[m
+[31m-              );[m
+[31m-            },[m
+[31m-          ),[m
+[31m-        ),[m
+[31m-      ],[m
+[31m-    );[m
+[31m-  }[m
+[31m-[m
+[31m-  // 5. ЖИВ АНИМАЦИОНЕН ПЛЕЙЪР[m
+[31m-  Widget _buildAnimationPlayerTab() {[m
+[31m-    return Column([m
+[31m-      children: [[m
+[31m-        Expanded([m
+[31m-          child: Container([m
+[31m-            margin: const EdgeInsets.all(10),[m
+[31m-            decoration: BoxDecoration([m
+[31m-              color: const Color(0xFF141724),[m
+[31m-              borderRadius: BorderRadius.circular(18),[m
+[31m-              border: Border.all(color: AppTheme.laserPink.withValues(alpha: 0.6)),[m
+[31m-            ),[m
+[31m-            child: Stack([m
+[31m-              children: [[m
+[31m-                Center([m
+[31m-                  child: AnimatedBuilder([m
+[31m-                    animation: _animPreviewController,[m
+[31m-                    builder: (context, child) {[m
+[31m-                      return CustomPaint([m
+[31m-                        size: const Size(180, 220),[m
+[31m-                        painter: LiveSkeletonRigPainter([m
+[31m-                          progress: _animPreviewController.value,[m
+[31m-                          isPlaying: _isPlayingAnim,[m
+[31m-                          category: _activeAnimCategory,[m
+[31m-                          color: AppTheme.sciFiCyan,[m
+[31m-                        ),[m
+[31m-                      );[m
+[31m-                    },[m
+[31m-                  ),[m
+[31m-                ),[m
+[31m-                Positioned([m
+[31m-                  top: 10,[m
+[31m-                  left: 12,[m
+[31m-                  right: 12,[m
+[31m-                  child: Row([m
+[31m-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,[m
+[31m-                    children: [[m
+[31m-                      Container([m
+[31m-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),[m
+[31m-                        decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(8)),[m
+[31m-                        child: Text(_activeAnimation, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),[m
+[31m-                      ),[m
+[31m-                      Container([m
+[31m-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),[m
+[31m-                        decoration: BoxDecoration(color: const Color(0xFF00E676).withValues(alpha: 0.2), borderRadius: BorderRadius.circular(6)),[m
+[31m-                        child: const Text('60 FPS Rigged', style: TextStyle(color: Color(0xFF00E676), fontSize: 9, fontWeight: FontWeight.bold)),[m
+[31m-                      ),[m
+[31m-                    ],[m
+[31m-                  ),[m
+[31m-                ),[m
+[31m-              ],[m
+[31m-            ),[m
+[31m-          ),[m
+[31m-        ),[m
+[31m-        Padding([m
+[31m-          padding: const EdgeInsets.symmetric(horizontal: 16.0),[m
+[31m-          child: Row([m
+[31m-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,[m
+[31m-            children: [[m
+[31m-              _buildSpeedPill('0.5x (Бавно)', 0.5),[m
+[31m-              IconButton([m
+[31m-                icon: Icon(_isPlayingAnim ? Icons.pause_circle_filled : Icons.play_circle_filled, size: 48, color: AppTheme.sciFiCyan),[m
+[31m-                onPressed: () {[m
+[31m-                  setState(() {[m
+[31m-                    _isPlayingAnim = !_isPlayingAnim;[m
+[31m-                    if (_isPlayingAnim) {[m
+[31m-                      _animPreviewController.repeat();[m
+[31m-                    } else {[m
+[31m-                      _animPreviewController.stop();[m
+[31m-                    }[m
+[31m-                  });[m
+[31m-                },[m
+[31m-              ),[m
+[31m-              _buildSpeedPill('2.0x (Бързо)', 2.0),[m
+[31m-            ],[m
+[31m-          ),[m
+[31m-        ),[m
+[31m-        SafeArea([m
+[31m-          top: false,[m
+[31m-          child: Padding([m
+[31m-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),[m
+[31m-            child: SizedBox([m
+[31m-              width: double.infinity,[m
+[31m-              height: 44,[m
+[31m-              child: Container([m
+[31m-                decoration: BoxDecoration([m
+[31m-                  gradient: const LinearGradient(colors: [AppTheme.laserPink, AppTheme.sciFiCyan]),[m
+[31m-                  borderRadius: BorderRadius.circular(12),[m
+[31m-                ),[m
+[31m-                child: ElevatedButton([m
+[31m-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent),[m
+[31m-                  onPressed: () {[m
+[31m-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('⚡ Движението "$_activeAnimation" е приложено в Filament!')));[m
+[31m-                  },[m
+[31m-                  child: const Text('⚡ ПРИЛОЖИ КЪМ МОДЕЛА', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),[m
+[31m-                ),[m
+[31m-              ),[m
+[31m-            ),[m
+[31m-          ),[m
+[31m-        ),[m
+[31m-      ],[m
+[31m-    );[m
+[31m-  }[m
+[31m-[m
+[31m-  Widget _buildSpeedPill(String label, double speed) {[m
+[31m-    bool isSel = _playbackSpeed == speed;[m
+[31m-    return GestureDetector([m
+[31m-      onTap: () {[m
+[31m-        setState(() {[m
+[31m-          _playbackSpeed = isSel ? 1.0 : speed;[m
+[31m-          _animPreviewController.duration = Duration(milliseconds: (1500 / _playbackSpeed).toInt());[m
+[31m-          if (_isPlayingAnim) _animPreviewController.repeat();[m
+[31m-        });[m
+[31m-      },[m
+[31m-      child: Container([m
+[31m-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),[m
+[31m-        decoration: BoxDecoration([m
+[31m-          color: isSel ? AppTheme.laserPink : const Color(0xFF1E2235),[m
+[31m-          borderRadius: BorderRadius.circular(8),[m
+[31m-        ),[m
+[31m-        child: Text(label, style: TextStyle(color: isSel ? Colors.white : Colors.white70, fontSize: 9, fontWeight: FontWeight.bold)),[m
+[31m-      ),[m
+[31m-    );[m
+[31m-  }[m
+[31m-}[m
+[31m-[m
+[31m-// 2D Godot Canvas Painter[m
+[31m-class Godot2DCanvasPainter extends CustomPainter {[m
+[31m-  final List<Map<String, dynamic>> elements;[m
+[31m-  final bool enableShadows;[m
+[31m-  final Color lightColor;[m
+[31m-  final double pulseValue;[m
+[31m-  final bool isSimulating;[m
+[31m-  final Offset playerPos;[m
+[31m-[m
+[31m-  Godot2DCanvasPainter({[m
+[31m-    required this.elements,[m
+[31m-    required this.enableShadows,[m
+[31m-    required this.lightColor,[m
+[31m-    required this.pulseValue,[m
+[31m-    required this.isSimulating,[m
+[31m-    required this.playerPos,[m
+[31m-  });[m
+[31m-[m
+[31m-  @override[m
+[31m-  void paint(Canvas canvas, Size size) {[m
+[31m-    const double s = 36.0;[m
+[31m-[m
+[31m-    final gridPaint = Paint()..color = const Color(0xFF181C2E)..strokeWidth = 1.0;[m
+[31m-    for (double x = 0; x < size.width; x += s) {[m
+[31m-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);[m
+[31m-    }[m
+[31m-    for (double y = 0; y < size.height; y += s) {[m
+[31m-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);[m
+[31m-    }[m
+[31m-[m
+[31m-    for (var el in elements) {[m
+[31m-      if (el['type'] == 'light') {[m
+[31m-        Offset center = Offset(el['pos'].dx * s + s / 2, el['pos'].dy * s + 40 + s / 2);[m
+[31m-        double rad = 70.0 + (pulseValue * 15.0);[m
+[31m-[m
+[31m-        final lightGlow = Paint()[m
+[31m-          ..shader = RadialGradient([m
+[31m-            colors: [lightColor.withValues(alpha: 0.35), Colors.transparent],[m
+[31m-          ).createShader(Rect.fromCircle(center: center, radius: rad));[m
+[31m-[m
+[31m-        canvas.drawCircle(center, rad, lightGlow);[m
+[32m+[m[32m          'temperature': 0.7,[m
+[32m+[m[32m        }));[m
+[32m+[m
+[32m+[m[32m        final response = await request.close();[m
+[32m+[m[32m        final responseBody = await response.transform(utf8.decoder).join();[m
+[32m+[m[32m        if (response.statusCode == 200) {[m
+[32m+[m[32m          final data = jsonDecode(responseBody);[m
+[32m+[m[32m          String content = data['choices'][0]['message']['content'] ?? '';[m
+[32m+[m[32m          if (content.isNotEmpty) {[m
+[32m+[m[32m            client.close();[m
+[32m+[m[32m            return content;[m
+[32m+[m[32m          }[m
+[32m+[m[32m        }[m
+[32m+[m[32m      } catch (_) {[m
+[32m+[m[32m        continue;[m
+       }[m
+     }[m
+[31m-[m
+[31m-    for (var el in elements) {[m
+[31m-      Offset pos = el['pos'];[m
+[31m-      String type = el['type'];[m
+[31m-      Rect r = Rect.fromLTWH(pos.dx * s, (pos.dy * s) + 40, s, s);[m
+[31m-[m
+[31m-      if (type == 'grass') {[m
+[31m-        final grassPaint = Paint()..color = const Color(0xFF00E676)..style = PaintingStyle.fill;[m
+[31m-        canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(6)), grassPaint);[m
+[31m-      } else if (type == 'dirt') {[m
+[31m-        final dirtPaint = Paint()..color = const Color(0xFF8D6E63)..style = PaintingStyle.fill;[m
+[31m-        canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(6)), dirtPaint);[m
+[31m-      } else if (type == 'coin') {[m
+[31m-        final coinPaint = Paint()..color = const Color(0xFFFFD600)..style = PaintingStyle.fill;[m
+[31m-        canvas.drawCircle(Offset(pos.dx * s + s / 2, pos.dy * s + 40 + s / 2), 9, coinPaint);[m
+[31m-      } else if (type == 'enemy') {[m
+[31m-        final enemyPaint = Paint()..color = const Color(0xFFFF1744)..style = PaintingStyle.fill;[m
+[31m-        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(pos.dx * s + 4, pos.dy * s + 44, s - 8, s - 8), const Radius.circular(8)), enemyPaint);[m
+[31m-      } else if (type == 'lava') {[m
+[31m-        final lavaPaint = Paint()..color = const Color(0xFFFF3D00)..style = PaintingStyle.fill;[m
+[31m-        canvas.drawRect(r, lavaPaint);[m
+[31m-      } else if (type == 'light') {[m
+[31m-        final lightBulb = Paint()..color = lightColor..style = PaintingStyle.fill;[m
+[31m-        canvas.drawCircle(Offset(pos.dx * s + s / 2, pos.dy * s + 40 + s / 2), 7, lightBulb);[m
+[31m-      }[m
+[31m-    }[m
+[31m-[m
+[31m-    if (isSimulating) {[m
+[31m-      final playerPaint = Paint()..color = AppTheme.laserPink..style = PaintingStyle.fill;[m
+[31m-      canvas.drawCircle(playerPos, 14, playerPaint);[m
+[31m-    }[m
+[32m+[m[32m    client.close();[m
+[32m+[m[32m    return '';[m
+   }[m
+ [m
+[31m-  @override[m
+[31m-  bool shouldRepaint(covariant Godot2DCanvasPainter oldDelegate) => true;[m
+[31m-}[m
+[31m-[m
+[31m-// 3D Перспективен World Painter[m
+[31m-class Real3DWorldPainter extends CustomPainter {[m
+[31m-  final double yaw;[m
+[31m-  final double pitch;[m
+[31m-  final double zoom;[m
+[31m-  final List<Map<String, dynamic>> objects;[m
+[31m-  final int selectedIndex;[m
+[31m-[m
+[31m-  Real3DWorldPainter({[m
+[31m-    required this.yaw,[m
+[31m-    required this.pitch,[m
+[31m-    required this.zoom,[m
+[31m-    required this.objects,[m
+[31m-    required this.selectedIndex,[m
+[31m-  });[m
+[32m+[m[32m  // ОФЛАЙН ЕНЦИКЛОПЕДИЯ ЗА UNITY 2D, 3D & C#[m
+[32m+[m[32m  String _generateSmartUnityLocalResponse(String text) {[m
+[32m+[m[32m    String t = text.toLowerCase();[m
+[32m+[m[32m    if (t.contains('2d') || t.contains('играч') || t.contains('движение')) {[m
+[32m+[m[32m      return '''[m
+[32m+[m[32m🎮 **Unity 2D Character Controller (C#):**[m
+ [m
+[31m-  Offset project(double x, double y, double z, Size size) {[m
+[31m-    double cosY = math.cos(yaw);[m
+[31m-    double sinY = math.sin(yaw);[m
+[31m-    double x1 = x * cosY - z * sinY;[m
+[31m-    double z1 = x * sinY + z * cosY;[m
+[32m+[m[32m1. **Инспектор (Inspector):**[m
+[32m+[m[32m   • `Rigidbody2D`: BodyType = Dynamic, Collision Detection = Continuous[m
+[32m+[m[32m   • `BoxCollider2D`: IsTrigger = false[m
+ [m
+[31m-    double cosP = math.cos(pitch);[m
+[31m-    double sinP = math.sin(pitch);[m
+[31m-    double y2 = y * cosP - z1 * sinP;[m
+[31m-    double z2 = y * sinP + z1 * cosP;[m
+[32m+[m[32m2. **C# Скрипт (PlayerController2D.cs):**[m
+[32m+[m[32m```csharp[m
+[32m+[m[32musing UnityEngine;[m
+ [m
+[31m-    double fov = 380.0 * zoom;[m
+[31m-    double dist = 420.0;[m
+[31m-    double depth = z2 + dist;[m
+[31m-    if (depth < 1.0) depth = 1.0;[m
+[31m-[m
+[31m-    double sx = (x1 * fov / depth) + (size.width / 2);[m
+[31m-    double sy = (y2 * fov / depth) + (size.height / 2) + 20;[m
+[31m-[m
+[31m-    return Offset(sx, sy);[m
+[31m-  }[m
+[32m+[m[32mpublic class PlayerController2D : MonoBehaviour {[m
+[32m+[m[32m    public float moveSpeed = 8f;[m
+[32m+[m[32m    public float jumpForce = 12f;[m
+[32m+[m[32m    private Rigidbody2D rb;[m
+[32m+[m[32m    private float moveInput;[m
+ [m
+[31m-  @override[m
+[31m-  void paint(Canvas canvas, Size size) {[m
+[31m-    final gridPaint = Paint()[m
+[31m-      ..color = AppTheme.sciFiCyan.withValues(alpha: 0.15)[m
+[31m-      ..strokeWidth = 1.0;[m
+[31m-[m
+[31m-    final lavaFloorPaint = Paint()[m
+[31m-      ..color = const Color(0xFFFF3D00).withValues(alpha: 0.25)[m
+[31m-      ..style = PaintingStyle.fill;[m
+[31m-[m
+[31m-    const double gridSize = 180.0;[m
+[31m-    const double step = 30.0;[m
+[31m-[m
+[31m-    for (double i = -gridSize; i <= gridSize; i += step) {[m
+[31m-      Offset p1 = project(i, 60, -gridSize, size);[m
+[31m-      Offset p2 = project(i, 60, gridSize, size);[m
+[31m-      canvas.drawLine(p1, p2, gridPaint);[m
+[31m-[m
+[31m-      Offset p3 = project(-gridSize, 60, i, size);[m
+[31m-      Offset p4 = project(gridSize, 60, i, size);[m
+[31m-      canvas.drawLine(p3, p4, gridPaint);[m
+[32m+[m[32m    void Start() {[m
+[32m+[m[32m        rb = GetComponent<Rigidbody2D>();[m
+     }[m
+ [m
+[31m-    Path lavaPath = Path()[m
+[31m-      ..moveTo(project(-60, 59, -60, size).dx, project(-60, 59, -60, size).dy)[m
+[31m-      ..lineTo(project(60, 59, -60, size).dx, project(60, 59, -60, size).dy)[m
+[31m-      ..lineTo(project(60, 59, 60, size).dx, project(60, 59, 60, size).dy)[m
+[31m-      ..lineTo(project(-60, 59, 60, size).dx, project(-60, 59, 60, size).dy)[m
+[31m-      ..close();[m
+[31m-    canvas.drawPath(lavaPath, lavaFloorPaint);[m
+[31m-[m
+[31m-    for (int i = 0; i < objects.length; i++) {[m
+[31m-      var obj = objects[i];[m
+[31m-      double ox = obj['x'];[m
+[31m-      double oy = obj['y'];[m
+[31m-      double oz = obj['z'];[m
+[31m-      double s = obj['size'];[m
+[31m-      Color c = obj['color'];[m
+[31m-      bool isSel = i == selectedIndex;[m
+[31m-[m
+[31m-      _draw3DBox(canvas, size, ox, oy, oz, s, c, isSel);[m
+[32m+[m[32m    void Update() {[m
+[32m+[m[32m        moveInput = Input.GetAxisRaw("Horizontal");[m
+[32m+[m[32m        if (Input.GetButtonDown("Jump") && Mathf.Abs(rb.linearVelocity.y) < 0.01f) {[m
+[32m+[m[32m            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);[m
+[32m+[m[32m        }[m
+     }[m
+[31m-  }[m
+[31m-[m
+[31m-  void _draw3DBox(Canvas canvas, Size size, double x, double y, double z, double s, Color color, bool isSelected) {[m
+[31m-    double hs = s / 2;[m
+[31m-    List<Offset> v = [[m
+[31m-      project(x - hs, y - hs, z - hs, size),[m
+[31m-      project(x + hs, y - hs, z - hs, size),[m
+[31m-      project(x + hs, y - hs, z + hs, size),[m
+[31m-      project(x - hs, y - hs, z + hs, size),[m
+[31m-      project(x - hs, y + hs, z - hs, size),[m
+[31m-      project(x + hs, y + hs, z - hs, size),[m
+[31m-      project(x + hs, y + hs, z + hs, size),[m
+[31m-      project(x - hs, y + hs, z + hs, size),[m
+[31m-    ];[m
+[31m-[m
+[31m-    final topPaint = Paint()..color = color.withValues(alpha: isSelected ? 0.8 : 0.5)..style = PaintingStyle.fill;[m
+[31m-    final sidePaint = Paint()..color = color.withValues(alpha: isSelected ? 0.6 : 0.35)..style = PaintingStyle.fill;[m
+[31m-    final edgePaint = Paint()..color = isSelected ? Colors.white : color..strokeWidth = isSelected ? 2.0 : 1.2..style = PaintingStyle.stroke;[m
+[31m-[m
+[31m-    Path top = Path()..moveTo(v[0].dx, v[0].dy)..lineTo(v[1].dx, v[1].dy)..lineTo(v[2].dx, v[2].dy)..lineTo(v[3].dx, v[3].dy)..close();[m
+[31m-    canvas.drawPath(top, topPaint);[m
+[31m-    canvas.drawPath(top, edgePaint);[m
+[31m-[m
+[31m-    Path front = Path()..moveTo(v[3].dx, v[3].dy)..lineTo(v[2].dx, v[2].dy)..lineTo(v[6].dx, v[6].dy)..lineTo(v[7].dx, v[7].dy)..close();[m
+[31m-    canvas.drawPath(front, sidePaint);[m
+[31m-    canvas.drawPath(front, edgePaint);[m
+[31m-[m
+[31m-    Path right = Path()..moveTo(v[2].dx, v[2].dy)..lineTo(v[1].dx, v[1].dy)..lineTo(v[5].dx, v[5].dy)..lineTo(v[6].dx, v[6].dy)..close();[m
+[31m-    canvas.drawPath(right, sidePaint);[m
+[31m-    canvas.drawPath(right, edgePaint);[m
+[31m-  }[m
+ [m
+[31m-  @override[m
+[31m-  bool shouldRepaint(covariant Real3DWorldPainter oldDelegate) => true;[m
+[31m-}[m
+[31m-[m
+[31m-// Live Skeleton Rig Painter[m
+[31m-class LiveSkeletonRigPainter extends CustomPainter {[m
+[31m-  final double progress;[m
+[31m-  final bool isPlaying;[m
+[31m-  final String category;[m
+[31m-  final Color color;[m
+[31m-[m
+[31m-  LiveSkeletonRigPainter({[m
+[31m-    required this.progress,[m
+[31m-    required this.isPlaying,[m
+[31m-    required this.category,[m
+[31m-    required this.color,[m
+[31m-  });[m
+[31m-[m
+[31m-  @override[m
+[31m-  void paint(Canvas canvas, Size size) {[m
+[31m-    final paint = Paint()..color = color..strokeWidth = 4.0..strokeCap = StrokeCap.round;[m
+[31m-    final jointPaint = Paint()..color = const Color(0xFFFF007F);[m
+[31m-[m
+[31m-    final double cx = size.width / 2;[m
+[31m-    final double cy = size.height / 2;[m
+[31m-[m
+[31m-    double t = progress * 2 * math.pi;[m
+[31m-    double armAngle = math.sin(t) * 0.6;[m
+[31m-    double legAngle = math.cos(t) * 0.7;[m
+[31m-    double bodyBob = math.sin(t * 2) * 6;[m
+[31m-[m
+[31m-    if (category.contains('Танци')) {[m
+[31m-      armAngle = math.sin(t * 2) * 1.1;[m
+[31m-      bodyBob = math.cos(t * 2) * 10;[m
+[31m-    } else if (category.contains('Бойни')) {[m
+[31m-      armAngle = math.sin(t * 3) * 1.3;[m
+[31m-      legAngle = math.cos(t * 2) * 1.0;[m
+[32m+[m[32m    void FixedUpdate() {[m
+[32m+[m[32m        rb.linearVelocity = new Vector2(moveInput * moveSpeed, rb.linearVelocity.y);[m
+     }[m
+[31m-[m
+[31m-    canvas.drawCircle(Offset(cx, cy - 55 + bodyBob), 14, paint);[m
+[31m-    canvas.drawCircle(Offset(cx, cy - 55 + bodyBob), 4, jointPaint);[m
+[31m-[m
+[31m-    Offset neck = Offset(cx, cy - 40 + bodyBob);[m
+[31m-    Offset pelvis = Offset(cx, cy + 10 + bodyBob);[m
+[31m-    canvas.drawLine(neck, pelvis, paint);[m
+[31m-[m
+[31m-    Offset leftHand = Offset(cx - 35 * math.cos(armAngle), cy - 20 + 35 * math.sin(armAngle) + bodyBob);[m
+[31m-    Offset rightHand = Offset(cx + 35 * math.cos(armAngle), cy - 20 - 35 * math.sin(armAngle) + bodyBob);[m
+[31m-    canvas.drawLine(neck, leftHand, paint);[m
+[31m-    canvas.drawLine(neck, rightHand, paint);[m
+[31m-    canvas.drawCircle(leftHand, 4, jointPaint);[m
+[31m-    canvas.drawCircle(rightHand, 4, jointPaint);[m
+[31m-[m
+[31m-    Offset leftFoot = Offset(cx - 25 * math.sin(legAngle), cy + 65 + 15 * math.cos(legAngle));[m
+[31m-    Offset rightFoot = Offset(cx + 25 * math.sin(legAngle), cy + 65 - 15 * math.cos(legAngle));[m
+[31m-    canvas.drawLine(pelvis, leftFoot, paint);[m
+[31m-    canvas.drawLine(pelvis, rightFoot, paint);[m
+[31m-    canvas.drawCircle(leftFoot, 4, jointPaint);[m
+[31m-    canvas.drawCircle(rightFoot, 4, jointPaint);[m
+[31m-  }[m
+[31m-[m
+[31m-  @override[m
+[31m-  bool shouldRepaint(covariant LiveSkeletonRigPainter oldDelegate) => true;[m
+ }[m
