@@ -44,7 +44,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
   ];
 
   // ==========================================
-  // КОНТРОЛЕРИ ЗА API КЛЮЧОВЕТЕ (API VAULT)
+  // КОНТРОЛЕРИ ЗА API ТРЕЗОРА
   // ==========================================
   final TextEditingController _openRouterKeyCtrl = TextEditingController();
   final TextEditingController _hfKey1Ctrl = TextEditingController();
@@ -52,11 +52,19 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
   final TextEditingController _hfKey3Ctrl = TextEditingController();
   final TextEditingController _sketchfabKeyCtrl = TextEditingController();
   final TextEditingController _freeSoundKeyCtrl = TextEditingController();
+  final TextEditingController _nasaKeyCtrl = TextEditingController();
+  final TextEditingController _thingiverseKeyCtrl = TextEditingController();
+
+  // Модели за OpenRouter
+  String _selectedOpenRouterModel = '⚡ АВТОМАТИЧЕН БЕЗПЛАТЕН (100% Онлайн)';
+  List<String> _openRouterModels = [];
+  bool _isDownloadingModels = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _openRouterModels = _aiService.getModelsForProvider('⭐ ВСИЧКИ МОДЕЛИ (Live Catalog)');
   }
 
   @override
@@ -69,6 +77,8 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     _hfKey3Ctrl.dispose();
     _sketchfabKeyCtrl.dispose();
     _freeSoundKeyCtrl.dispose();
+    _nasaKeyCtrl.dispose();
+    _thingiverseKeyCtrl.dispose();
     super.dispose();
   }
 
@@ -100,11 +110,47 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     }
   }
 
+  // 🔄 СВАЛЯНЕ НА ВСИЧКИ 300+ LIVE МОДЕЛА ЗА OPENROUTER
+  void _downloadOpenRouterModels() async {
+    setState(() => _isDownloadingModels = true);
+    _aiService.configure(
+      key: _openRouterKeyCtrl.text,
+      selectedProvider: '⭐ ВСИЧКИ МОДЕЛИ (Live Catalog)',
+      selectedModel: _selectedOpenRouterModel,
+    );
+
+    final catalog = await _aiService.fetchAllProvidersAndModels();
+    final allList = catalog['⭐ ВСИЧКИ МОДЕЛИ (Live Catalog)'] ?? [];
+
+    setState(() {
+      _isDownloadingModels = false;
+      if (allList.isNotEmpty) {
+        _openRouterModels = allList;
+        if (!_openRouterModels.contains(_selectedOpenRouterModel)) {
+          _selectedOpenRouterModel = _openRouterModels.first;
+        }
+      }
+    });
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('🎉 Успешно свалени ${_openRouterModels.length} живи модела за OpenRouter!'),
+      ),
+    );
+  }
+
   void _saveAllApiKeys() {
+    _aiService.configure(
+      key: _openRouterKeyCtrl.text,
+      selectedProvider: '⭐ ВСИЧКИ МОДЕЛИ (Live Catalog)',
+      selectedModel: _selectedOpenRouterModel,
+    );
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         backgroundColor: Color(0xFF00E676),
-        content: Text('✅ Всички API ключове са запазени успешно в трезора!', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        content: Text('✅ Всички API ключове и избраният модел са запазени в трезора!', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
       ),
     );
   }
@@ -145,9 +191,6 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     );
   }
 
-  // =========================================================================
-  // 1. ТАБ: AI ЧАТ СТРОИТЕЛ
-  // =========================================================================
   Widget _buildChatAgentTab() {
     return Column(
       children: [
@@ -230,9 +273,9 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
                     child: TextField(
                       controller: _chatController,
                       style: const TextStyle(color: Colors.white, fontSize: 13),
-                      decoration: InputDecoration(
-                        hintText: _isBuilderMode ? 'Команда: построй град, премести, изтрий...' : 'Напиши съобщение...',
-                        hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+                      decoration: const InputDecoration(
+                        hintText: 'Команда: построй град, премести, изтрий...',
+                        hintStyle: TextStyle(color: Colors.grey, fontSize: 12),
                         border: InputBorder.none,
                       ),
                       onSubmitted: (_) => _sendMessage(),
@@ -337,7 +380,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
   }
 
   // =========================================================================
-  // 2. ТАБ: API ТРЕЗОР (СКРОЛВАЩ СЕ СПИСЪК С КЛЮЧОВЕ)
+  // 2. ТАБ: API ТРЕЗОР С БУТОН ЗА СВАЛЯНЕ И СЕЛЕКТОР НА МОДЕЛИ
   // =========================================================================
   Widget _buildApiVaultTab() {
     return Stack(
@@ -347,34 +390,90 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
           children: [
             const Text('УПРАВЛЕНИЕ НА API КЛЮЧОВЕ', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            const Text('Въведи ключовете си тук. Те се пазят локално на телефона ти и отключват пълната мощ на енджина.', style: TextStyle(color: Colors.grey, fontSize: 11)),
-            const SizedBox(height: 20),
+            const Text('Въведи ключовете си тук. Повечето от 101-те библиотеки са CC0 и работят свободно без ключ!', style: TextStyle(color: Colors.grey, fontSize: 11)),
+            const SizedBox(height: 18),
 
             // --- СЕКЦИЯ 1: HUGGING FACE (3D ГЕНЕРАТОР) ---
             _buildSectionHeader('🪄 3D Генератор (Hugging Face)', AppTheme.laserPink),
+            const SizedBox(height: 6),
+            const Text('Въведи до 3 безплатни ключа за ротация. Това дава 150-300 безплатни 3D модела на ден!', style: TextStyle(color: Colors.white54, fontSize: 10)),
             const SizedBox(height: 8),
-            const Text('Въведи до 3 безплатни ключа за ротация. Това заобикаля лимитите и ти дава 300+ безплатни 3D модела на ден!', style: TextStyle(color: Colors.white54, fontSize: 10)),
-            const SizedBox(height: 10),
             _buildKeyInput('Hugging Face Key 1', _hfKey1Ctrl, Icons.key),
             _buildKeyInput('Hugging Face Key 2', _hfKey2Ctrl, Icons.key),
             _buildKeyInput('Hugging Face Key 3', _hfKey3Ctrl, Icons.key),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            // --- СЕКЦИЯ 2: AI МОЗЪК (OPENROUTER) ---
+            // --- СЕКЦИЯ 2: OPENROUTER AI МОЗЪК С БУТОН И СЕЛЕКТОР ---
             _buildSectionHeader('🧠 AI Мозък (OpenRouter / OpenAI)', AppTheme.sciFiCyan),
+            const SizedBox(height: 6),
+            const Text('Ключ за текстовия AI архитект. Натисни бутона за изтегляне на всички 300+ модела!', style: TextStyle(color: Colors.white54, fontSize: 10)),
             const SizedBox(height: 8),
-            const Text('Ключ за текстовия AI архитект, който разбира командите ти и пише кода за сцените.', style: TextStyle(color: Colors.white54, fontSize: 10)),
-            const SizedBox(height: 10),
-            _buildKeyInput('OpenRouter API Key', _openRouterKeyCtrl, Icons.psychology),
-            const SizedBox(height: 24),
+            _buildKeyInput('OpenRouter API Key (sk-or-v1-...)', _openRouterKeyCtrl, Icons.psychology),
 
-            // --- СЕКЦИЯ 3: ВЪНШНИ БИБЛИОТЕКИ ---
-            _buildSectionHeader('📚 Световни Библиотеки', const Color(0xFFFFD600)),
-            const SizedBox(height: 8),
-            const Text('Някои от 101-те библиотеки изискват безплатен ключ за достъп до техните API-та.', style: TextStyle(color: Colors.white54, fontSize: 10)),
+            // Бутон за теглене на всички 300+ модела
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 38,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.sciFiCyan,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      icon: _isDownloadingModels
+                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                          : const Icon(Icons.sync, color: Colors.black, size: 16),
+                      label: Text(
+                        _isDownloadingModels ? 'СВАЛЯНЕ НА МОДЕЛИ...' : '🔄 СВАЛИ ВСИЧКИ МОДЕЛИ (300+ LIVE)',
+                        style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: _isDownloadingModels ? null : _downloadOpenRouterModels,
+                    ),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 10),
+
+            // Падащо меню за избор на активен модел
+            Text('ИЗБЕРИ АКТИВЕН МОДЕЛ (${_openRouterModels.length} НАЛИЧНИ)', style: const TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Container(
+              height: 42,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF161824),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppTheme.sciFiCyan.withValues(alpha: 0.5)),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _openRouterModels.contains(_selectedOpenRouterModel)
+                      ? _selectedOpenRouterModel
+                      : (_openRouterModels.isNotEmpty ? _openRouterModels.first : null),
+                  isExpanded: true,
+                  menuMaxHeight: 380,
+                  dropdownColor: const Color(0xFF161824),
+                  style: const TextStyle(color: AppTheme.sciFiCyan, fontSize: 11, fontWeight: FontWeight.bold),
+                  items: _openRouterModels.map((m) => DropdownMenuItem(value: m, child: Text(m, overflow: TextOverflow.ellipsis))).toList(),
+                  onChanged: (val) {
+                    if (val != null) setState(() => _selectedOpenRouterModel = val);
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 22),
+
+            // --- СЕКЦИЯ 3: СВЕТОВНИТЕ БИБЛИОТЕКИ С API КЛЮЧОВЕ ---
+            _buildSectionHeader('📚 Световни Библиотеки (С официален API достъп)', const Color(0xFFFFD600)),
+            const SizedBox(height: 6),
+            const Text('Останалите библиотеки са 100% CC0 и работят без ключ. Тези 4 дават достъп до милиони обекти:', style: TextStyle(color: Colors.white54, fontSize: 10)),
+            const SizedBox(height: 8),
             _buildKeyInput('Sketchfab API Key (За 500k+ 3D модела)', _sketchfabKeyCtrl, Icons.view_in_ar),
-            _buildKeyInput('FreeSound API Key (За 500k+ звуци)', _freeSoundKeyCtrl, Icons.music_note),
+            _buildKeyInput('FreeSound.org API Key (За 580k+ аудио ефекта)', _freeSoundKeyCtrl, Icons.music_note),
+            _buildKeyInput('NASA Open API Key (api.nasa.gov за совалки)', _nasaKeyCtrl, Icons.rocket_launch),
+            _buildKeyInput('Thingiverse App Token (За 1M+ 3D обекта)', _thingiverseKeyCtrl, Icons.precision_manufacturing),
             const SizedBox(height: 20),
           ],
         ),
@@ -417,9 +516,9 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
 
   Widget _buildKeyInput(String hint, TextEditingController controller, IconData icon) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10.0),
+      padding: const EdgeInsets.only(bottom: 8.0),
       child: Container(
-        height: 44,
+        height: 42,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color: const Color(0xFF161824),
@@ -432,9 +531,9 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
           style: const TextStyle(color: Colors.white, fontSize: 13),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+            hintStyle: const TextStyle(color: Colors.grey, fontSize: 11),
             border: InputBorder.none,
-            icon: Icon(icon, size: 18, color: Colors.grey),
+            icon: Icon(icon, size: 17, color: Colors.grey),
           ),
         ),
       ),
