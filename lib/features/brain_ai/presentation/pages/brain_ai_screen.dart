@@ -54,8 +54,8 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
   final TextEditingController _thingiverseKeyCtrl = TextEditingController();
   final TextEditingController _modelSearchCtrl = TextEditingController();
 
-  // Модели за OpenRouter
-  String _selectedOpenRouterModel = '⚡ АВТОМАТИЧЕН БЕЗПЛАТЕН (100% Онлайн)';
+  // Модели за OpenRouter (Веднага 300+ модела!)
+  String _selectedOpenRouterModel = 'openai/gpt-4o';
   List<String> _openRouterModels = [];
   String _modelFilterQuery = '';
   bool _isDownloadingModels = false;
@@ -65,6 +65,9 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _openRouterModels = _aiService.getModelsForProvider('⭐ ВСИЧКИ МОДЕЛИ (Live Catalog)');
+    if (_openRouterModels.isNotEmpty && !_openRouterModels.contains(_selectedOpenRouterModel)) {
+      _selectedOpenRouterModel = _openRouterModels.first;
+    }
   }
 
   @override
@@ -111,7 +114,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     }
   }
 
-  // 🔄 ИСТИНСКО СВАЛЯНЕ НА ВСИЧКИ 400+ МОДЕЛА ОТ OPENROUTER
+  // 🔄 ИЗТЕГЛЯНЕ НА ВСИЧКИ ЖИВИ МОДЕЛИ ОТ OPENROUTER
   void _downloadOpenRouterModels() async {
     setState(() => _isDownloadingModels = true);
     _aiService.configure(
@@ -134,7 +137,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     });
 
     if (!mounted) return;
-    if (allList.isNotEmpty && allList.length > 20) {
+    if (_aiService.lastError == null && allList.length > 200) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('🎉 Успешно свалени ${allList.length} живи модела от OpenRouter!'),
@@ -143,9 +146,9 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('⚠️ Няма връзка с OpenRouter. Проверете мобилните данни или Wi-Fi!'),
-          backgroundColor: Colors.redAccent,
+        SnackBar(
+          content: Text('⚡ Активни са ${_openRouterModels.length} модела (${_aiService.lastError ?? "Пълен локален каталог"})'),
+          backgroundColor: const Color(0xFF00E5FF),
         ),
       );
     }
@@ -161,7 +164,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         backgroundColor: Color(0xFF00E676),
-        content: Text('✅ Всички API ключове и избраният модел са запазени в трезора!', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        content: Text('✅ Всички API ключове и моделът са запазени в трезора!', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
       ),
     );
   }
@@ -391,7 +394,7 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
   }
 
   // =========================================================================
-  // 2. ТАБ: API ТРЕЗОР С ТЪРСАЧКА СРЕД 400+ МОДЕЛА
+  // 2. ТАБ: API ТРЕЗОР С ТЪРСАЧКА СРЕД 300+ МОДЕЛА
   // =========================================================================
   Widget _buildApiVaultTab() {
     final filteredModels = _openRouterModels.where((m) {
@@ -421,11 +424,11 @@ class _BrainAiScreenState extends State<BrainAiScreen> with SingleTickerProvider
             // --- СЕКЦИЯ 2: OPENROUTER AI МОЗЪК С ТЪРСАЧКА И БУТОН ЗА СВАЛЯНЕ ---
             _buildSectionHeader('🧠 AI Мозък (OpenRouter / OpenAI)', AppTheme.sciFiCyan),
             const SizedBox(height: 6),
-            const Text('Ключ за текстовия AI архитект. Натисни бутона за изтегляне на всички 400+ модела!', style: TextStyle(color: Colors.white54, fontSize: 10)),
+            const Text('Ключ за текстовия AI архитект. Натисни бутона за изтегляне на живите модели!', style: TextStyle(color: Colors.white54, fontSize: 10)),
             const SizedBox(height: 8),
             _buildKeyInput('OpenRouter API Key (sk-or-v1-...)', _openRouterKeyCtrl, Icons.psychology),
 
-            // Бутон за теглене на всички живи модели
+            // Бутон за теглене
             Row(
               children: [
                 Expanded(
