@@ -34,6 +34,10 @@ jobs:
         run: |
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
+      - name: 🔄 Pre-Import Assets (Генериране на кеша)
+        run: |
+          godot --headless --editor --quit || true
+
       - name: 🚀 Export Android APK
         run: |
           mkdir -p build
