@@ -1,58 +1,44 @@
-name: Build TipTop Android APK
+name: Build TipTop Engine APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: 'temurin'
           java-version: '17'
+
+      - name: Set up Android NDK & CMake
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26b
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.24.0'
           channel: 'stable'
-
-      - name: Generate Clean Android Project & Inject C++ Engine
-        run: |
-          rm -rf android/
-          flutter create . --platforms=android --org com.tiptop --project-name tiptop_game_engine
-          
-          mkdir -p android/app/src/main/cpp/ffi_exports
-          cp cpp_engine/CMakeLists.txt android/app/src/main/cpp/
-          cp cpp_engine/ffi_exports/engine_api.cpp android/app/src/main/cpp/ffi_exports/
-          
-          # Интелигентно вмъкване на C++ в новия .kts или стар .gradle файл
-          python3 -c '
-          import glob
-          for f in glob.glob("android/app/build.gradle*"):
-              data = open(f).read()
-              if "build.gradle.kts" in f:
-                  snippet = "\n    externalNativeBuild {\n        cmake {\n            path = file(\"src/main/cpp/CMakeLists.txt\")\n        }\n    }\n"
-              else:
-                  snippet = "\n    externalNativeBuild {\n        cmake {\n            path \"src/main/cpp/CMakeLists.txt\"\n        }\n    }\n"
-              data = data.replace("android {", "android {" + snippet, 1)
-              open(f, "w").write(data)
-          '
+          cache: true
 
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Build Release APK
+      - name: Build APK (Release)
         run: flutter build apk --release
 
-      - name: Upload TipTop APK Artifact
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tiptop_game_engine_apk
-          path: build/app/outputs/**/*.apk
+          name: tiptop-engine-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
