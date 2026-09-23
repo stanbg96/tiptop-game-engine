@@ -9,9 +9,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Set up Java
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -22,15 +23,20 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Clean & Recreate modern Android platform
+      - name: Generate clean Android structure
         run: |
           rm -rf android
-          flutter create . --platforms=android --org com.stanbg96.tiptop
+          flutter create . --platforms=android --org com.stanbg96.tiptop --project-name tiptop_game_engine
+
+      - name: Verify Android build files
+        run: |
+          ls -la android
+          ls -la android/app
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build APK
+      - name: Build APK (Release)
         run: flutter build apk --release
 
       - name: Upload APK Artifact
