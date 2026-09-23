@@ -28,13 +28,11 @@ jobs:
           rm -rf android
           flutter create . --platforms=android --org com.stanbg96.tiptop --project-name tiptop_game_engine
 
-      - name: Verify Android build files
-        run: |
-          ls -la android
-          ls -la android/app
-
       - name: Install dependencies
         run: flutter pub get
+
+      - name: 🔍 Пълен Анализ на Кода (Flutter Analyze)
+        run: flutter analyze
 
       - name: Build APK (Release)
         run: flutter build apk --release
