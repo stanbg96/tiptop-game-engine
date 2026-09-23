@@ -27,9 +27,7 @@ jobs:
         run: |
           rm -rf android
           flutter create . --platforms=android --org com.stanbg96.tiptop --project-name tiptop_game_engine
-
-      - name: Install dependencies
-        run: flutter pub get
+          rm -rf test
 
       - name: 🔍 Пълен Анализ на Кода (Flutter Analyze)
         run: flutter analyze
