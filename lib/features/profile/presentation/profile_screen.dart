@@ -204,19 +204,19 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                 SwitchListTile(
                   title: const Text('Публичен Профил', style: TextStyle(color: Colors.white, fontSize: 13)),
                   value: _isPublicProfile,
-                  activeColor: const Color(0xFF00E676),
+                  activeThumbColor: const Color(0xFF00E676),
                   onChanged: (val) => setModalState(() => _isPublicProfile = val),
                 ),
                 SwitchListTile(
                   title: const Text('Разреши Коментари', style: TextStyle(color: Colors.white, fontSize: 13)),
                   value: _allowComments,
-                  activeColor: AppTheme.laserPink,
+                  activeThumbColor: AppTheme.laserPink,
                   onChanged: (val) => setModalState(() => _allowComments = val),
                 ),
                 SwitchListTile(
                   title: const Text('Мултиплейър Покани от Всички', style: TextStyle(color: Colors.white, fontSize: 13)),
                   value: _allowMultiplayerInvites,
-                  activeColor: AppTheme.sciFiCyan,
+                  activeThumbColor: AppTheme.sciFiCyan,
                   onChanged: (val) => setModalState(() => _allowMultiplayerInvites = val),
                 ),
               ],
@@ -247,13 +247,13 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                 SwitchListTile(
                   title: const Text('Известия за Харесвания', style: TextStyle(color: Colors.white, fontSize: 13)),
                   value: _notifyLikes,
-                  activeColor: AppTheme.laserPink,
+                  activeThumbColor: AppTheme.laserPink,
                   onChanged: (val) => setModalState(() => _notifyLikes = val),
                 ),
                 SwitchListTile(
                   title: const Text('Известия за Нови Коментари', style: TextStyle(color: Colors.white, fontSize: 13)),
                   value: _notifyComments,
-                  activeColor: AppTheme.sciFiCyan,
+                  activeThumbColor: AppTheme.sciFiCyan,
                   onChanged: (val) => setModalState(() => _notifyComments = val),
                 ),
               ],
