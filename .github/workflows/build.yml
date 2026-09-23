@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Godot 4 Android APK
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  export-android:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -18,33 +18,29 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-
-      - name: Clean Android & Remove tests
+      - name: Install Godot 4.3 & Export Templates
         run: |
-          rm -rf android
-          flutter create . --platforms=android --org com.stanbg96.tiptop --project-name tiptop_game_engine
-          rm -rf test
+          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
+          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz
+          unzip -q Godot_v4.3-stable_linux.x86_64.zip
+          sudo mv Godot_v4.3-stable_linux.x86_64 /usr/local/bin/godot
+          sudo chmod +x /usr/local/bin/godot
+          
+          mkdir -p ~/.local/share/godot/export_templates/4.3.stable
+          unzip -q Godot_v4.3-stable_export_templates.tpz
+          mv templates/* ~/.local/share/godot/export_templates/4.3.stable/
 
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: 🔍 Извличане САМО на критичните грешки
+      - name: Generate Debug Keystore
         run: |
-          flutter analyze > analyze_log.txt 2>&1 || true
-          echo "==============================================="
-          echo "ТОЧНИ КРИТИЧНИ ГРЕШКИ (АКО ИМА):"
-          grep -E "error •" analyze_log.txt || echo "Няма критични грешки! Всичко е само info."
-          echo "==============================================="
+          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
-      - name: 🚀 Компилиране на APK (Release)
-        run: flutter build apk --release
+      - name: 🚀 Export Android APK
+        run: |
+          mkdir -p build
+          godot --headless --export-debug "Android" build/TipTop-Engine.apk
 
-      - name: 📦 Качване на готовия APK
+      - name: 📦 Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: TipTop-Game-Engine-APK
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: TipTop-Godot-Engine-APK
+          path: build/TipTop-Engine.apk
