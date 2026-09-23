@@ -22,11 +22,10 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Recreate Android platform folder
+      - name: Clean & Recreate modern Android platform
         run: |
-          if [ ! -d "android" ]; then
-            flutter create . --platforms=android --org com.stanbg96.tiptop
-          fi
+          rm -rf android
+          flutter create . --platforms=android --org com.stanbg96.tiptop
 
       - name: Install dependencies
         run: flutter pub get
