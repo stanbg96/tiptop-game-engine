@@ -24,12 +24,12 @@ return normals
 static func build_bezier_car(recipe: Dictionary) -> Node3D:
 var root = Node3D.new()
 var body_data = recipe.get("body", {})
-var l = float(body_data.get("length", 4.6))
-var w = float(body_data.get("width", 2.0))
-var h = float(body_data.get("height", 1.25))
-var paint_col = Color(body_data.get("paint_color", "#ff003b"))
+var l = float(body_data.get("length", 4.4))
+var w = float(body_data.get("width", 2.1))
+var h = float(body_data.get("height", 1.2))
+var paint_col = Color(body_data.get("paint_color", "#ff0044"))
 
-# Генерация на повърхност в RAM
+# 1. Купе (Аеродинамична форма в RAM)
 var u_segs = 16
 var v_segs = 10
 var verts = PackedVector3Array()
@@ -39,13 +39,13 @@ for i in range(u_segs + 1):
 var tu = float(i) / float(u_segs)
 var z = -l * 0.5 + tu * l
 var width_factor = sin(tu * PI) * (w * 0.5)
-var height_factor = (sin(tu * PI) * 0.4 + 0.6) * h
+var height_factor = (sin(tu * PI) * 0.45 + 0.55) * h
 
 for j in range(v_segs + 1):
 var tv = float(j) / float(v_segs)
 var angle = (tv - 0.5) * PI
 var x = sin(angle) * width_factor
-var y = cos(angle) * (height_factor * 0.5) + (height_factor * 0.5)
+var y = cos(angle) * (height_factor * 0.5) + (height_factor * 0.5) + 0.35
 verts.append(Vector3(x, y, z))
 
 for i in range(u_segs):
@@ -75,25 +75,40 @@ car_body.mesh = mesh
 var mat = StandardMaterial3D.new()
 mat.albedo_color = paint_col
 mat.metallic = 0.95
-mat.roughness = 0.12
+mat.roughness = 0.15
 mat.clearcoat_enabled = true
 mat.clearcoat = 1.0
-mat.clearcoat_roughness = 0.04
+mat.clearcoat_roughness = 0.03
+mat.cull_mode = BaseMaterial3D.CULL_DISABLED # Вижда се перфектно отвътре и отвън
 car_body.material_override = mat
 root.add_child(car_body)
 
-# Добавяне на колела
+# 2. Стъклен купол на кабината
+var glass = MeshInstance3D.new()
+var g_box = BoxMesh.new()
+g_box.size = Vector3(w * 0.72, h * 0.5, l * 0.45)
+glass.mesh = g_box
+var g_mat = StandardMaterial3D.new()
+g_mat.albedo_color = Color(0.05, 0.1, 0.18, 0.5)
+g_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
+g_mat.roughness = 0.05
+g_mat.metallic = 0.2
+glass.material_override = g_mat
+glass.position = Vector3(0, h * 0.95 + 0.2, 0.1)
+root.add_child(glass)
+
+# 3. Четири колела с джанти
 var wheel_mesh = CylinderMesh.new()
-wheel_mesh.top_radius = 0.36
-wheel_mesh.bottom_radius = 0.36
-wheel_mesh.height = 0.26
+wheel_mesh.top_radius = 0.38
+wheel_mesh.bottom_radius = 0.38
+wheel_mesh.height = 0.28
 var wheel_mat = StandardMaterial3D.new()
-wheel_mat.albedo_color = Color(0.1, 0.1, 0.12)
+wheel_mat.albedo_color = Color(0.12, 0.12, 0.14)
 wheel_mat.roughness = 0.8
 
 var offsets = [
-Vector3(-w * 0.48, 0.36, -l * 0.3), Vector3(w * 0.48, 0.36, -l * 0.3),
-Vector3(-w * 0.48, 0.36,  l * 0.3), Vector3(w * 0.48, 0.36,  l * 0.3)
+Vector3(-w * 0.48, 0.38, -l * 0.28), Vector3(w * 0.48, 0.38, -l * 0.28),
+Vector3(-w * 0.48, 0.38,  l * 0.28), Vector3(w * 0.48, 0.38,  l * 0.28)
 ]
 for off in offsets:
 var w_inst = MeshInstance3D.new()
