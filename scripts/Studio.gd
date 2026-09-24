@@ -48,11 +48,9 @@ func _ready():
     _setup_popup_scrolling()
     _load_saved_config()
     
-    _add_log("[color=#00ff88]✨ TipTop Studio е активно![/color]")
-    _add_log("[color=#ffff66]Използвай чата за строене или ⚙️ AI Облак за смяна на модела.[/color]")
-    
-    _build("дърво", Vector3(-3.5, 0.0, -5.0))
-    _build("кола", Vector3(3.5, 0.0, -5.0))
+    _add_log("[color=#00ff88]✨ TipTop Генеративен 3D Енджин е активен![/color]")
+    _add_log("[color=#00f2fe]Модел:[/color] " + current_model)
+    _add_log("[color=#ffff66]💡 Напиши произволен обект (тоалетна, замък, робот, самолет) и AI ще го построи геометрично![/color]")
 
 func _setup_provider_dropdown():
     provider_select.clear()
@@ -74,6 +72,8 @@ func _setup_popup_scrolling():
         vscroll_grabber.corner_radius_top_right = 14
         vscroll_grabber.corner_radius_bottom_right = 14
         vscroll_grabber.corner_radius_bottom_left = 14
+        vscroll_grabber.content_margin_left = 14.0
+        vscroll_grabber.content_margin_right = 14.0
 
         var vscroll_bg = StyleBoxFlat.new()
         vscroll_bg.bg_color = Color(0.06, 0.09, 0.1, 0.95)
@@ -190,7 +190,6 @@ func _on_close_settings():
     api_page.visible = false
     _save_config()
 
-# Бутонът "Запази и Влез"
 func _on_confirm_and_enter():
     _save_config()
     api_page.visible = false
@@ -245,13 +244,15 @@ func _on_http_response(result: int, response_code: int, headers: PackedStringArr
             status_lbl.text = "❌ Невалиден ключ! (HTTP " + str(response_code) + ")"
             status_lbl.modulate = Color(1, 0.3, 0.3)
     else:
+        # Получен отговор за генериране на 3D модел от AI
         if response_code == 200:
             var json = JSON.new()
             if json.parse(body.get_string_from_utf8()) == OK:
                 var res = json.get_data()
-                var content = res["choices"][0]["message"]["content"].strip_edges()
-                _add_log("[color=#00ff88]" + current_model + ":[/color] " + content)
-                _build(content.to_lower(), Vector3.INF)
+                var raw_content = res["choices"][0]["message"]["content"].strip_edges()
+                _compile_procedural_recipe(raw_content)
+            else:
+                _add_log("[color=#ff4444]Невалиден JSON отговор от модела.[/color]")
         else:
             _add_log("[color=#ff4444]AI грешка (" + str(response_code) + "). Провери баланса/ключа.[/color]")
 
@@ -283,16 +284,13 @@ func _populate_models_list(data: Dictionary):
     free_models.sort()
     paid_models.sort()
 
-    # 1. Официалният Free Router на OpenRouter
     model_select.add_item("⚡ АВТОМАТИЧЕН (OpenRouter Free Router)")
     model_ids_map.append("openrouter/free")
 
-    # 2. Всички безплатни модели най-отгоре
     for m in free_models:
         model_select.add_item("🎁 [FREE] " + m)
         model_ids_map.append(m)
 
-    # 3. Платените модели
     for m in paid_models:
         model_select.add_item("⭐ " + m)
         model_ids_map.append(m)
@@ -300,7 +298,7 @@ func _populate_models_list(data: Dictionary):
     fetched_models = model_ids_map
 
     if fetched_models.size() > 1:
-        status_lbl.text = "✅ Намерени " + str(free_models.size()) + " безплатни от " + str(list.size()) + " модела (официалният пълен списък на OpenRouter)."
+        status_lbl.text = "✅ Намерени " + str(free_models.size()) + " безплатни от " + str(list.size()) + " модела."
         status_lbl.modulate = Color(0, 1, 0.5)
         model_select.selected = 0
         current_model = "openrouter/free"
@@ -364,15 +362,20 @@ func _on_send_chat():
     _add_log("[color=#00ff88]Ти:[/color] " + t)
 
     if not api_key.is_empty():
-        _request_ai_chat(t)
+        _request_ai_procedural_recipe(t)
     else:
-        _build(t.to_lower(), Vector3.INF)
+        _add_log("[color=#ffff66]Нямаш въведен API ключ! Натисни '⚙️ AI Облак'.[/color]")
 
 func _on_chip_pressed(txt: String):
     _add_log("[color=#00ff88]Ти:[/color] " + txt)
-    _build(txt.to_lower(), Vector3.INF)
+    if not api_key.is_empty():
+        _request_ai_procedural_recipe(txt)
+    else:
+        _add_log("[color=#ffff66]Нямаш въведен API ключ! Натисни '⚙️ AI Облак'.[/color]")
 
-func _request_ai_chat(prompt: String):
+# СИСТЕМЕН ПРОМПТ ЗА 100% ВАЛИДНА ПРОЦЕДУРНА JSON РЕЦЕПТА
+func _request_ai_procedural_recipe(prompt: String):
+    _add_log("[color=#00f2fe]⏳ " + current_model + " проектира 3D модела в RAM...[/color]")
     var url = providers[current_provider_idx]["chat"]
     var headers = [
         "Authorization: Bearer " + api_key,
@@ -380,90 +383,149 @@ func _request_ai_chat(prompt: String):
     ]
     if current_provider_idx == 0:
         headers.append("HTTP-Referer: https://tiptop.engine")
+        headers.append("X-Title: TipTop Studio")
 
-    var sys_prompt = "Ти си 3D генератор. Отговаряй САМО с една дума от следните: [дърво, кола, сграда, блок], която най-точно описва обекта."
+    var system_prompt = """Ти си процедурен 3D CAD графичен компилатор.
+
+{
+  "name": "ИмеНаОбекта",
+  "parts": [
+    {
+      "shape": "box" | "sphere" | "cylinder" | "torus" | "prism" | "capsule",
+      "pos": [x, y, z],
+      "size": [width, height, depth],
+      "rot": [pitch_deg, yaw_deg, roll_deg],
+      "color": "#RRGGBB",
+      "metallic": 0.0-1.0,
+      "roughness": 0.0-1.0,
+      "emission": "#000000"
+    }
+  ]
+}
+
+- За тоалетна чиния: комбинирай цилиндър за основа, кутия за казанче, тор/кутия със заобляне за седалка.
+- За кола: правоъгълна кутия за шаси, скосена кутия за кабина, 4 цилиндъра за гуми.
+- За замък: цилиндрични кули с конусовидни призми и стени.
+
     var body = JSON.stringify({
         "model": current_model,
         "messages": [
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": prompt}
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": "Конструирай 3D рецепта за: " + prompt}
         ],
-        "max_tokens": 10,
-        "temperature": 0.1
+        "temperature": 0.2
     })
     http_request.request(url, headers, HTTPClient.METHOD_POST, body)
 
-func _build(prompt: String, forced_pos: Vector3 = Vector3.INF):
-    var pos = forced_pos
-    if pos == Vector3.INF:
-        var fwd = -camera.global_transform.basis.z
-        fwd.y = 0.0
-        pos = camera.global_position + fwd.normalized() * 5.0
-        pos.y = 0.0
+# КОМПИЛАТОР НА JSON РЕЦЕПТАТА В РЕАЛНИ 3D MESHES И PBR МАТЕРИАЛИ
+func _compile_procedural_recipe(raw_json: String):
+    var clean_text = raw_json.strip_edges()
+    if clean_text.begins_with("```"):
+        clean_text = clean_text.trim_prefix("```json").trim_prefix("```").trim_suffix("```").strip_edges()
 
-    var obj = Node3D.new()
-    obj.position = pos
-    
+    # Търсене на JSON блок ако моделът е написал текст наоколо
+    var start_idx = clean_text.find("{")
+    var end_idx = clean_text.rfind("}")
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        clean_text = clean_text.substr(start_idx, end_idx - start_idx + 1)
+
+    var json = JSON.new()
+    if json.parse(clean_text) != OK:
+        _add_log("[color=#ff4444]AI върна невалиден JSON код. Опитай пак.[/color]")
+        return
+
+    var recipe = json.get_data()
+    if not recipe is Dictionary or not recipe.has("parts"):
+        _add_log("[color=#ff4444]Липсват геометрични части в рецептата.[/color]")
+        return
+
+    # Спаун позиция пред погледа на камерата
+    var fwd = -camera.global_transform.basis.z
+    fwd.y = 0.0
+    var spawn_pos = camera.global_position + fwd.normalized() * 6.0
+    spawn_pos.y = 0.0
+
+    var root_obj = Node3D.new()
+    root_obj.position = spawn_pos
+    root_obj.name = str(recipe.get("name", "AI_Object"))
+
     var rb = StaticBody3D.new()
     rb.add_to_group("prop")
-    obj.add_child(rb)
+    root_obj.add_child(rb)
 
-    if "дърво" in prompt:
-        obj.name = "Tree"
-        var trunk = CylinderMesh.new()
-        trunk.top_radius = 0.3
-        trunk.bottom_radius = 0.4
-        trunk.height = 1.8
-        _add_mesh(rb, trunk, Vector3(0, 0.9, 0), Color(0.45, 0.25, 0.12))
-        
-        var leaves = SphereMesh.new()
-        leaves.radius = 1.6
-        leaves.height = 3.2
-        _add_mesh(rb, leaves, Vector3(0, 2.8, 0), Color(0.12, 0.78, 0.22))
-        
-        var box_shape = BoxShape3D.new()
-        box_shape.size = Vector3(2.5, 4.5, 2.5)
-        _add_col(rb, box_shape, Vector3(0, 2.2, 0))
+    var parts = recipe.get("parts", [])
+    for part in parts:
+        var shape_type = str(part.get("shape", "box")).to_lower()
+        var pos_arr = part.get("pos", [0, 0, 0])
+        var size_arr = part.get("size", [1, 1, 1])
+        var rot_arr = part.get("rot", [0, 0, 0])
+        var color_hex = str(part.get("color", "#aaaaaa"))
+        var metallic_val = float(part.get("metallic", 0.1))
+        var roughness_val = float(part.get("roughness", 0.5))
+        var emission_hex = str(part.get("emission", "#000000"))
 
-    elif "кола" in prompt:
-        obj.name = "Car"
-        var chassis = BoxMesh.new()
-        chassis.size = Vector3(2.4, 0.8, 4.6)
-        _add_mesh(rb, chassis, Vector3(0, 0.4, 0), Color(1.0, 0.1, 0.15))
-        
-        var cabin = BoxMesh.new()
-        cabin.size = Vector3(1.8, 0.6, 2.2)
-        _add_mesh(rb, cabin, Vector3(0, 1.1, -0.2), Color(0.12, 0.14, 0.18))
-        
-        var col_shape = BoxShape3D.new()
-        col_shape.size = Vector3(2.4, 1.4, 4.6)
-        _add_col(rb, col_shape, Vector3(0, 0.7, 0))
+        var p_pos = Vector3(pos_arr[0], pos_arr[1], pos_arr[2])
+        var p_size = Vector3(max(0.05, size_arr[0]), max(0.05, size_arr[1]), max(0.05, size_arr[2]))
+        var p_rot = Vector3(deg_to_rad(rot_arr[0]), deg_to_rad(rot_arr[1]), deg_to_rad(rot_arr[2]))
 
-    else:
-        obj.name = "Building"
-        var building = BoxMesh.new()
-        building.size = Vector3(3.0, 6.0, 3.0)
-        _add_mesh(rb, building, Vector3(0, 3.0, 0), Color(0.22, 0.38, 0.58))
-        
-        var col_shape = BoxShape3D.new()
-        col_shape.size = Vector3(3.0, 6.0, 3.0)
-        _add_col(rb, col_shape, Vector3(0, 3.0, 0))
+        # PBR Материал с физически свойства
+        var mat = StandardMaterial3D.new()
+        mat.albedo_color = Color.from_string(color_hex, Color.GRAY)
+        mat.metallic = metallic_val
+        mat.roughness = roughness_val
+        if emission_hex != "#000000" and emission_hex != "":
+            mat.emission_enabled = true
+            mat.emission = Color.from_string(emission_hex, Color.BLACK)
+            mat.emission_energy_multiplier = 2.0
 
-    world.add_child(obj)
-    _select(obj)
+        var mesh_inst = MeshInstance3D.new()
+        var mesh_res: Mesh = null
 
-func _add_mesh(parent_node: Node3D, mesh_res: Mesh, pos: Vector3, col: Color):
-    var m = MeshInstance3D.new()
-    m.mesh = mesh_res
-    m.position = pos
-    var mat = StandardMaterial3D.new()
-    mat.albedo_color = col
-    mat.roughness = 0.3
-    m.material_override = mat
-    parent_node.add_child(m)
+        match shape_type:
+            "sphere":
+                var sph = SphereMesh.new()
+                sph.radius = p_size.x * 0.5
+                sph.height = p_size.y
+                mesh_res = sph
+            "cylinder":
+                var cyl = CylinderMesh.new()
+                cyl.top_radius = p_size.x * 0.5
+                cyl.bottom_radius = p_size.z * 0.5
+                cyl.height = p_size.y
+                mesh_res = cyl
+            "torus":
+                var tor = TorusMesh.new()
+                tor.inner_radius = max(0.02, p_size.x * 0.3)
+                tor.outer_radius = p_size.x * 0.5
+                mesh_res = tor
+            "prism":
+                var pr = PrismMesh.new()
+                pr.size = p_size
+                mesh_res = pr
+            "capsule":
+                var cap = CapsuleMesh.new()
+                cap.radius = p_size.x * 0.5
+                cap.height = p_size.y
+                mesh_res = cap
+            _:
+                var b = BoxMesh.new()
+                b.size = p_size
+                mesh_res = b
 
-func _add_col(parent_node: Node3D, shape_res: Shape3D, pos: Vector3):
-    var c = CollisionShape3D.new()
-    c.shape = shape_res
-    c.position = pos
-    parent_node.add_child(c)
+        mesh_inst.mesh = mesh_res
+        mesh_inst.material_override = mat
+        mesh_inst.position = p_pos
+        mesh_inst.rotation = p_rot
+        rb.add_child(mesh_inst)
+
+    # Общ колидър за целия сглобен обект
+    var col = CollisionShape3D.new()
+    var box_shape = BoxShape3D.new()
+    box_shape.size = Vector3(3.0, 3.0, 3.0)
+    col.shape = box_shape
+    col.position.y = 1.5
+    rb.add_child(col)
+
+    world.add_child(root_obj)
+    _select(root_obj)
+    _add_log("[color=#00ff88]✓ " + root_obj.name + " е построен успешно в RAM![/color]")
