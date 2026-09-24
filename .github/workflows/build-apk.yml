@@ -1,72 +1,36 @@
-name: Build Godot 4 Android APK
-
-on:
-  push:
-    branches: [ main, master ]
-  workflow_dispatch:
-
+name: Build Godot APK
+on: [push, workflow_dispatch]
 jobs:
   export:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Сваляне на код
-        uses: actions/checkout@v4
-
-      - name: Java 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Генериране на Keystore
-        run: |
-          keytool -keyalg RSA -genkeypair -alias androiddebugkey \
-            -keypass android -keystore debug.keystore \
-            -storepass android -dname "CN=Android Debug,O=Android,C=US" \
-            -validity 9999 -deststoretype pkcs12
-
-      - name: Инсталиране на Godot 4.3 Headless и Шаблони
-        run: |
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { java-version: '17', distribution: 'temurin' }
+      - run: |
+          keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
           GODOT_VER="4.3-stable"
           wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VER}/Godot_v${GODOT_VER}_linux.x86_64.zip
           unzip -q Godot_v${GODOT_VER}_linux.x86_64.zip
-          mv Godot_v${GODOT_VER}_linux.x86_64 godot
-          chmod +x godot
-
+          mv Godot_v${GODOT_VER}_linux.x86_64 godot && chmod +x godot
           wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VER}/Godot_v${GODOT_VER}_export_templates.tpz
           mkdir -p ~/.local/share/godot/export_templates/4.3.stable
           unzip -q Godot_v${GODOT_VER}_export_templates.tpz
           mv templates/* ~/.local/share/godot/export_templates/4.3.stable/
-
-      - name: Свързване на Godot с вграденото Android SDK на GitHub
-        run: |
           mkdir -p ~/.config/godot
           cat << EOCONF > ~/.config/godot/editor_settings-4.tres
           [gd_resource type="EditorSettings" format=3]
-
           [resource]
           export/android/android_sdk_path = "$ANDROID_HOME"
           export/android/debug_keystore = "$PWD/debug.keystore"
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
           EOCONF
-
-      - name: Задаване на абсолютен път за Keystore в preset-а
-        run: |
           sed -i 's|keystore/debug="debug.keystore"|keystore/debug="'"$PWD/debug.keystore"'"|g' export_presets.cfg || true
-
-      - name: Предварително импортиране на ресурсите (Headless)
-        run: |
           ./godot --headless --editor --quit || true
-
-      - name: Компилиране на Android APK
-        run: |
           mkdir -p export_build
-          ./godot --headless --export-debug "Android" export_build/TipTop-Engine.apk
-
-      - name: Качване на готов APK файл
-        uses: actions/upload-artifact@v4
+          ./godot --headless --export-debug "Android" export_build/TipTop-Studio.apk
+      - uses: actions/upload-artifact@v4
         with:
-          name: TipTop-Engine-Godot4-APK
-          path: export_build/TipTop-Engine.apk
+          name: TipTop-Studio-APK
+          path: export_build/TipTop-Studio.apk
