@@ -33,7 +33,7 @@ var providers = {
 
 var current_provider_idx: int = 0
 var api_key: String = ""
-var current_model: String = "default"
+var current_model: String = "openrouter/free"
 var fetched_models: Array = []
 var model_ids_map: Array = []
 var is_testing_models: bool = false
@@ -49,7 +49,7 @@ func _ready():
     _load_saved_config()
     
     _add_log("[color=#00ff88]✨ TipTop Studio е активно![/color]")
-    _add_log("[color=#ffff66]Натисни '⚙️ AI Облак' долу за избор на модели.[/color]")
+    _add_log("[color=#ffff66]Използвай чата за строене или ⚙️ AI Облак за смяна на модела.[/color]")
     
     _build("дърво", Vector3(-3.5, 0.0, -5.0))
     _build("кола", Vector3(3.5, 0.0, -5.0))
@@ -61,7 +61,6 @@ func _setup_provider_dropdown():
     provider_select.add_item("🤖 OpenAI (ChatGPT)")
     provider_select.add_item("🧠 DeepSeek (V3 / R1)")
 
-# Конфигуриране на дебела лента за скролване (Scrollbar) и удобен мобилен размер
 func _setup_popup_scrolling():
     var popup = model_select.get_popup()
     if popup:
@@ -69,15 +68,12 @@ func _setup_popup_scrolling():
         popup.always_on_top = true
         popup.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
 
-        # Стилизиране на скролбара – дебел 28px в неоново зелено
         var vscroll_grabber = StyleBoxFlat.new()
         vscroll_grabber.bg_color = Color(0.0, 1.0, 0.55, 0.9)
         vscroll_grabber.corner_radius_top_left = 14
         vscroll_grabber.corner_radius_top_right = 14
         vscroll_grabber.corner_radius_bottom_right = 14
         vscroll_grabber.corner_radius_bottom_left = 14
-        vscroll_grabber.content_margin_left = 14.0
-        vscroll_grabber.content_margin_right = 14.0
 
         var vscroll_bg = StyleBoxFlat.new()
         vscroll_bg.bg_color = Color(0.06, 0.09, 0.1, 0.95)
@@ -194,6 +190,15 @@ func _on_close_settings():
     api_page.visible = false
     _save_config()
 
+# Бутонът "Запази и Влез"
+func _on_confirm_and_enter():
+    _save_config()
+    api_page.visible = false
+    _add_log("[color=#00ff88]✓ Готово! Активен модел:[/color] " + current_model)
+
+func _on_key_submitted(_new_text: String):
+    _on_fetch_models_pressed()
+
 func _on_provider_selected(idx: int):
     current_provider_idx = idx
     status_lbl.text = "Доставчик: " + providers[idx]["name"]
@@ -209,7 +214,7 @@ func _on_fetch_models_pressed():
 
     is_testing_models = true
     test_btn.disabled = true
-    status_lbl.text = "⏳ Сваляне и подреждане на безплатни модели..."
+    status_lbl.text = "⏳ Сваляне и проверка на моделите..."
     status_lbl.modulate = Color(0, 1, 0.6)
 
     var url = providers[current_provider_idx]["models_url"]
@@ -250,7 +255,6 @@ func _on_http_response(result: int, response_code: int, headers: PackedStringArr
         else:
             _add_log("[color=#ff4444]AI грешка (" + str(response_code) + "). Провери баланса/ключа.[/color]")
 
-# Интелигентно филтриране: Безплатните модели са най-отгоре + автоматичен избор
 func _populate_models_list(data: Dictionary):
     model_select.clear()
     fetched_models.clear()
@@ -271,7 +275,6 @@ func _populate_models_list(data: Dictionary):
             m_id = item
             
         if not m_id.is_empty():
-            # Проверка за безплатен модел
             if ":free" in m_id.to_lower() or "free" in m_id.to_lower():
                 free_models.append(m_id)
             else:
@@ -280,22 +283,16 @@ func _populate_models_list(data: Dictionary):
     free_models.sort()
     paid_models.sort()
 
-    # 1. Автоматичен избор на първа позиция
-    var default_auto_id = "meta-llama/llama-3.3-70b-instruct:free"
-    if not free_models.is_empty():
-        default_auto_id = free_models[0]
-    elif not paid_models.is_empty():
-        default_auto_id = paid_models[0]
+    # 1. Официалният Free Router на OpenRouter
+    model_select.add_item("⚡ АВТОМАТИЧЕН (OpenRouter Free Router)")
+    model_ids_map.append("openrouter/free")
 
-    model_select.add_item("⚡ АВТОМАТИЧЕН (Най-добър безплатен)")
-    model_ids_map.append(default_auto_id)
-
-    # 2. Всички безплатни модели най-отгоре с ясен етикет
+    # 2. Всички безплатни модели най-отгоре
     for m in free_models:
         model_select.add_item("🎁 [FREE] " + m)
         model_ids_map.append(m)
 
-    # 3. Останалите платени модели
+    # 3. Платените модели
     for m in paid_models:
         model_select.add_item("⭐ " + m)
         model_ids_map.append(m)
@@ -303,10 +300,10 @@ func _populate_models_list(data: Dictionary):
     fetched_models = model_ids_map
 
     if fetched_models.size() > 1:
-        status_lbl.text = "✅ Намерени " + str(free_models.size()) + " безплатни от общо " + str(list.size()) + " модела!"
+        status_lbl.text = "✅ Намерени " + str(free_models.size()) + " безплатни от " + str(list.size()) + " модела (официалният пълен списък на OpenRouter)."
         status_lbl.modulate = Color(0, 1, 0.5)
         model_select.selected = 0
-        current_model = default_auto_id
+        current_model = "openrouter/free"
         current_model_chip.text = "🤖 " + current_model
         _save_config()
     else:
@@ -340,12 +337,12 @@ func _load_saved_config():
             provider_select.selected = current_provider_idx
             api_key = cfg.get("api_key", "")
             key_input.text = api_key
-            current_model = cfg.get("model", "default")
+            current_model = cfg.get("model", "openrouter/free")
             current_model_chip.text = "🤖 " + current_model
             model_ids_map = cfg.get("models", [])
             if not model_ids_map.is_empty():
                 model_select.clear()
-                model_select.add_item("⚡ АВТОМАТИЧЕН (Най-добър безплатен)")
+                model_select.add_item("⚡ АВТОМАТИЧЕН (OpenRouter Free Router)")
                 for idx in range(1, model_ids_map.size()):
                     var m = model_ids_map[idx]
                     if ":free" in m.to_lower():
@@ -366,7 +363,7 @@ func _on_send_chat():
     chat_input.text = ""
     _add_log("[color=#00ff88]Ти:[/color] " + t)
 
-    if not api_key.is_empty() and current_model != "default":
+    if not api_key.is_empty():
         _request_ai_chat(t)
     else:
         _build(t.to_lower(), Vector3.INF)
