@@ -2,10 +2,10 @@ extends Node3D
 
 @onready var camera = $Camera3D
 @onready var joy = $UI/JoystickArea/VirtualJoystick
-@onready var chat_log = $UI/ChatBG/VBox/Log
-@onready var chat_input = $UI/ChatBG/VBox/InputRow/ChatInput
-@onready var tools_bar = $UI/ToolsBar
-@onready var lbl_selected = $UI/ToolsBar/HBox/LabelName
+@onready var chat_log = $UI/ChatBG/VBox/Margin1/Log
+@onready var chat_input = $UI/ChatBG/VBox/Margin2/InputRow/ChatInput
+@onready var center_tools = $UI/CenterTools
+@onready var lbl_selected = $UI/CenterTools/Panel/VBox/Header/LabelName
 @onready var indicator = $Indicator
 @onready var world = $World
 
@@ -15,31 +15,32 @@ var cam_yaw: float = 0.0
 var cam_pitch: float = -0.4
 
 func _ready():
-    tools_bar.visible = false
+    center_tools.visible = false
     indicator.visible = false
-    _add_log("[color=#00ff00]Системата е онлайн![/color] Джойстикът е вляво. Докосни обектите.")
+    _add_log("[color=#00f2fe]✨ TipTop Studio:[/color] Избери обект, за да видиш опциите в центъра.")
     _build("дърво", Vector3(-3, 0, -5))
     _build("кола", Vector3(3, 0, -5))
 
 func _process(delta):
-    # ДВИЖЕНИЕ С ДЖОЙСТИК (Летене)
+    # ДРОН ЛЕТЕНЕ ЧРЕЗ ДЖОЙСТИК
     if joy.output.length() > 0.05:
         var fwd = -camera.global_transform.basis.z
         var rgt = camera.global_transform.basis.x
         fwd.y = 0; rgt.y = 0
         fwd = fwd.normalized(); rgt = rgt.normalized()
-        camera.global_position += (rgt * joy.output.x + fwd * -joy.output.y) * 15.0 * delta
+        camera.global_position += (rgt * joy.output.x + fwd * -joy.output.y) * 14.0 * delta
 
-    # МАРКЕР НАД ОБЕКТ
+    # МАРКЕР НАД СЕЛЕКТИРАНИЯ ОБЕКТ
     if selected_obj and is_instance_valid(selected_obj):
         indicator.visible = true
-        indicator.global_position = selected_obj.global_position + Vector3(0, 3.5, 0)
+        var bounce = sin(Time.get_ticks_msec() * 0.006) * 0.25
+        indicator.global_position = selected_obj.global_position + Vector3(0, 3.2 + bounce, 0)
     else:
         indicator.visible = false
 
 func _unhandled_input(event):
     var screen_h = get_viewport().size.y
-    var limit_h = screen_h * 0.65 # Горните 65% са за игра
+    var limit_h = screen_h * 0.65
 
     if event is InputEventScreenTouch:
         if event.position.y > limit_h: return
@@ -62,8 +63,9 @@ func _unhandled_input(event):
                 selected_obj.global_position.x = drop.x
                 selected_obj.global_position.z = drop.z
         else:
+            # Оглеждане с пръст
             cam_yaw -= event.relative.x * 0.005
-            cam_pitch = clamp(cam_pitch - event.relative.y * 0.005, -1.5, 1.5)
+            cam_pitch = clamp(cam_pitch - event.relative.y * 0.005, -1.4, 1.4)
             camera.rotation.y = cam_yaw
             camera.rotation.x = cam_pitch
 
@@ -85,34 +87,34 @@ func _get_floor(pos: Vector2):
 
 func _select(obj):
     selected_obj = obj
-    lbl_selected.text = "Обект: " + obj.name
-    tools_bar.visible = true
+    lbl_selected.text = "🎯 " + obj.name
+    center_tools.visible = true
 
 func _deselect():
     selected_obj = null
-    tools_bar.visible = false
+    center_tools.visible = false
 
-# --- ИНСТРУМЕНТИ ---
-func _on_act_up(): if selected_obj: selected_obj.global_position.y += 1.0
-func _on_act_down(): if selected_obj: selected_obj.global_position.y -= 1.0
+# --- ОПЦИИ ЗА ОБЕКТА (В ЦЕНТЪРА) ---
+func _on_act_up(): if selected_obj: selected_obj.global_position.y += 0.8
+func _on_act_down(): if selected_obj: selected_obj.global_position.y = max(0.0, selected_obj.global_position.y - 0.8)
 func _on_act_rot(): if selected_obj: selected_obj.rotate_y(deg_to_rad(45))
 func _on_act_del():
     if selected_obj:
         selected_obj.queue_free()
         _deselect()
 
-# --- СТРОЕНЕ ---
+# --- ЧАТ И СТРОИТЕЛ ---
 func _add_log(msg: String): chat_log.append_text(msg + "\n")
 
 func _on_send_chat():
     var t = chat_input.text.strip_edges()
     if t.is_empty(): return
     chat_input.text = ""
-    _add_log("[color=#00ffff]Ти:[/color] " + t)
+    _add_log("[color=#00ff88]Ти:[/color] " + t)
     _build(t.to_lower(), Vector3.INF)
 
 func _on_chip_pressed(txt: String):
-    _add_log("[color=#00ffff]Ти:[/color] " + txt)
+    _add_log("[color=#00ff88]Ти:[/color] " + txt)
     _build(txt.to_lower(), Vector3.INF)
 
 func _build(prompt: String, f_pos: Vector3):
@@ -141,9 +143,9 @@ func _build(prompt: String, f_pos: Vector3):
         _add_m(rb, BoxMesh.new(), Vector3(1.8, 0.6, 2.2), Vector3(0, 1.1, -0.2), Color(0.1, 0.1, 0.1))
         _add_c(rb, Vector3(2.4, 1.4, 4.6), Vector3(0, 0.7, 0))
     else:
-        obj.name = "Block"
-        _add_m(rb, BoxMesh.new(), Vector3(2, 2, 2), Vector3(0, 1, 0), Color(randf(), randf(), randf()))
-        _add_c(rb, Vector3(2, 2, 2), Vector3(0, 1, 0))
+        obj.name = "Building"
+        _add_m(rb, BoxMesh.new(), Vector3(2.5, 5.0, 2.5), Vector3(0, 2.5, 0), Color(0.2, 0.35, 0.55))
+        _add_c(rb, Vector3(2.5, 5.0, 2.5), Vector3(0, 2.5, 0))
 
     world.add_child(obj)
     _select(rb)

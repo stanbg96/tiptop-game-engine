@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://cxup6s1g2km8y"]
+[gd_scene load_steps=12 format=3 uid="uid://cxup6s1g2km8y"]
 
 [ext_resource type="Script" path="res://scripts/Studio.gd" id="1_mgr"]
 [ext_resource type="Script" path="res://scripts/VirtualJoystick.gd" id="2_joy"]
@@ -26,10 +26,30 @@ size = Vector3(1, 1, 0.2)
 shading_mode = 0
 albedo_color = Color(1, 0.8, 0, 1)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_center_tools"]
+bg_color = Color(0.08, 0.1, 0.14, 0.9)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+shadow_size = 8
+shadow_color = Color(0, 0, 0, 0.4)
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
-bg_color = Color(0.1, 0.1, 0.15, 1)
-corner_radius_top_left = 24
-corner_radius_top_right = 24
+bg_color = Color(0.09, 0.1, 0.14, 1)
+corner_radius_top_left = 28
+corner_radius_top_right = 28
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_input"]
+bg_color = Color(0.15, 0.18, 0.24, 1)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+content_margin_left = 18.0
+content_margin_top = 16.0
+content_margin_right = 18.0
+content_margin_bottom = 16.0
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_mgr")
@@ -74,44 +94,77 @@ layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 30.0
+offset_left = 32.0
 offset_top = -180.0
-offset_right = 170.0
+offset_right = 172.0
 offset_bottom = -40.0
 grow_vertical = 0
 script = ExtResource("2_joy")
 
-[node name="ToolsBar" type="PanelContainer" parent="UI"]
-anchors_preset = 10
-anchor_right = 1.0
-offset_bottom = 60.0
+[node name="CenterTools" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -160.0
+offset_top = -140.0
+offset_right = 160.0
+offset_bottom = -30.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
-[node name="HBox" type="HBoxContainer" parent="UI/ToolsBar"]
+[node name="Panel" type="PanelContainer" parent="UI/CenterTools"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_center_tools")
+
+[node name="VBox" type="VBoxContainer" parent="UI/CenterTools/Panel"]
 layout_mode = 2
-theme_override_constants/separation = 15
+theme_override_constants/separation = 10
 alignment = 1
 
-[node name="LabelName" type="Label" parent="UI/ToolsBar/HBox"]
+[node name="Header" type="HBoxContainer" parent="UI/CenterTools/Panel/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0, 1, 0.8, 1)
-text = "Обект"
+alignment = 1
 
-[node name="BtnUp" type="Button" parent="UI/ToolsBar/HBox"]
+[node name="LabelName" type="Label" parent="UI/CenterTools/Panel/VBox/Header"]
 layout_mode = 2
-text = " Нагоре "
+theme_override_colors/font_color = Color(0, 0.95, 1, 1)
+theme_override_font_sizes/font_size = 17
+text = "🎯 Обект"
 
-[node name="BtnDown" type="Button" parent="UI/ToolsBar/HBox"]
+[node name="Buttons" type="HBoxContainer" parent="UI/CenterTools/Panel/VBox"]
 layout_mode = 2
-text = " Надолу "
+theme_override_constants/separation = 10
+alignment = 1
 
-[node name="BtnRot" type="Button" parent="UI/ToolsBar/HBox"]
+[node name="BtnUp" type="Button" parent="UI/CenterTools/Panel/VBox/Buttons"]
 layout_mode = 2
-text = " Завърти "
+custom_minimum_size = Vector2(65, 45)
+text = "⬆️ Горе"
 
-[node name="BtnDel" type="Button" parent="UI/ToolsBar/HBox"]
+[node name="BtnDown" type="Button" parent="UI/CenterTools/Panel/VBox/Buttons"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.2, 0.3, 1)
-text = " ИЗТРИЙ "
+custom_minimum_size = Vector2(65, 45)
+text = "⬇️ Долу"
+
+[node name="BtnRot" type="Button" parent="UI/CenterTools/Panel/VBox/Buttons"]
+layout_mode = 2
+custom_minimum_size = Vector2(65, 45)
+text = "🔄 Завърти"
+
+[node name="BtnDel" type="Button" parent="UI/CenterTools/Panel/VBox/Buttons"]
+layout_mode = 2
+custom_minimum_size = Vector2(70, 45)
+theme_override_colors/font_color = Color(1, 0.25, 0.35, 1)
+text = "🗑️ Изтрий"
 
 [node name="ChatBG" type="Panel" parent="UI"]
 anchors_preset = 12
@@ -127,60 +180,71 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_constants/separation = 10
 alignment = 2
 
 [node name="Margin1" type="MarginContainer" parent="UI/ChatBG/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/margin_left = 15
-theme_override_constants/margin_top = 15
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
 
 [node name="Log" type="RichTextLabel" parent="UI/ChatBG/VBox/Margin1"]
 layout_mode = 2
+theme_override_font_sizes/normal_font_size = 15
 bbcode_enabled = true
 scroll_following = true
 
 [node name="Chips" type="HBoxContainer" parent="UI/ChatBG/VBox"]
 layout_mode = 2
 alignment = 1
-theme_override_constants/separation = 15
+theme_override_constants/separation = 12
 
 [node name="BtnBld" type="Button" parent="UI/ChatBG/VBox/Chips"]
 layout_mode = 2
+custom_minimum_size = Vector2(100, 38)
 text = "🏢 Сграда"
 
 [node name="BtnCar" type="Button" parent="UI/ChatBG/VBox/Chips"]
 layout_mode = 2
+custom_minimum_size = Vector2(100, 38)
 text = "🏎️ Кола"
 
 [node name="BtnTree" type="Button" parent="UI/ChatBG/VBox/Chips"]
 layout_mode = 2
+custom_minimum_size = Vector2(100, 38)
 text = "🌳 Дърво"
 
 [node name="Margin2" type="MarginContainer" parent="UI/ChatBG/VBox"]
 layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 10
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
 
 [node name="InputRow" type="HBoxContainer" parent="UI/ChatBG/VBox/Margin2"]
 layout_mode = 2
+theme_override_constants/separation = 12
 
 [node name="ChatInput" type="LineEdit" parent="UI/ChatBG/VBox/Margin2/InputRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-placeholder_text = " Напиши: кола, сграда, дърво..."
+custom_minimum_size = Vector2(0, 62)
+theme_override_styles/normal = SubResource("StyleBoxFlat_input")
+theme_override_font_sizes/font_size = 16
+placeholder_text = "Напиши: кола, сграда, дърво..."
 
 [node name="SendBtn" type="Button" parent="UI/ChatBG/VBox/Margin2/InputRow"]
 layout_mode = 2
-custom_minimum_size = Vector2(60, 50)
+custom_minimum_size = Vector2(62, 62)
 text = "🚀"
 
-[connection signal="pressed" from="UI/ToolsBar/HBox/BtnUp" to="." method="_on_act_up"]
-[connection signal="pressed" from="UI/ToolsBar/HBox/BtnDown" to="." method="_on_act_down"]
-[connection signal="pressed" from="UI/ToolsBar/HBox/BtnRot" to="." method="_on_act_rot"]
-[connection signal="pressed" from="UI/ToolsBar/HBox/BtnDel" to="." method="_on_act_del"]
+[connection signal="pressed" from="UI/CenterTools/Panel/VBox/Buttons/BtnUp" to="." method="_on_act_up"]
+[connection signal="pressed" from="UI/CenterTools/Panel/VBox/Buttons/BtnDown" to="." method="_on_act_down"]
+[connection signal="pressed" from="UI/CenterTools/Panel/VBox/Buttons/BtnRot" to="." method="_on_act_rot"]
+[connection signal="pressed" from="UI/CenterTools/Panel/VBox/Buttons/BtnDel" to="." method="_on_act_del"]
 [connection signal="pressed" from="UI/ChatBG/VBox/Chips/BtnBld" to="." method="_on_chip_pressed" binds= ["сграда"]]
 [connection signal="pressed" from="UI/ChatBG/VBox/Chips/BtnCar" to="." method="_on_chip_pressed" binds= ["кола"]]
 [connection signal="pressed" from="UI/ChatBG/VBox/Chips/BtnTree" to="." method="_on_chip_pressed" binds= ["дърво"]]
