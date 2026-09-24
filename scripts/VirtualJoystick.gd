@@ -2,7 +2,7 @@ extends Control
 
 var output: Vector2 = Vector2.ZERO
 var touch_id: int = -1
-var radius: float = 60.0
+var radius: float = 70.0
 var knob_pos: Vector2 = Vector2.ZERO
 
 func _ready():
@@ -13,7 +13,7 @@ func _gui_input(event):
         if event.pressed and touch_id == -1:
             touch_id = event.index
             _update_knob(event.position)
-            accept_event() # ВАЖНО: Спира сигнала да не върти камерата!
+            accept_event()
         elif not event.pressed and event.index == touch_id:
             touch_id = -1
             knob_pos = size / 2.0
@@ -33,5 +33,5 @@ func _update_knob(pos: Vector2):
     queue_redraw()
 
 func _draw():
-    draw_circle(size / 2.0, radius, Color(0.2, 0.25, 0.3, 0.8))
-    draw_circle(knob_pos, 25.0, Color(0.0, 0.95, 1.0, 0.9))
+    draw_circle(size / 2.0, radius, Color(0.0, 0.0, 0.0, 0.5))
+    draw_circle(knob_pos, 30.0, Color(0.0, 0.8, 1.0, 1.0))
