@@ -19,13 +19,6 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Инсталиране на Android SDK Tools
-        uses: android-actions/setup-android@v3
-
-      - name: Инсталиране на Build-Tools и Platform 34
-        run: |
-          sdkmanager --install "build-tools;34.0.0" "platforms;android-34"
-
       - name: Генериране на Keystore
         run: |
           keytool -keyalg RSA -genkeypair -alias androiddebugkey \
@@ -46,7 +39,7 @@ jobs:
           unzip -q Godot_v${GODOT_VER}_export_templates.tpz
           mv templates/* ~/.local/share/godot/export_templates/4.3.stable/
 
-      - name: Конфигуриране на Godot Editor Settings за Android SDK
+      - name: Свързване на Godot с вграденото Android SDK на GitHub
         run: |
           mkdir -p ~/.config/godot
           cat << EOCONF > ~/.config/godot/editor_settings-4.tres
@@ -58,6 +51,10 @@ jobs:
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
           EOCONF
+
+      - name: Задаване на абсолютен път за Keystore в preset-а
+        run: |
+          sed -i 's|keystore/debug="debug.keystore"|keystore/debug="'"$PWD/debug.keystore"'"|g' export_presets.cfg || true
 
       - name: Предварително импортиране на ресурсите (Headless)
         run: |
