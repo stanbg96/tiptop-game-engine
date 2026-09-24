@@ -94,23 +94,6 @@ transform = Transform3D(1, 0, 0, 0, 0.92388, 0.382683, 0, -0.382683, 0.92388, 0,
 
 [node name="UI" type="CanvasLayer" parent="."]
 
-[node name="TopBar" type="HBoxContainer" parent="UI"]
-anchors_preset = 10
-anchor_right = 1.0
-offset_left = 16.0
-offset_top = 16.0
-offset_right = -16.0
-offset_bottom = 60.0
-
-[node name="Spacer" type="Control" parent="UI/TopBar"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="SettingsBtn" type="Button" parent="UI/TopBar"]
-custom_minimum_size = Vector2(50, 44)
-layout_mode = 2
-text = "⚙️ AI"
-
 [node name="JoystickArea" type="Control" parent="UI"]
 layout_mode = 3
 anchor_right = 1.0
@@ -228,6 +211,7 @@ text = "🤖 Локален Режим"
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
 theme_override_constants/margin_right = 16
 
 [node name="Log" type="RichTextLabel" parent="UI/ChatBG/VBox/Margin1"]
@@ -239,21 +223,27 @@ scroll_following = true
 [node name="Chips" type="HBoxContainer" parent="UI/ChatBG/VBox"]
 layout_mode = 2
 alignment = 1
-theme_override_constants/separation = 12
+theme_override_constants/separation = 8
+
+[node name="CloudBtn" type="Button" parent="UI/ChatBG/VBox/Chips"]
+layout_mode = 2
+custom_minimum_size = Vector2(110, 40)
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+text = "⚙️ AI Облак"
 
 [node name="BtnBld" type="Button" parent="UI/ChatBG/VBox/Chips"]
 layout_mode = 2
-custom_minimum_size = Vector2(100, 38)
+custom_minimum_size = Vector2(85, 40)
 text = "🏢 Сграда"
 
 [node name="BtnCar" type="Button" parent="UI/ChatBG/VBox/Chips"]
 layout_mode = 2
-custom_minimum_size = Vector2(100, 38)
+custom_minimum_size = Vector2(85, 40)
 text = "🏎️ Кола"
 
 [node name="BtnTree" type="Button" parent="UI/ChatBG/VBox/Chips"]
 layout_mode = 2
-custom_minimum_size = Vector2(100, 38)
+custom_minimum_size = Vector2(85, 40)
 text = "🌳 Дърво"
 
 [node name="Margin2" type="MarginContainer" parent="UI/ChatBG/VBox"]
@@ -295,7 +285,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0, 0, 0, 0.7)
+color = Color(0, 0, 0, 0.75)
 
 [node name="Card" type="PanelContainer" parent="UI/ApiPage"]
 layout_mode = 1
@@ -304,10 +294,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -280.0
-offset_top = -300.0
-offset_right = 280.0
-offset_bottom = 300.0
+offset_left = -300.0
+offset_top = -320.0
+offset_right = 300.0
+offset_bottom = 320.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_modal")
@@ -327,17 +317,17 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 18
-text = "⚙️ Настройки на AI Ключ"
+text = "☁️ Облачен Изкуствен Интелект"
 
 [node name="CloseBtn" type="Button" parent="UI/ApiPage/Card/Scroll/VBox/HeaderRow"]
-custom_minimum_size = Vector2(36, 36)
+custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 text = "✕"
 
 [node name="Lbl1" type="Label" parent="UI/ApiPage/Card/Scroll/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
-text = "1. Избери AI Доставчик:"
+text = "1. Избери доставчик:"
 
 [node name="ProviderSelect" type="OptionButton" parent="UI/ApiPage/Card/Scroll/VBox"]
 custom_minimum_size = Vector2(0, 48)
@@ -346,18 +336,19 @@ layout_mode = 2
 [node name="Lbl2" type="Label" parent="UI/ApiPage/Card/Scroll/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
-text = "2. Въведи API Ключ (sk-...):"
+text = "2. Постави твоя API ключ:"
 
 [node name="KeyInput" type="LineEdit" parent="UI/ApiPage/Card/Scroll/VBox"]
 custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
-placeholder_text = "Постави ключа тук..."
+placeholder_text = "sk-..."
 secret = true
 
 [node name="TestBtn" type="Button" parent="UI/ApiPage/Card/Scroll/VBox"]
-custom_minimum_size = Vector2(0, 50)
+custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
-text = "⚡ Тествай и свали наличните модели"
+theme_override_colors/font_color = Color(0, 0.95, 1, 1)
+text = "⚡ Тествай ключ и свали моделите"
 
 [node name="StatusLbl" type="Label" parent="UI/ApiPage/Card/Scroll/VBox"]
 layout_mode = 2
@@ -368,17 +359,17 @@ autowrap_mode = 2
 [node name="Lbl3" type="Label" parent="UI/ApiPage/Card/Scroll/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
-text = "3. Избери активен модел:"
+text = "3. Избери свален модел:"
 
 [node name="ModelSelect" type="OptionButton" parent="UI/ApiPage/Card/Scroll/VBox"]
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 
-[connection signal="pressed" from="UI/TopBar/SettingsBtn" to="." method="_on_open_settings"]
 [connection signal="pressed" from="UI/CenterTools/Panel/VBox/Buttons/BtnUp" to="." method="_on_act_up"]
 [connection signal="pressed" from="UI/CenterTools/Panel/VBox/Buttons/BtnDown" to="." method="_on_act_down"]
 [connection signal="pressed" from="UI/CenterTools/Panel/VBox/Buttons/BtnRot" to="." method="_on_act_rot"]
 [connection signal="pressed" from="UI/CenterTools/Panel/VBox/Buttons/BtnDel" to="." method="_on_act_del"]
+[connection signal="pressed" from="UI/ChatBG/VBox/Chips/CloudBtn" to="." method="_on_open_settings"]
 [connection signal="pressed" from="UI/ChatBG/VBox/Chips/BtnBld" to="." method="_on_chip_pressed" binds= ["сграда"]]
 [connection signal="pressed" from="UI/ChatBG/VBox/Chips/BtnCar" to="." method="_on_chip_pressed" binds= ["кола"]]
 [connection signal="pressed" from="UI/ChatBG/VBox/Chips/BtnTree" to="." method="_on_chip_pressed" binds= ["дърво"]]

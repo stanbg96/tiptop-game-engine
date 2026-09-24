@@ -9,7 +9,7 @@ extends Node3D
 @onready var indicator = $Indicator
 @onready var world = $World
 
-# Референции към новата страница за ключове и модели
+# Референции към страницата за облачен AI
 @onready var api_page = $UI/ApiPage
 @onready var provider_select = $UI/ApiPage/Card/Scroll/VBox/ProviderSelect
 @onready var key_input = $UI/ApiPage/Card/Scroll/VBox/KeyInput
@@ -24,12 +24,11 @@ var is_dragging: bool = false
 var cam_yaw: float = 0.0
 var cam_pitch: float = -0.4
 
-# Конфигурация на API доставчиците
 var providers = {
-0: {"name": "OpenRouter", "base": "https://openrouter.ai/api/v1", "chat": "https://openrouter.ai/api/v1/chat/completions", "models_url": "https://openrouter.ai/api/v1/models"},
-1: {"name": "Groq", "base": "https://api.groq.com/openai/v1", "chat": "https://api.groq.com/openai/v1/chat/completions", "models_url": "https://api.groq.com/openai/v1/models"},
-2: {"name": "OpenAI", "base": "https://api.openai.com/v1", "chat": "https://api.openai.com/v1/chat/completions", "models_url": "https://api.openai.com/v1/models"},
-3: {"name": "DeepSeek", "base": "https://api.deepseek.com/v1", "chat": "https://api.deepseek.com/v1/chat/completions", "models_url": "https://api.deepseek.com/v1/models"}
+0: {"name": "OpenRouter", "chat": "https://openrouter.ai/api/v1/chat/completions", "models_url": "https://openrouter.ai/api/v1/models"},
+1: {"name": "Groq", "chat": "https://api.groq.com/openai/v1/chat/completions", "models_url": "https://api.groq.com/openai/v1/models"},
+2: {"name": "OpenAI", "chat": "https://api.openai.com/v1/chat/completions", "models_url": "https://api.openai.com/v1/models"},
+3: {"name": "DeepSeek", "chat": "https://api.deepseek.com/v1/chat/completions", "models_url": "https://api.deepseek.com/v1/models"}
 }
 
 var current_provider_idx: int = 0
@@ -47,7 +46,8 @@ http_request.request_completed.connect(_on_http_response)
 _setup_provider_dropdown()
 _load_saved_config()
 
-_add_log("[color=#00f2fe]✨ TipTop Studio е готово![/color] Натисни ⚙️ за избор на AI доставчик и модел.")
+_add_log("[color=#00f2fe]✨ TipTop Studio е готово![/color]")
+_add_log("[color=#ffff66]Натисни жълтия бутон '⚙️ AI Облак' долу, за да активираш AI моделите.[/color]")
 _build("дърво", Vector3(-3, 0, -5))
 _build("кола", Vector3(3, 0, -5))
 
@@ -59,7 +59,6 @@ provider_select.add_item("🤖 OpenAI (ChatGPT)")
 provider_select.add_item("🧠 DeepSeek (V3 / R1)")
 
 func _process(delta):
-# ДРОН ЛЕТЕНЕ ЧРЕЗ ДЖОЙСТИК
 if joy.output.length() > 0.05:
 var fwd = -camera.global_transform.basis.z
 var rgt = camera.global_transform.basis.x
@@ -67,7 +66,6 @@ fwd.y = 0; rgt.y = 0
 fwd = fwd.normalized(); rgt = rgt.normalized()
 camera.global_position += (rgt * joy.output.x + fwd * -joy.output.y) * 14.0 * delta
 
-# МАРКЕР НАД СЕЛЕКТИРАНИЯ ОБЕКТ
 if selected_obj and is_instance_valid(selected_obj):
 indicator.visible = true
 var bounce = sin(Time.get_ticks_msec() * 0.006) * 0.25
@@ -140,7 +138,7 @@ if selected_obj:
 selected_obj.queue_free()
 _deselect()
 
-# --- СТРАНИЦА ЗА API КЛЮЧОВЕ И МОДЕЛИ ---
+# --- СТРАНИЦА ЗА ОБЛАЧЕН AI ---
 func _on_open_settings():
 api_page.visible = true
 
@@ -163,7 +161,7 @@ return
 
 is_testing_models = true
 test_btn.disabled = true
-status_lbl.text = "⏳ Свързване с " + providers[current_provider_idx]["name"] + "..."
+status_lbl.text = "⏳ Свързване и сваляне на модели..."
 status_lbl.modulate = Color(1, 0.9, 0.2)
 
 var url = providers[current_provider_idx]["models_url"]
@@ -171,8 +169,7 @@ var headers = [
 "Authorization: Bearer " + api_key,
 "Content-Type: application/json"
 ]
-
-if current_provider_idx == 0: # OpenRouter изисква HTTP-Referer за безплатни заявки
+if current_provider_idx == 0:
 headers.append("HTTP-Referer: https://tiptop.engine")
 headers.append("X-Title: TipTop Studio")
 
@@ -189,22 +186,21 @@ if json.parse(body.get_string_from_utf8()) == OK:
 var res = json.get_data()
 _populate_models_list(res)
 else:
-status_lbl.text = "❌ Грешка при четене на списъка с модели!"
+status_lbl.text = "❌ Грешка при обработка на отговора."
 status_lbl.modulate = Color(1, 0.3, 0.3)
 else:
-status_lbl.text = "❌ Грешен или невалиден API ключ! (HTTP " + str(response_code) + ")"
+status_lbl.text = "❌ Грешен или неактивен ключ! (Код " + str(response_code) + ")"
 status_lbl.modulate = Color(1, 0.3, 0.3)
 else:
-# Отговор от генериране през чата
 if response_code == 200:
 var json = JSON.new()
 if json.parse(body.get_string_from_utf8()) == OK:
 var res = json.get_data()
-var content = res["choices"][0]["message"]["content"]
+var content = res["choices"][0]["message"]["content"].strip_edges()
 _add_log("[color=#00f2fe]" + current_model + ":[/color] " + content)
 _build(content.to_lower(), Vector3.INF)
 else:
-_add_log("[color=#ff4444]AI грешка (" + str(response_code) + "). Провери баланса/ключа от ⚙️[/color]")
+_add_log("[color=#ff4444]AI грешка (" + str(response_code) + "). Провери ключа от '⚙️ AI Облак'.[/color]")
 
 func _populate_models_list(data: Dictionary):
 model_select.clear()
@@ -226,13 +222,13 @@ fetched_models.append(m_id)
 model_select.add_item(m_id)
 
 if fetched_models.size() > 0:
-status_lbl.text = "✅ Ключът работи! Намерени " + str(fetched_models.size()) + " модела."
+status_lbl.text = "✅ Ключът е валиден! Свалени " + str(fetched_models.size()) + " модела."
 status_lbl.modulate = Color(0.2, 1, 0.4)
 current_model = fetched_models[0]
 current_model_chip.text = "🤖 " + current_model
 _save_config()
 else:
-status_lbl.text = "⚠️ Ключът е валиден, но не бяха открити модели."
+status_lbl.text = "⚠️ Ключът работи, но не бяха върнати модели."
 status_lbl.modulate = Color(1, 0.8, 0.2)
 
 func _on_model_selected(idx: int):
@@ -241,7 +237,6 @@ current_model = fetched_models[idx]
 current_model_chip.text = "🤖 " + current_model
 _save_config()
 
-# Запазване и зареждане на настройките на телефона
 func _save_config():
 var cfg = {
 "provider": current_provider_idx,
@@ -274,7 +269,7 @@ var saved_idx = fetched_models.find(current_model)
 if saved_idx != -1:
 model_select.selected = saved_idx
 
-# --- ЧАТ И AI ИЗПРАЩАНЕ ---
+# --- ЧАТ И ГЕНЕРИРАНЕ ---
 func _add_log(msg: String): chat_log.append_text(msg + "\n")
 
 func _on_send_chat():
@@ -283,7 +278,6 @@ if t.is_empty(): return
 chat_input.text = ""
 _add_log("[color=#00ff88]Ти:[/color] " + t)
 
-# Ако има въведен ключ и свален модел, пращаме към AI
 if not api_key.is_empty() and current_model != "default":
 _request_ai_chat(t)
 else:
@@ -302,7 +296,7 @@ var headers = [
 if current_provider_idx == 0:
 headers.append("HTTP-Referer: https://tiptop.engine")
 
-var sys_prompt = "Ти си 3D генератор. Отговаряй САМО с една дума от списъка: [дърво, кола, сграда, блок], която най-точно отговаря на заявката."
+var sys_prompt = "Ти си 3D генератор. Отговаряй САМО с една дума от следните: [дърво, кола, сграда, блок], която най-точно описва обекта."
 var body = JSON.stringify({
 "model": current_model,
 "messages": [
