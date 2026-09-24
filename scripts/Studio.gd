@@ -44,9 +44,10 @@ func _ready():
     
     http_request.request_completed.connect(_on_http_response)
     _setup_provider_dropdown()
+    _setup_popup_scrolling()
     _load_saved_config()
     
-    _add_log("[color=#00f2fe]✨ TipTop Studio е активно![/color]")
+    _add_log("[color=#00ff88]✨ TipTop Studio е активно![/color]")
     _add_log("[color=#ffff66]Натисни '⚙️ AI Облак' долу за избор на модели.[/color]")
     
     _build("дърво", Vector3(-3.5, 0.0, -5.0))
@@ -58,6 +59,14 @@ func _setup_provider_dropdown():
     provider_select.add_item("⚡ Groq (Супер бърз)")
     provider_select.add_item("🤖 OpenAI (ChatGPT)")
     provider_select.add_item("🧠 DeepSeek (V3 / R1)")
+
+# Активиране на гладко скролване за изскачащите списъци с 400+ модела
+func _setup_popup_scrolling():
+    var popup = model_select.get_popup()
+    if popup:
+        popup.max_size = Vector2i(640, 520)
+        popup.always_on_top = true
+        popup.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
 
 func _process(delta):
     if joy.output.length() > 0.05:
@@ -165,21 +174,21 @@ func _on_close_settings():
 
 func _on_provider_selected(idx: int):
     current_provider_idx = idx
-    status_lbl.text = "Избран доставчик: " + providers[idx]["name"]
+    status_lbl.text = "Доставчик: " + providers[idx]["name"]
     model_select.clear()
-    model_select.add_item("Натисни бутона по-долу за сваляне на модели...")
+    model_select.add_item("Натисни бутона за сваляне на модели...")
 
 func _on_fetch_models_pressed():
     api_key = key_input.text.strip_edges()
     if api_key.is_empty():
-        status_lbl.text = "❌ Моля, въведи първо API ключ!"
+        status_lbl.text = "❌ Въведи първо API ключ!"
         status_lbl.modulate = Color(1, 0.3, 0.3)
         return
 
     is_testing_models = true
     test_btn.disabled = true
-    status_lbl.text = "⏳ Свързване и сваляне на модели..."
-    status_lbl.modulate = Color(1, 0.9, 0.2)
+    status_lbl.text = "⏳ Сваляне на модели от " + providers[current_provider_idx]["name"] + "..."
+    status_lbl.modulate = Color(0, 1, 0.6)
 
     var url = providers[current_provider_idx]["models_url"]
     var headers = [
@@ -203,10 +212,10 @@ func _on_http_response(result: int, response_code: int, headers: PackedStringArr
                 var res = json.get_data()
                 _populate_models_list(res)
             else:
-                status_lbl.text = "❌ Грешка при обработка на отговора."
+                status_lbl.text = "❌ Грешка при четене на отговора."
                 status_lbl.modulate = Color(1, 0.3, 0.3)
         else:
-            status_lbl.text = "❌ Грешен или неактивен ключ! (Код " + str(response_code) + ")"
+            status_lbl.text = "❌ Невалиден ключ! (HTTP " + str(response_code) + ")"
             status_lbl.modulate = Color(1, 0.3, 0.3)
     else:
         if response_code == 200:
@@ -214,7 +223,7 @@ func _on_http_response(result: int, response_code: int, headers: PackedStringArr
             if json.parse(body.get_string_from_utf8()) == OK:
                 var res = json.get_data()
                 var content = res["choices"][0]["message"]["content"].strip_edges()
-                _add_log("[color=#00f2fe]" + current_model + ":[/color] " + content)
+                _add_log("[color=#00ff88]" + current_model + ":[/color] " + content)
                 _build(content.to_lower(), Vector3.INF)
         else:
             _add_log("[color=#ff4444]AI грешка (" + str(response_code) + "). Провери ключа от '⚙️ AI Облак'.[/color]")
@@ -239,13 +248,13 @@ func _populate_models_list(data: Dictionary):
             model_select.add_item(m_id)
 
     if fetched_models.size() > 0:
-        status_lbl.text = "✅ Ключът е валиден! Свалени " + str(fetched_models.size()) + " модела."
-        status_lbl.modulate = Color(0.2, 1, 0.4)
+        status_lbl.text = "✅ Ключът работи! Свалени " + str(fetched_models.size()) + " модела."
+        status_lbl.modulate = Color(0, 1, 0.5)
         current_model = fetched_models[0]
         current_model_chip.text = "🤖 " + current_model
         _save_config()
     else:
-        status_lbl.text = "⚠️ Ключът работи, но не бяха върнати модели."
+        status_lbl.text = "⚠️ Ключът е валиден, но няма открити модели."
         status_lbl.modulate = Color(1, 0.8, 0.2)
 
 func _on_model_selected(idx: int):

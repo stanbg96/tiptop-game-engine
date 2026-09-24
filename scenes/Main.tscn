@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3 uid="uid://cxup6s1g2km8y"]
+[gd_scene load_steps=18 format=3 uid="uid://cxup6s1g2km8y"]
 
 [ext_resource type="Script" path="res://scripts/Studio.gd" id="1_mgr"]
 [ext_resource type="Script" path="res://scripts/VirtualJoystick.gd" id="2_joy"]
@@ -27,7 +27,12 @@ shading_mode = 0
 albedo_color = Color(1, 0.8, 0, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_center_tools"]
-bg_color = Color(0.08, 0.1, 0.14, 0.92)
+bg_color = Color(0.06, 0.08, 0.1, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0, 1, 0.55, 0.4)
 corner_radius_top_left = 20
 corner_radius_top_right = 20
 corner_radius_bottom_right = 20
@@ -36,12 +41,19 @@ shadow_size = 8
 shadow_color = Color(0, 0, 0, 0.4)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
-bg_color = Color(0.09, 0.1, 0.14, 1)
+bg_color = Color(0.06, 0.08, 0.1, 1)
+border_width_top = 2
+border_color = Color(0, 1, 0.55, 0.3)
 corner_radius_top_left = 28
 corner_radius_top_right = 28
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_input"]
-bg_color = Color(0.15, 0.18, 0.24, 1)
+bg_color = Color(0.1, 0.14, 0.16, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 1, 0.55, 0.25)
 corner_radius_top_left = 22
 corner_radius_top_right = 22
 corner_radius_bottom_right = 22
@@ -51,14 +63,40 @@ content_margin_top = 16.0
 content_margin_right = 18.0
 content_margin_bottom = 16.0
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_modal"]
-bg_color = Color(0.08, 0.09, 0.13, 0.98)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_modal_card"]
+bg_color = Color(0.05, 0.07, 0.08, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0, 1, 0.55, 0.85)
 corner_radius_top_left = 24
 corner_radius_top_right = 24
 corner_radius_bottom_right = 24
 corner_radius_bottom_left = 24
-shadow_size = 12
-shadow_color = Color(0, 0, 0, 0.6)
+shadow_size = 18
+shadow_color = Color(0, 0.9, 0.5, 0.25)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_green_field"]
+bg_color = Color(0.08, 0.12, 0.12, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 1, 0.55, 0.5)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+content_margin_left = 14.0
+content_margin_right = 14.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_green_btn"]
+bg_color = Color(0, 0.8, 0.45, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_mgr")
@@ -149,7 +187,7 @@ alignment = 1
 
 [node name="LabelName" type="Label" parent="UI/CenterTools/Panel/VBox/Header"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0, 0.95, 1, 1)
+theme_override_colors/font_color = Color(0, 1, 0.6, 1)
 theme_override_font_sizes/font_size = 17
 text = "🎯 Обект"
 
@@ -205,7 +243,7 @@ offset_right = -16.0
 
 [node name="CurrentModelLbl" type="Label" parent="UI/ChatBG/VBox/TopRow"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0, 0.9, 1, 0.8)
+theme_override_colors/font_color = Color(0, 1, 0.55, 0.9)
 theme_override_font_sizes/font_size = 13
 text = "🤖 Локален Режим"
 
@@ -230,7 +268,7 @@ theme_override_constants/separation = 8
 [node name="CloudBtn" type="Button" parent="UI/ChatBG/VBox/Chips"]
 layout_mode = 2
 custom_minimum_size = Vector2(110, 40)
-theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_colors/font_color = Color(0, 1, 0.55, 1)
 text = "⚙️ AI Облак"
 
 [node name="BtnBld" type="Button" parent="UI/ChatBG/VBox/Chips"]
@@ -269,6 +307,8 @@ placeholder_text = "Напиши: кола, сграда, дърво..."
 [node name="SendBtn" type="Button" parent="UI/ChatBG/VBox/Margin2/InputRow"]
 layout_mode = 2
 custom_minimum_size = Vector2(62, 62)
+theme_override_styles/normal = SubResource("StyleBoxFlat_green_btn")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
 text = "🚀"
 
 [node name="ApiPage" type="Control" parent="UI"]
@@ -287,7 +327,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0, 0, 0, 0.75)
+color = Color(0, 0, 0, 0.8)
 
 [node name="Card" type="PanelContainer" parent="UI/ApiPage"]
 layout_mode = 1
@@ -296,20 +336,20 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -160.0
-offset_top = -240.0
-offset_right = 160.0
-offset_bottom = 240.0
+offset_left = -170.0
+offset_top = -250.0
+offset_right = 170.0
+offset_bottom = 250.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_modal")
+theme_override_styles/panel = SubResource("StyleBoxFlat_modal_card")
 
 [node name="Margin" type="MarginContainer" parent="UI/ApiPage/Card"]
 layout_mode = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 16
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 16
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
 
 [node name="VBox" type="VBoxContainer" parent="UI/ApiPage/Card/Margin"]
 layout_mode = 2
@@ -321,8 +361,9 @@ layout_mode = 2
 [node name="Title" type="Label" parent="UI/ApiPage/Card/Margin/VBox/HeaderRow"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0, 1, 0.6, 1)
 theme_override_font_sizes/font_size = 18
-text = "☁️ AI Облак"
+text = "⚡ AI Облачен Хъб"
 
 [node name="CloseBtn" type="Button" parent="UI/ApiPage/Card/Margin/VBox/HeaderRow"]
 custom_minimum_size = Vector2(40, 40)
@@ -331,44 +372,49 @@ text = "✕"
 
 [node name="Lbl1" type="Label" parent="UI/ApiPage/Card/Margin/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
+theme_override_colors/font_color = Color(0.6, 0.85, 0.7, 1)
 text = "1. Доставчик:"
 
 [node name="ProviderSelect" type="OptionButton" parent="UI/ApiPage/Card/Margin/VBox"]
-custom_minimum_size = Vector2(0, 46)
+custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_green_field")
 
 [node name="Lbl2" type="Label" parent="UI/ApiPage/Card/Margin/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
+theme_override_colors/font_color = Color(0.6, 0.85, 0.7, 1)
 text = "2. API Ключ:"
 
 [node name="KeyInput" type="LineEdit" parent="UI/ApiPage/Card/Margin/VBox"]
-custom_minimum_size = Vector2(0, 46)
+custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_green_field")
 placeholder_text = "sk-..."
 secret = true
 
 [node name="TestBtn" type="Button" parent="UI/ApiPage/Card/Margin/VBox"]
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
-theme_override_colors/font_color = Color(0, 0.95, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_green_btn")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 15
 text = "⚡ Свали наличните модели"
 
 [node name="StatusLbl" type="Label" parent="UI/ApiPage/Card/Margin/VBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
-text = "Постави ключ и тествай."
+text = "Въведи ключ и свали моделите."
 autowrap_mode = 2
 
 [node name="Lbl3" type="Label" parent="UI/ApiPage/Card/Margin/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
-text = "3. Избери модел:"
+theme_override_colors/font_color = Color(0.6, 0.85, 0.7, 1)
+text = "3. Избери активен модел:"
 
 [node name="ModelSelect" type="OptionButton" parent="UI/ApiPage/Card/Margin/VBox"]
-custom_minimum_size = Vector2(0, 46)
+custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_green_field")
 
 [connection signal="pressed" from="UI/CenterTools/Panel/VBox/Buttons/BtnUp" to="." method="_on_act_up"]
 [connection signal="pressed" from="UI/CenterTools/Panel/VBox/Buttons/BtnDown" to="." method="_on_act_down"]
