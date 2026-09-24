@@ -84,6 +84,7 @@ shape = SubResource("BoxShape3D_floor")
 
 [node name="Indicator" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, -1, -8.74228e-08, 0, 8.74228e-08, -1, 0, 3, 0)
+visible = false
 mesh = SubResource("PrismMesh_arrow")
 surface_material_override/0 = SubResource("StandardMaterial3D_arrow")
 
@@ -113,6 +114,7 @@ grow_vertical = 0
 script = ExtResource("2_joy")
 
 [node name="CenterTools" type="Control" parent="UI"]
+visible = false
 layout_mode = 3
 anchors_preset = 8
 anchor_left = 0.5
@@ -294,75 +296,78 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -300.0
-offset_top = -320.0
-offset_right = 300.0
-offset_bottom = 320.0
+offset_left = -160.0
+offset_top = -240.0
+offset_right = 160.0
+offset_bottom = 240.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_modal")
 
-[node name="Scroll" type="ScrollContainer" parent="UI/ApiPage/Card"]
+[node name="Margin" type="MarginContainer" parent="UI/ApiPage/Card"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="UI/ApiPage/Card/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="HeaderRow" type="HBoxContainer" parent="UI/ApiPage/Card/Margin/VBox"]
 layout_mode = 2
 
-[node name="VBox" type="VBoxContainer" parent="UI/ApiPage/Card/Scroll"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 14
-
-[node name="HeaderRow" type="HBoxContainer" parent="UI/ApiPage/Card/Scroll/VBox"]
-layout_mode = 2
-
-[node name="Title" type="Label" parent="UI/ApiPage/Card/Scroll/VBox/HeaderRow"]
+[node name="Title" type="Label" parent="UI/ApiPage/Card/Margin/VBox/HeaderRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 18
-text = "☁️ Облачен Изкуствен Интелект"
+text = "☁️ AI Облак"
 
-[node name="CloseBtn" type="Button" parent="UI/ApiPage/Card/Scroll/VBox/HeaderRow"]
+[node name="CloseBtn" type="Button" parent="UI/ApiPage/Card/Margin/VBox/HeaderRow"]
 custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 text = "✕"
 
-[node name="Lbl1" type="Label" parent="UI/ApiPage/Card/Scroll/VBox"]
+[node name="Lbl1" type="Label" parent="UI/ApiPage/Card/Margin/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
-text = "1. Избери доставчик:"
+text = "1. Доставчик:"
 
-[node name="ProviderSelect" type="OptionButton" parent="UI/ApiPage/Card/Scroll/VBox"]
-custom_minimum_size = Vector2(0, 48)
+[node name="ProviderSelect" type="OptionButton" parent="UI/ApiPage/Card/Margin/VBox"]
+custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
 
-[node name="Lbl2" type="Label" parent="UI/ApiPage/Card/Scroll/VBox"]
+[node name="Lbl2" type="Label" parent="UI/ApiPage/Card/Margin/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
-text = "2. Постави твоя API ключ:"
+text = "2. API Ключ:"
 
-[node name="KeyInput" type="LineEdit" parent="UI/ApiPage/Card/Scroll/VBox"]
-custom_minimum_size = Vector2(0, 52)
+[node name="KeyInput" type="LineEdit" parent="UI/ApiPage/Card/Margin/VBox"]
+custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
 placeholder_text = "sk-..."
 secret = true
 
-[node name="TestBtn" type="Button" parent="UI/ApiPage/Card/Scroll/VBox"]
-custom_minimum_size = Vector2(0, 52)
+[node name="TestBtn" type="Button" parent="UI/ApiPage/Card/Margin/VBox"]
+custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0.95, 1, 1)
-text = "⚡ Тествай ключ и свали моделите"
+text = "⚡ Свали наличните модели"
 
-[node name="StatusLbl" type="Label" parent="UI/ApiPage/Card/Scroll/VBox"]
+[node name="StatusLbl" type="Label" parent="UI/ApiPage/Card/Margin/VBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 14
-text = "Въведи ключ и натисни бутона за тест."
+theme_override_font_sizes/font_size = 13
+text = "Постави ключ и тествай."
 autowrap_mode = 2
 
-[node name="Lbl3" type="Label" parent="UI/ApiPage/Card/Scroll/VBox"]
+[node name="Lbl3" type="Label" parent="UI/ApiPage/Card/Margin/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
-text = "3. Избери свален модел:"
+text = "3. Избери модел:"
 
-[node name="ModelSelect" type="OptionButton" parent="UI/ApiPage/Card/Scroll/VBox"]
-custom_minimum_size = Vector2(0, 48)
+[node name="ModelSelect" type="OptionButton" parent="UI/ApiPage/Card/Margin/VBox"]
+custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
 
 [connection signal="pressed" from="UI/CenterTools/Panel/VBox/Buttons/BtnUp" to="." method="_on_act_up"]
@@ -374,7 +379,7 @@ layout_mode = 2
 [connection signal="pressed" from="UI/ChatBG/VBox/Chips/BtnCar" to="." method="_on_chip_pressed" binds= ["кола"]]
 [connection signal="pressed" from="UI/ChatBG/VBox/Chips/BtnTree" to="." method="_on_chip_pressed" binds= ["дърво"]]
 [connection signal="pressed" from="UI/ChatBG/VBox/Margin2/InputRow/SendBtn" to="." method="_on_send_chat"]
-[connection signal="pressed" from="UI/ApiPage/Card/Scroll/VBox/HeaderRow/CloseBtn" to="." method="_on_close_settings"]
-[connection signal="item_selected" from="UI/ApiPage/Card/Scroll/VBox/ProviderSelect" to="." method="_on_provider_selected"]
-[connection signal="pressed" from="UI/ApiPage/Card/Scroll/VBox/TestBtn" to="." method="_on_fetch_models_pressed"]
-[connection signal="item_selected" from="UI/ApiPage/Card/Scroll/VBox/ModelSelect" to="." method="_on_model_selected"]
+[connection signal="pressed" from="UI/ApiPage/Card/Margin/VBox/HeaderRow/CloseBtn" to="." method="_on_close_settings"]
+[connection signal="item_selected" from="UI/ApiPage/Card/Margin/VBox/ProviderSelect" to="." method="_on_provider_selected"]
+[connection signal="pressed" from="UI/ApiPage/Card/Margin/VBox/TestBtn" to="." method="_on_fetch_models_pressed"]
+[connection signal="item_selected" from="UI/ApiPage/Card/Margin/VBox/ModelSelect" to="." method="_on_model_selected"]
