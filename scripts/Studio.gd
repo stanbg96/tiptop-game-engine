@@ -9,9 +9,6 @@ extends Node3D
 @onready var indicator = $Indicator
 @onready var world = $World
 @onready var http_request = $HTTPRequest
-@onready var audio_player = $AudioPlayer
-@onready var env_node = $WorldEnvironment
-@onready var sun_light = $DirectionalLight3D
 
 @onready var api_page = $UI/ApiPage
 @onready var provider_select = $UI/ApiPage/Card/Margin/VBox/ProviderSelect
@@ -52,11 +49,11 @@ func _ready():
     _setup_provider_dropdown()
     _load_saved_config()
     
-    _add_log("[color=#00ff88]✨ TipTop High-Fidelity Universal Engine е активен![/color]")
+    _add_log("[color=#00ff88]✨ TipTop High-Definition Studio е живо![/color]")
     _add_log("[color=#00f2fe]Модел:[/color] " + current_model)
-    _add_log("[color=#ffff66]💡 Опитай: 'пиано', 'замък', 'бемве кабрио', 'къща', 'робот'![/color]")
+    _add_log("[color=#ffff66]💡 Напиши: 'пиано', 'замък', 'бемве кабрио' или 'къща'![/color]")
     
-    # Зареждаме веднага високодетайлно концертно пиано за демонстрация
+    # Стартираме директно с детайлно концертно пиано
     _spawn_detailed_piano("Grand_Piano", Vector3(0, 0, -5.0))
 
 func _setup_provider_dropdown():
@@ -80,25 +77,6 @@ func _process(delta):
         indicator.global_position = selected_obj.global_position + Vector3(0, 3.5 + bounce, 0)
     else:
         indicator.visible = false
-
-    _process_animations(delta)
-
-func _process_animations(delta):
-    var t = Time.get_ticks_msec() * 0.001
-    var i = 0
-    while i < animated_parts.size():
-        var item = animated_parts[i]
-        var node = item.get("node")
-        if not is_instance_valid(node):
-            animated_parts.remove_at(i)
-            continue
-        var anim_type = item.get("anim", "none")
-        match anim_type:
-            "spin_y": node.rotate_y(delta * 9.0)
-            "spin_x": node.rotate_x(delta * 9.0)
-            "bob": node.position.y = item.get("base_pos").y + sin(t * 3.5) * 0.2
-            "flap": node.rotation.z = sin(t * 7.0) * deg_to_rad(25.0)
-        i += 1
 
 func _unhandled_input(event):
     if api_page.visible: return
@@ -322,16 +300,15 @@ func _on_send_chat():
     last_user_prompt = t
 
     var low = t.to_lower()
-    # Пълна локална независимост: разпознава пиано, замък, кола, къща, дърво веднага!
-    if "пиано" in low or "роял" in low or "piano" in low:
+    if "пиано" in low or "роял" in low:
         _spawn_detailed_piano("Grand_Piano", _get_spawn_pos())
-    elif "замък" in low or "крепост" in low or "castle" in low:
+    elif "замък" in low or "крепост" in low:
         _spawn_detailed_castle("Medieval_Castle", _get_spawn_pos())
-    elif "кола" in low or "бемве" in low or "bmw" in low or "кабрио" in low:
+    elif "кола" in low or "бемве" in low:
         var is_cab = "кабрио" in low or "cabrio" in low or "бемве" in low
-        var col = "#0066ff" if "бемве" in low or "син" in low else "#e60026"
+        var col = "#0066ff" if "бемве" in low else "#e60026"
         _spawn_detailed_car("Sports_Car", col, is_cab, _get_spawn_pos())
-    elif "къща" in low or "дом" in low or "вила" in low:
+    elif "къща" in low or "дом" in low:
         _spawn_detailed_house("Cozy_House", "#e76f51", _get_spawn_pos())
     elif not api_key.is_empty():
         _request_ai_universal_recipe(t)
@@ -347,7 +324,6 @@ func _get_spawn_pos() -> Vector3:
     var p = camera.global_position + fwd.normalized() * 7.5; p.y = 0.0
     return p
 
-# AI ЗАЯВКА ЗА ПРОИЗВОЛЕН ОБЕКТ ВЪВ ВСЕЛЕНАТА
 func _request_ai_universal_recipe(prompt: String):
     _add_log("[color=#00f2fe]⏳ " + current_model + " конструира детайлен 3D CAD модел в RAM...[/color]")
     var url = providers[current_provider_idx]["chat"]
@@ -356,22 +332,19 @@ func _request_ai_universal_recipe(prompt: String):
         headers.append("HTTP-Referer: https://tiptop.engine")
         headers.append("X-Title: TipTop Studio")
 
-    var system_prompt = """You are an expert 3D Procedural CAD Modeler.
-Decompose the user's object into recognizable geometric parts.
-Output ONLY raw JSON (no markdown, no explanations):
+    var system_prompt = """You are an expert 3D Procedural CAD Modeler. Output ONLY raw JSON:
 {
   "name": "BulgarianName",
   "parts": [
     {
-      "shape": "box" | "sphere" | "cylinder" | "torus" | "prism" | "capsule",
+      "shape": "box" | "sphere" | "cylinder" | "torus" | "prism",
       "pos": [x, y, z],
       "size": [w, h, d],
       "rot": [pitch_deg, yaw_deg, roll_deg],
       "color": "#HEX",
       "metallic": 0.0-1.0,
       "roughness": 0.0-1.0,
-      "clearcoat": 0.0-1.0,
-      "emission": "#000000"
+      "clearcoat": 0.0-1.0
     }
   ]
 }
@@ -423,7 +396,6 @@ func _build_raw_recipe(recipe: Dictionary):
         var met = float(part.get("metallic", 0.2))
         var rough = float(part.get("roughness", 0.4))
         var clr = float(part.get("clearcoat", 0.0))
-        var em = str(part.get("emission", "#000000"))
 
         var p_pos = Vector3(float(pos[0]), max(0.0, float(pos[1])), float(pos[2]))
         var p_sz = Vector3(max(0.05, float(sz[0])), max(0.05, float(sz[1])), max(0.05, float(sz[2])))
@@ -434,8 +406,6 @@ func _build_raw_recipe(recipe: Dictionary):
         mat.metallic = met; mat.roughness = rough
         if clr > 0.0:
             mat.clearcoat_enabled = true; mat.clearcoat = clr; mat.clearcoat_roughness = 0.04
-        if em != "#000000" and em != "":
-            mat.emission_enabled = true; mat.emission = Color.from_string(em, Color.BLACK); mat.emission_energy_multiplier = 3.0
 
         if shape == "cylinder":
             _cyl(rb, p_sz.x * 0.5, p_sz.y, mat, p_pos, p_rot)
@@ -464,14 +434,11 @@ func _semantic_fallback(prompt: String):
     else:
         _spawn_detailed_house("Architecture", "#e76f51", pos)
 
-# ==============================================================================
-# 1. КОНЦЕРТНО ПИАНО (ЧЕРЕН ЛАК, ОТВОРЕН КАПАК, СТОЙКА, КЛАВИАТУРА, ЗЛАТНИ ПЕДАЛИ)
-# ==============================================================================
+# 1. КОНЦЕРТНО ПИАНО (Черен лак, отворен капак, стойка, клавиши, златни педали)
 func _spawn_detailed_piano(piano_name: String, pos: Vector3):
     var root = Node3D.new(); root.name = piano_name; root.position = pos
     var rb = StaticBody3D.new(); rb.add_to_group("prop"); root.add_child(rb)
 
-    # Дълбок огледален черен лак за пиано
     var lacquer = StandardMaterial3D.new()
     lacquer.albedo_color = Color(0.05, 0.05, 0.07)
     lacquer.metallic = 0.2; lacquer.roughness = 0.03
@@ -483,26 +450,19 @@ func _spawn_detailed_piano(piano_name: String, pos: Vector3):
     var white_keys = StandardMaterial3D.new(); white_keys.albedo_color = Color(0.96, 0.96, 0.98); white_keys.roughness = 0.2
     var black_keys = StandardMaterial3D.new(); black_keys.albedo_color = Color(0.08, 0.08, 0.08); black_keys.roughness = 0.1
 
-    # Основен корпус на рояла (Крило)
     _box(rb, Vector3(2.2, 0.45, 2.6), lacquer, Vector3(0, 1.15, 0))
     _box(rb, Vector3(1.6, 0.44, 1.4), lacquer, Vector3(-0.25, 1.15, 1.2))
 
-    # 3 Тънки крака на рояла със златни колелца
-    var leg_coords = [Vector3(-0.9, 0.55, -1.0), Vector3(0.9, 0.55, -1.0), Vector3(-0.2, 0.55, 1.6)]
-    for lp in leg_coords:
+    for lp in [Vector3(-0.9, 0.55, -1.0), Vector3(0.9, 0.55, -1.0), Vector3(-0.2, 0.55, 1.6)]:
         _cyl(rb, 0.09, 1.1, lacquer, lp)
-        _sph(rb, 0.07, gold, lp - Vector3(0, 0.52, 0)) # Златно колелце
+        _sph(rb, 0.07, gold, lp - Vector3(0, 0.52, 0))
 
-    # Отворен горен капак под ъгъл
     _box(rb, Vector3(2.3, 0.06, 2.7), lacquer, Vector3(0.3, 1.8, 0.1), Vector3(0, 0, deg_to_rad(32)))
-    # Златна подпорна стойка за капака
     _cyl(rb, 0.03, 0.9, gold, Vector3(0.7, 1.6, 0.2), Vector3(0, 0, deg_to_rad(15)))
 
-    # Клавиатура с бели и черни клавиши
-    _box(rb, Vector3(1.9, 0.08, 0.35), white_keys, Vector3(0, 0.98, -1.45)) # Бели клавиши
-    _box(rb, Vector3(1.7, 0.12, 0.2), black_keys, Vector3(0, 1.02, -1.5))    # Черни клавиши
+    _box(rb, Vector3(1.9, 0.08, 0.35), white_keys, Vector3(0, 0.98, -1.45))
+    _box(rb, Vector3(1.7, 0.12, 0.2), black_keys, Vector3(0, 1.02, -1.5))
 
-    # Педали долу (3 златни месингови педала)
     _box(rb, Vector3(0.35, 0.25, 0.1), lacquer, Vector3(0, 0.3, -0.6))
     _box(rb, Vector3(0.06, 0.04, 0.2), gold, Vector3(-0.08, 0.18, -0.68))
     _box(rb, Vector3(0.06, 0.04, 0.2), gold, Vector3(0.0, 0.18, -0.68))
@@ -510,11 +470,9 @@ func _spawn_detailed_piano(piano_name: String, pos: Vector3):
 
     var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(2.6, 2.2, 3.2); cs.shape = bs; cs.position.y = 1.1; rb.add_child(cs)
     world.add_child(root); _select(root)
-    _add_log("[color=#00ff88]✓ Концертно пиано с черен огледален лак, отворен капак и златни педали е готово![/color]")
+    _add_log("[color=#00ff88]✓ Концертно пиано с черен огледален лак и клавиши е готово![/color]")
 
-# ==============================================================================
-# 2. СРЕДНОВЕКОВЕН ЗАМЪК (4 КУЛИ С КОНУСНИ ПОКРИВИ, СТЕНИ С БОЙНИЦИ, ВХОДНА ПОРТА)
-# ==============================================================================
+# 2. СРЕДНОВЕКОВЕН ЗАМЪК (4 кули, островърхи покриви, бойници, порта)
 func _spawn_detailed_castle(castle_name: String, pos: Vector3):
     var root = Node3D.new(); root.name = castle_name; root.position = pos
     var rb = StaticBody3D.new(); rb.add_to_group("prop"); root.add_child(rb)
@@ -522,45 +480,34 @@ func _spawn_detailed_castle(castle_name: String, pos: Vector3):
     var stone = StandardMaterial3D.new(); stone.albedo_color = Color(0.42, 0.44, 0.48); stone.roughness = 0.95
     var blue_roof = StandardMaterial3D.new(); blue_roof.albedo_color = Color(0.12, 0.25, 0.6); blue_roof.roughness = 0.8
     var wood_gate = StandardMaterial3D.new(); wood_gate.albedo_color = Color(0.28, 0.15, 0.08); wood_gate.roughness = 0.85
-    var gold_flag = StandardMaterial3D.new(); gold_flag.albedo_color = Color(1.0, 0.2, 0.2); gold_flag.emission_enabled = true; gold_flag.emission = Color(0.8, 0.1, 0.1)
+    var flag_mat = StandardMaterial3D.new(); flag_mat.albedo_color = Color(1.0, 0.2, 0.2)
 
-    # Главна крепостна кутия (Двор)
     _box(rb, Vector3(7.0, 3.5, 7.0), stone, Vector3(0, 1.75, 0))
 
-    # 4 Големи ъглови кули с конусовидни покриви
-    var tower_offsets = [Vector3(-3.8, 0, -3.8), Vector3(3.8, 0, -3.8), Vector3(-3.8, 0, 3.8), Vector3(3.8, 0, 3.8)]
-    for tp in tower_offsets:
-        _cyl(rb, 1.1, 5.5, stone, tp + Vector3(0, 2.75, 0)) # Каменна кула
-        # Конусовиден покрив
+    for tp in [Vector3(-3.8, 0, -3.8), Vector3(3.8, 0, -3.8), Vector3(-3.8, 0, 3.8), Vector3(3.8, 0, 3.8)]:
+        _cyl(rb, 1.1, 5.5, stone, tp + Vector3(0, 2.75, 0))
         var cone = CylinderMesh.new(); cone.top_radius = 0.02; cone.bottom_radius = 1.35; cone.height = 2.2
-        _add_mesh(rb, cone, blue_roof, tp + Vector3(0, 6.6, 0))
+        _add_mesh(rb, cone, blue_roof, tp + Vector3(0, 6.6, 0), Vector3.ZERO)
 
-    # Централна Цитадела (Най-високата кула в центъра)
     _cyl(rb, 1.8, 7.5, stone, Vector3(0, 3.75, 0))
     var main_cone = CylinderMesh.new(); main_cone.top_radius = 0.02; main_cone.bottom_radius = 2.1; main_cone.height = 2.8
-    _add_mesh(rb, main_cone, blue_roof, Vector3(0, 8.9, 0))
-    # Знаме на върха на цитаделата
-    _cyl(rb, 0.04, 1.2, stone, Vector3(0, 10.8, 0))
-    _box(rb, Vector3(0.6, 0.35, 0.04), gold_flag, Vector3(0.32, 11.1, 0))
+    _add_mesh(rb, main_cone, blue_roof, Vector3(0, 8.9, 0), Vector3.ZERO)
 
-    # Бойници (Зъбци на крепостните стени)
+    _cyl(rb, 0.04, 1.2, stone, Vector3(0, 10.8, 0))
+    _box(rb, Vector3(0.6, 0.35, 0.04), flag_mat, Vector3(0.32, 11.1, 0))
+
     for bx in [-2.5, 0.0, 2.5]:
         _box(rb, Vector3(0.7, 0.45, 0.3), stone, Vector3(bx, 3.75, -3.6))
         _box(rb, Vector3(0.7, 0.45, 0.3), stone, Vector3(bx, 3.75, 3.6))
-        _box(rb, Vector3(0.3, 0.45, 0.7), stone, Vector3(-3.6, 3.75, bx))
-        _box(rb, Vector3(0.3, 0.45, 0.7), stone, Vector3(3.6, 3.75, bx))
 
-    # Входна масивна порта с желязна арка
     _box(rb, Vector3(2.2, 2.6, 0.2), wood_gate, Vector3(0, 1.3, -3.6))
     _torus(rb, 1.1, 0.15, stone, Vector3(0, 2.6, -3.62), Vector3(deg_to_rad(90), 0, 0))
 
     var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(10.0, 11.5, 10.0); cs.shape = bs; cs.position.y = 5.0; rb.add_child(cs)
     world.add_child(root); _select(root)
-    _add_log("[color=#00ff88]✓ Средновековен замък с 4 кули, цитадела, бойници и знамена е издигнат![/color]")
+    _add_log("[color=#00ff88]✓ Средновековен замък с 4 кули и бойници е издигнат![/color]")
 
-# ==============================================================================
-# 3. АВТОМОБИЛЕН АРХИТЕКТ (СПОЙЛЕР, ФАРОВЕ, ДЖАНТИ, САЛОН, ВОЛАН)
-# ==============================================================================
+# 3. АВТОМОБИЛЕН АРХИТЕКТ (Спойлер, фарове, джанти, салон, волан)
 func _spawn_detailed_car(car_name: String, color_hex: String, is_cabrio: bool, pos: Vector3):
     var root = Node3D.new(); root.name = car_name; root.position = pos
     var rb = StaticBody3D.new(); rb.add_to_group("prop"); root.add_child(rb)
@@ -613,9 +560,7 @@ func _spawn_detailed_car(car_name: String, color_hex: String, is_cabrio: bool, p
     world.add_child(root); _select(root)
     _add_log("[color=#00ff88]✓ " + car_name + " е конструиран анатомично![/color]")
 
-# ==============================================================================
-# 4. АРХИТЕКТУРНА КЪЩА (ФУНДАМЕНТ, ПОКРИВ, КОМИН, ВРАТА, ПРОЗОРЦИ, СТЪПАЛО)
-# ==============================================================================
+# 4. АРХИТЕКТУРНА КЪЩА (Фундамент, покрив, комин, врата, прозорци)
 func _spawn_detailed_house(house_name: String, wall_color_hex: String, pos: Vector3):
     var root = Node3D.new(); root.name = house_name; root.position = pos
     var rb = StaticBody3D.new(); rb.add_to_group("prop"); root.add_child(rb)
@@ -645,7 +590,7 @@ func _spawn_detailed_house(house_name: String, wall_color_hex: String, pos: Vect
     world.add_child(root); _select(root)
     _add_log("[color=#00ff88]✓ " + house_name + " е построена с покрив, комин и прозорци![/color]")
 
-# ГЕОМЕТРИЧНИ ХЕЛПЪРИ
+# ГЕОМЕТРИЧНИ ХЕЛПЪРИ (Със задължителна стойност rot = Vector3.ZERO)
 func _box(p, sz, mat, pos, rot = Vector3.ZERO):
     var m = BoxMesh.new(); m.size = sz; _add_mesh(p, m, mat, pos, rot)
 
@@ -661,7 +606,7 @@ func _torus(p, outer_r, inner_r, mat, pos, rot = Vector3.ZERO):
 func _prism(p, sz, mat, pos, rot = Vector3.ZERO):
     var m = PrismMesh.new(); m.size = sz; _add_mesh(p, m, mat, pos, rot)
 
-func _add_mesh(parent, mesh_res, mat, pos, rot):
+func _add_mesh(parent, mesh_res, mat, pos, rot = Vector3.ZERO):
     var mi = MeshInstance3D.new()
     mi.mesh = mesh_res; mi.material_override = mat
     mi.position = pos; mi.rotation = rot
