@@ -1,13 +1,12 @@
-[gd_scene load_steps=9 format=3 uid="uid://cxup6s1g2km8y"]
+[gd_scene load_steps=18 format=3 uid="uid://cxup6s1g2km8y"]
 
-[ext_resource type="Script" path="res://scripts/WorldManager.gd" id="1_mgr"]
-[ext_resource type="Script" path="res://scripts/PlayerCharacter.gd" id="2_player"]
-[ext_resource type="Script" path="res://scripts/VirtualJoystick.gd" id="3_joy"]
+[ext_resource type="Script" path="res://scripts/GameManager.gd" id="1_mgr"]
+[ext_resource type="Script" path="res://scripts/PlayerController.gd" id="2_player"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
-sky_top_color = Color(0.18, 0.32, 0.52, 1)
-sky_horizon_color = Color(0.55, 0.68, 0.82, 1)
-ground_bottom_color = Color(0.15, 0.22, 0.3, 1)
+sky_top_color = Color(0.2, 0.35, 0.6, 1)
+sky_horizon_color = Color(0.6, 0.72, 0.85, 1)
+ground_bottom_color = Color(0.18, 0.24, 0.32, 1)
 
 [sub_resource type="Sky" id="Sky_1"]
 sky_material = SubResource("ProceduralSkyMaterial_1")
@@ -16,15 +15,52 @@ sky_material = SubResource("ProceduralSkyMaterial_1")
 background_mode = 2
 sky = SubResource("Sky_1")
 ambient_light_source = 2
-ambient_light_color = Color(0.65, 0.72, 0.85, 1)
+ambient_light_color = Color(0.7, 0.75, 0.85, 1)
 ambient_light_energy = 0.9
 
-[sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
-size = Vector2(200, 200)
+[sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
+size = Vector3(120, 1, 120)
+
+[sub_resource type="BoxMesh" id="BoxMesh_floor"]
+size = Vector3(120, 1, 120)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_floor"]
-albedo_color = Color(0.18, 0.28, 0.2, 1)
+albedo_color = Color(0.2, 0.32, 0.22, 1)
 roughness = 0.8
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
+radius = 0.45
+height = 1.85
+
+[sub_resource type="BoxMesh" id="BoxMesh_torso"]
+size = Vector3(0.75, 0.85, 0.4)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_torso"]
+albedo_color = Color(0, 0.55, 1, 1)
+roughness = 0.3
+
+[sub_resource type="SphereMesh" id="SphereMesh_head"]
+radius = 0.26
+height = 0.52
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_head"]
+albedo_color = Color(1, 0.85, 0.68, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_limb"]
+radius = 0.12
+height = 0.75
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_leg"]
+albedo_color = Color(0.12, 0.14, 0.18, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_arm"]
+albedo_color = Color(0, 0.45, 0.9, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_block"]
+size = Vector3(2.5, 2.5, 2.5)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_block"]
+albedo_color = Color(1, 0.3, 0, 1)
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_mgr")
@@ -34,33 +70,90 @@ environment = SubResource("Environment_1")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 20, 0)
-light_color = Color(1, 0.96, 0.88, 1)
-light_energy = 1.6
+light_color = Color(1, 0.98, 0.92, 1)
+light_energy = 1.8
 shadow_enabled = true
 
 [node name="Floor" type="StaticBody3D" parent="."]
-
-[node name="FloorMesh" type="MeshInstance3D" parent="Floor"]
-mesh = SubResource("PlaneMesh_floor")
-surface_material_override/0 = SubResource("StandardMaterial3D_floor")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 
 [node name="FloorCol" type="CollisionShape3D" parent="Floor"]
+shape = SubResource("BoxShape3D_floor")
+
+[node name="FloorMesh" type="MeshInstance3D" parent="Floor"]
+mesh = SubResource("BoxMesh_floor")
+surface_material_override/0 = SubResource("StandardMaterial3D_floor")
+
+[node name="Obstacle1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 1.25, -8)
+mesh = SubResource("BoxMesh_block")
+surface_material_override/0 = SubResource("StandardMaterial3D_block")
+
+[node name="Obstacle2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 1.25, -8)
+mesh = SubResource("BoxMesh_block")
 
 [node name="Player" type="CharacterBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
 script = ExtResource("2_player")
 
-[node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.939693, 0.34202, 0, -0.34202, 0.939693, 0, 3, 5)
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 0)
+shape = SubResource("CapsuleShape3D_player")
+
+[node name="Visuals" type="Node3D" parent="Player"]
+
+[node name="Torso" type="MeshInstance3D" parent="Player/Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.15, 0)
+mesh = SubResource("BoxMesh_torso")
+surface_material_override/0 = SubResource("StandardMaterial3D_torso")
+
+[node name="Head" type="MeshInstance3D" parent="Player/Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.82, 0)
+mesh = SubResource("SphereMesh_head")
+surface_material_override/0 = SubResource("StandardMaterial3D_head")
+
+[node name="LeftLeg" type="Node3D" parent="Player/Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.22, 0.72, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Player/Visuals/LeftLeg"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.36, 0)
+mesh = SubResource("CapsuleMesh_limb")
+surface_material_override/0 = SubResource("StandardMaterial3D_leg")
+
+[node name="RightLeg" type="Node3D" parent="Player/Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.22, 0.72, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Player/Visuals/RightLeg"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.36, 0)
+mesh = SubResource("CapsuleMesh_limb")
+surface_material_override/0 = SubResource("StandardMaterial3D_leg")
+
+[node name="LeftArm" type="Node3D" parent="Player/Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.46, 1.45, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Player/Visuals/LeftArm"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.28, 0)
+mesh = SubResource("CapsuleMesh_limb")
+surface_material_override/0 = SubResource("StandardMaterial3D_arm")
+
+[node name="RightArm" type="Node3D" parent="Player/Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.46, 1.45, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Player/Visuals/RightArm"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.28, 0)
+mesh = SubResource("CapsuleMesh_limb")
+surface_material_override/0 = SubResource("StandardMaterial3D_arm")
+
+[node name="Camera3D" type="Camera3D" parent="Player"]
+transform = Transform3D(1, 0, 0, 0, 0.939693, 0.34202, 0, -0.34202, 0.939693, 0, 2.4, 4.2)
 current = true
 
 [node name="WorldObjects" type="Node3D" parent="."]
 
-[node name="HTTPRequest" type="HTTPRequest" parent="."]
-
 [node name="UI" type="CanvasLayer" parent="."]
 
-[node name="StatusBar" type="PanelContainer" parent="UI"]
+[node name="TopBar" type="PanelContainer" parent="UI"]
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 16.0
@@ -68,22 +161,77 @@ offset_top = 16.0
 offset_right = -16.0
 offset_bottom = 54.0
 
-[node name="Label" type="Label" parent="UI/StatusBar"]
+[node name="Label" type="Label" parent="UI/TopBar"]
 layout_mode = 2
-text = "Зареждане на света..."
+text = "⚡ Движи човека с бутоните вляво!"
 horizontal_alignment = 1
 
-[node name="Joystick" type="Control" parent="UI"]
+[node name="TouchControls" type="Control" parent="UI"]
 layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="FwdBtn" type="Button" parent="UI/TouchControls"]
+layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 32.0
+offset_left = 90.0
 offset_top = -240.0
-offset_right = 192.0
-offset_bottom = -80.0
+offset_right = 165.0
+offset_bottom = -165.0
+text = "▲"
+
+[node name="BackBtn" type="Button" parent="UI/TouchControls"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 90.0
+offset_top = -150.0
+offset_right = 165.0
+offset_bottom = -75.0
+text = "▼"
+
+[node name="LeftBtn" type="Button" parent="UI/TouchControls"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -195.0
+offset_right = 82.0
+offset_bottom = -120.0
+text = "◀"
+
+[node name="RightBtn" type="Button" parent="UI/TouchControls"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 172.0
+offset_top = -195.0
+offset_right = 242.0
+offset_bottom = -120.0
+text = "▶"
+
+[node name="JumpBtn" type="Button" parent="UI/TouchControls"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -115.0
+offset_top = -200.0
+offset_right = -25.0
+offset_bottom = -110.0
+grow_horizontal = 0
 grow_vertical = 0
-script = ExtResource("3_joy")
+text = "СКОК 🚀"
 
 [node name="ChatBar" type="Panel" parent="UI"]
 anchors_preset = 12
@@ -93,7 +241,7 @@ anchor_bottom = 1.0
 offset_left = 12.0
 offset_top = -64.0
 offset_right = -12.0
-offset_bottom = -12.0
+offset_bottom = -10.0
 grow_horizontal = 2
 grow_vertical = 0
 
@@ -102,11 +250,11 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 12.0
+offset_left = 10.0
 offset_top = 6.0
-offset_right = -68.0
+offset_right = -75.0
 offset_bottom = -6.0
-placeholder_text = "напр: направи червена сграда..."
+placeholder_text = "напр: топка, кола или сграда..."
 
 [node name="SendBtn" type="Button" parent="UI/ChatBar"]
 layout_mode = 1
@@ -115,10 +263,19 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -60.0
-offset_top = -46.0
+offset_left = -68.0
+offset_top = -48.0
 offset_right = -8.0
 offset_bottom = -6.0
-text = "🚀"
+text = "🔨"
 
-[connection signal="pressed" from="UI/ChatBar/SendBtn" to="." method="_on_send_chat"]
+[connection signal="button_down" from="UI/TouchControls/FwdBtn" to="." method="_on_fwd_down"]
+[connection signal="button_up" from="UI/TouchControls/FwdBtn" to="." method="_on_fwd_up"]
+[connection signal="button_down" from="UI/TouchControls/BackBtn" to="." method="_on_back_down"]
+[connection signal="button_up" from="UI/TouchControls/BackBtn" to="." method="_on_back_up"]
+[connection signal="button_down" from="UI/TouchControls/LeftBtn" to="." method="_on_left_down"]
+[connection signal="button_up" from="UI/TouchControls/LeftBtn" to="." method="_on_left_up"]
+[connection signal="button_down" from="UI/TouchControls/RightBtn" to="." method="_on_right_down"]
+[connection signal="button_up" from="UI/TouchControls/RightBtn" to="." method="_on_right_up"]
+[connection signal="pressed" from="UI/TouchControls/JumpBtn" to="." method="_on_jump_pressed"]
+[connection signal="pressed" from="UI/ChatBar/SendBtn" to="." method="_on_spawn_pressed"]
