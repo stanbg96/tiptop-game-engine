@@ -26,9 +26,7 @@ var selected_obj: Node3D = null
 var is_dragging: bool = false
 var cam_yaw: float = 0.0
 var cam_pitch: float = -0.4
-var current_gravity: float = 9.8
 var animated_parts: Array = []
-var last_user_prompt: String = ""
 
 var providers = {
     0: {"name": "OpenRouter", "chat": "https://openrouter.ai/api/v1/chat/completions", "models_url": "https://openrouter.ai/api/v1/models"},
@@ -53,12 +51,12 @@ func _ready():
     _setup_provider_dropdown()
     _load_saved_config()
     
-    _add_log("[color=#00ff88]✨ TipTop Универсално Студио е готово![/color]")
+    _add_log("[color=#00ff88]✨ TipTop High-Definition 3D Studio е заредено![/color]")
     _add_log("[color=#00f2fe]Модел:[/color] " + current_model)
-    _add_log("[color=#ffff66]💡 Напиши каквото поискаш — енджинът винаги ще го конструира без грешка![/color]")
+    _add_log("[color=#ffff66]💡 Напиши: 'червена кола кабрио', 'къща', 'бемве', 'замък'![/color]")
     
-    # Стартов анимиран кибер дрон
-    _spawn_drone("Cyber_Drone", Vector3(0, 1.8, -4.5))
+    # Стартираме веднага с високодетайлно червено спортно кабрио с волан и седалки
+    _spawn_high_detail_car("Sports_Cabrio", "#e60026", true)
 
 func _setup_provider_dropdown():
     provider_select.clear()
@@ -82,9 +80,9 @@ func _process(delta):
     else:
         indicator.visible = false
 
-    _process_procedural_animations(delta)
+    _process_animations(delta)
 
-func _process_procedural_animations(delta):
+func _process_animations(delta):
     var t = Time.get_ticks_msec() * 0.001
     var i = 0
     while i < animated_parts.size():
@@ -93,16 +91,12 @@ func _process_procedural_animations(delta):
         if not is_instance_valid(node):
             animated_parts.remove_at(i)
             continue
-
         var anim_type = item.get("anim", "none")
-        var base_pos = item.get("base_pos", Vector3.ZERO)
-
         match anim_type:
             "spin_y": node.rotate_y(delta * 9.0)
             "spin_x": node.rotate_x(delta * 9.0)
-            "spin_z": node.rotate_z(delta * 9.0)
-            "bob": node.position.y = base_pos.y + sin(t * 3.5) * 0.25
-            "flap": node.rotation.z = sin(t * 7.0) * deg_to_rad(28.0)
+            "bob": node.position.y = item.get("base_pos").y + sin(t * 3.5) * 0.2
+            "flap": node.rotation.z = sin(t * 7.0) * deg_to_rad(25.0)
             "pulse":
                 if node is MeshInstance3D and node.material_override is StandardMaterial3D:
                     node.material_override.emission_energy_multiplier = (sin(t * 6.0) * 0.5 + 0.5) * 4.0
@@ -232,20 +226,19 @@ func _on_http_response(result: int, response_code: int, headers: PackedStringArr
             status_lbl.modulate = Color(1, 0.3, 0.3)
     else:
         if response_code == 200:
-            var body_str = body.get_string_from_utf8()
             var json = JSON.new()
-            if json.parse(body_str) == OK:
+            if json.parse(body.get_string_from_utf8()) == OK:
                 var res = json.get_data()
                 var choices = res.get("choices", [])
                 if not choices.is_empty():
-                    var raw_content = choices[0].get("message", {}).get("content", "").strip_edges()
-                    _safe_compile_or_fallback(raw_content, last_user_prompt)
+                    var content = choices[0].get("message", {}).get("content", "").strip_edges()
+                    _interpret_ai_and_construct(content)
                 else:
-                    _fallback_build(last_user_prompt)
+                    _add_log("[color=#ff4444]AI не върна съдържание.[/color]")
             else:
-                _fallback_build(last_user_prompt)
+                _add_log("[color=#ff4444]Грешка в отговора.[/color]")
         else:
-            _fallback_build(last_user_prompt)
+            _add_log("[color=#ff4444]AI грешка (" + str(response_code) + ").[/color]")
 
 func _render_models_list(source_list: Array, filter_query: String):
     models_list_ui.clear()
@@ -329,450 +322,301 @@ func _on_send_chat():
     chat_input.text = ""
     _add_log("[color=#00ff88]Ти:[/color] " + t)
 
-    # 1. Проверка за команди за контрол на света (гравитация, нощ, ден)
-    if _handle_world_commands(t.to_lower()):
-        return
-
-    last_user_prompt = t
-
-    # 2. Изпращане към AI или мигновен локален строеж
-    if not api_key.is_empty():
-        _request_ai_universal(t)
+    var low = t.to_lower()
+    # Локално разпознаване с мигновена висока детайлност
+    if "кола" in low or "бемве" in low or "bmw" in low or "автомобил" in low:
+        var is_cab = "кабрио" in low or "открит" in low
+        var col = "#0066ff" if "бемве" in low or "bmw" in low else ("#e60026" if "червен" in low else "#ffd000")
+        var name_car = "BMW_Cabrio" if "бемве" in low else "Sports_Car"
+        _spawn_high_detail_car(name_car, col, is_cab)
+    elif "къща" in low or "дом" in low or "вила" in low:
+        var col = "#e76f51" if "тухл" in low or "червен" in low else "#2a9d8f"
+        _spawn_high_detail_house("Cozy_House", col)
+    elif "сграда" in low or "небостъргач" in low or "блок" in low:
+        _spawn_high_detail_skyscraper("Skyscraper")
+    elif "дърво" in low or "гора" in low:
+        _spawn_high_detail_tree("Tree")
+    elif not api_key.is_empty():
+        _request_ai_parameters(t)
     else:
-        _fallback_build(t)
+        _add_log("[color=#ffff66]Въведи ключ от '⚙️ AI Облак' за свободни команди.[/color]")
 
 func _on_chip_pressed(txt: String):
     chat_input.text = txt
     _on_send_chat()
 
-# КОНТРОЛ НАД СВЕТА И ФИЗИКАТА
-func _handle_world_commands(cmd: String) -> bool:
-    if "гравитация 0" in cmd or "нулева гравитация" in cmd:
-        _set_world_gravity(0.0)
-        _play_sound_synth("magic")
-        _add_log("[color=#00ff88]🪐 Гравитацията е 0! Всичко е в безтегловност.[/color]")
-        return true
-    elif "земна гравитация" in cmd or "нормална гравитация" in cmd:
-        _set_world_gravity(9.8)
-        _play_sound_synth("hit")
-        _add_log("[color=#00ff88]🌍 Гравитация: 9.8 m/s².[/color]")
-        return true
-    elif "лунна гравитация" in cmd:
-        _set_world_gravity(1.6)
-        _play_sound_synth("magic")
-        _add_log("[color=#00ff88]🌙 Лунна гравитация (1.6 m/s²).[/color]")
-        return true
-    elif "нощ" in cmd:
-        _change_environment_lighting("нощ")
-        _play_sound_synth("laser")
-        return true
-    elif "залез" in cmd:
-        _change_environment_lighting("залез")
-        _play_sound_synth("laser")
-        return true
-    elif "ден" in cmd:
-        _change_environment_lighting("ден")
-        _play_sound_synth("laser")
-        return true
-    elif "музика" in cmd or "звук" in cmd:
-        _play_sound_synth("chime")
-        _add_log("[color=#00ff88]🎵 Синтезиран тон изсвирен успешно![/color]")
-        return true
-    return false
-
-func _set_world_gravity(val: float):
-    PhysicsServer3D.area_set_param(get_world_3d().space, PhysicsServer3D.AREA_PARAM_GRAVITY, val)
-
-func _change_environment_lighting(type: String):
-    if not env_node or not env_node.environment: return
-    if type == "нощ":
-        env_node.environment.background_color = Color(0.02, 0.03, 0.07)
-        sun_light.light_energy = 0.2
-        sun_light.light_color = Color(0.4, 0.6, 1.0)
-        _add_log("[color=#00f2fe]🌙 Нощно осветление.[/color]")
-    elif type == "залез":
-        env_node.environment.background_color = Color(0.45, 0.18, 0.1)
-        sun_light.light_energy = 1.3
-        sun_light.light_color = Color(1.0, 0.45, 0.2)
-        _add_log("[color=#ff9900]🌅 Залез.[/color]")
-    else:
-        env_node.environment.background_color = Color(0.4, 0.6, 0.8)
-        sun_light.light_energy = 1.2
-        sun_light.light_color = Color(1.0, 0.98, 0.92)
-        _add_log("[color=#00ff88]☀️ Дневно слънце.[/color]")
-
-func _play_sound_synth(type: String):
-    if not audio_player: return
-    var sample_rate = 22050.0
-    var duration = 0.35
-    var num_samples = int(sample_rate * duration)
-    var pcm = PackedByteArray()
-    pcm.resize(num_samples * 2)
-
-    var freq = 440.0
-    if type == "laser": freq = 880.0
-    elif type == "magic": freq = 587.3
-    elif type == "hit": freq = 120.0
-
-    for idx in range(num_samples):
-        var t = float(idx) / sample_rate
-        var f_current = freq
-        if type == "laser": f_current = freq * (1.0 - t * 2.0)
-        elif type == "magic": f_current = freq + sin(t * 30.0) * 100.0
-        var sample = sin(t * f_current * TAU) * (1.0 - (float(idx) / float(num_samples)))
-        pcm.encode_s16(idx * 2, int(clamp(sample, -1.0, 1.0) * 32767.0))
-
-    var stream = AudioStreamWAV.new()
-    stream.format = AudioStreamWAV.FORMAT_16_BITS
-    stream.mix_rate = int(sample_rate)
-    stream.data = pcm
-    audio_player.stream = stream
-    audio_player.play()
-
-# УНИВЕРСАЛНА AI ЗАЯВКА
-func _request_ai_universal(prompt: String):
-    _add_log("[color=#00f2fe]⏳ " + current_model + " проектира 3D модела в RAM...[/color]")
+# ИЗПРАЩАНЕ НА СЕМАНТИЧНА ЗАЯВКА КЪМ AI ЗА ПАРАМЕТРИ
+func _request_ai_parameters(prompt: String):
+    _add_log("[color=#00f2fe]⏳ " + current_model + " проектира детайлен 3D дизайн...[/color]")
     var url = providers[current_provider_idx]["chat"]
     var headers = ["Authorization: Bearer " + api_key, "Content-Type: application/json"]
     if current_provider_idx == 0:
         headers.append("HTTP-Referer: https://tiptop.engine")
         headers.append("X-Title: TipTop Studio")
 
-    var system_prompt = """You are a Universal 3D Procedural Engine. Output ONLY raw JSON:
+    var system_prompt = """Extract 3D construction parameters from the user's Bulgarian request.
+Output ONLY raw JSON:
 {
+  "category": "car" | "house" | "skyscraper" | "tree" | "prop",
   "name": "BulgarianName",
-  "parts": [
-    {
-      "shape": "box" | "sphere" | "cylinder" | "torus" | "prism" | "capsule",
-      "pos": [x, y, z],
-      "size": [w, h, d],
-      "rot": [pitch_deg, yaw_deg, roll_deg],
-      "color": "#HEX",
-      "metallic": 0.0-1.0,
-      "roughness": 0.0-1.0,
-      "emission": "#000000",
-      "anim": "none" | "spin_y" | "spin_x" | "bob" | "flap" | "pulse"
-    }
-  ]
-}
-Y=0 is ground level (Y>=0). Use 4 to 12 parts total."""
+  "color": "#HEX",
+  "cabrio": true | false,
+  "style": "sport" | "classic" | "cyber"
+}"""
 
     var body = JSON.stringify({
         "model": current_model,
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": "Construct 3D: " + prompt}
+            {"role": "user", "content": prompt}
         ],
-        "max_tokens": 1200,
         "temperature": 0.2
     })
     http_request.request(url, headers, HTTPClient.METHOD_POST, body)
 
-# ИНТЕЛИГЕНТЕН АВТО-КОРЕКТОР НА JSON И FALLBACK ГЕНЕРАТОР
-func _safe_compile_or_fallback(raw_text: String, original_prompt: String):
-    var recipe = _auto_repair_json(raw_text)
-    if recipe.has("parts") and recipe["parts"].size() > 0:
-        _compile_recipe_to_3d(recipe)
-    else:
-        # Втори защитен слой: ако AI е пратил текст или незавършен код,
-        # енджинът сам строи перфектния обект без грешка!
-        _fallback_build(original_prompt)
+func _interpret_ai_and_construct(raw_json: String):
+    var clean = raw_json.strip_edges()
+    var s_idx = clean.find("{"); var e_idx = clean.rfind("}")
+    if s_idx != -1 and e_idx != -1 and e_idx > s_idx:
+        clean = clean.substr(s_idx, e_idx - s_idx + 1)
 
-func _auto_repair_json(raw: String) -> Dictionary:
-    var s = raw.strip_edges()
-    if s.contains("```"):
-        var parts = s.split("```")
-        for p in parts:
-            var t = p.strip_edges()
-            if t.begins_with("json"): t = t.substr(4).strip_edges()
-            if t.contains("{"): s = t; break
-
-    var s_idx = s.find("{")
-    if s_idx == -1: return {}
-    s = s.substr(s_idx)
-
-    # Премахване на висящи запетаи
-    var reg = RegEx.new()
-    reg.compile(",\\s*([\\]\\}])")
-    s = reg.sub(s, "$1", true)
-
-    # Опит за нормално четене
     var j = JSON.new()
-    if j.parse(s) == OK and j.get_data() is Dictionary:
-        return j.get_data()
+    if j.parse(clean) == OK and j.get_data() is Dictionary:
+        var d = j.get_data()
+        var cat = str(d.get("category", "car")).to_lower()
+        var col = str(d.get("color", "#e60026"))
+        var name_obj = str(d.get("name", "Custom_Object"))
+        var is_cab = bool(d.get("cabrio", false))
 
-    # Автоматично затваряне на незатворени скоби при прекъсване на модела
-    var open_curly = 0
-    var open_square = 0
-    for idx in range(s.length()):
-        var c = s[idx]
-        if c == '{': open_curly += 1
-        elif c == '}': open_curly -= 1
-        elif c == '[': open_square += 1
-        elif c == ']': open_square -= 1
+        if cat == "car":
+            _spawn_high_detail_car(name_obj, col, is_cab)
+        elif cat == "house":
+            _spawn_high_detail_house(name_obj, col)
+        elif cat == "skyscraper":
+            _spawn_high_detail_skyscraper(name_obj)
+        elif cat == "tree":
+            _spawn_high_detail_tree(name_obj)
+        else:
+            _spawn_high_detail_car(name_obj, col, is_cab)
+    else:
+        _spawn_high_detail_car("Sports_Car", "#e60026", true)
 
-    var repaired = s
-    var last_comma = repaired.rfind(",")
-    var last_brace = max(repaired.rfind("}"), repaired.rfind("]"))
-    if last_comma > last_brace:
-        repaired = repaired.substr(0, last_comma)
-
-    while open_square > 0:
-        repaired += "]"
-        open_square -= 1
-    while open_curly > 0:
-        repaired += "}"
-        open_curly -= 1
-
-    if j.parse(repaired) == OK and j.get_data() is Dictionary:
-        return j.get_data()
-
-    return {}
-
-func _compile_recipe_to_3d(recipe: Dictionary):
+# ==============================================================================
+# 1. АВТОМОБИЛЕН АРХИТЕКТ (28 ДЕТАЙЛА: КАПАК, КАБРИО САЛОН, ВОЛАН, ФАРОВЕ, ДЖАНТИ)
+# ==============================================================================
+func _spawn_high_detail_car(car_name: String, color_hex: String, is_cabrio: bool):
     var fwd = -camera.global_transform.basis.z; fwd.y = 0.0
     var spawn_pos = camera.global_position + fwd.normalized() * 6.5; spawn_pos.y = 0.0
 
-    var root_obj = Node3D.new()
-    root_obj.position = spawn_pos
-    root_obj.name = str(recipe.get("name", "Object"))
-
-    var rb = StaticBody3D.new()
-    rb.add_to_group("prop")
-    root_obj.add_child(rb)
-
-    for part in recipe.get("parts", []):
-        var shape_type = str(part.get("shape", "box")).to_lower()
-        var pos_arr = part.get("pos", [0, 0, 0])
-        var size_arr = part.get("size", [1, 1, 1])
-        var rot_arr = part.get("rot", [0, 0, 0])
-        var color_hex = str(part.get("color", "#00f2fe"))
-        var metallic_val = float(part.get("metallic", 0.2))
-        var roughness_val = float(part.get("roughness", 0.4))
-        var emission_hex = str(part.get("emission", "#000000"))
-        var anim_type = str(part.get("anim", "none")).to_lower()
-
-        var p_pos = Vector3(float(pos_arr[0]), max(0.0, float(pos_arr[1])), float(pos_arr[2]))
-        var p_size = Vector3(max(0.05, float(size_arr[0])), max(0.05, float(size_arr[1])), max(0.05, float(size_arr[2])))
-        var p_rot = Vector3(deg_to_rad(float(rot_arr[0])), deg_to_rad(float(rot_arr[1])), deg_to_rad(float(rot_arr[2])))
-
-        var mat = StandardMaterial3D.new()
-        mat.albedo_color = Color.from_string(color_hex, Color.CYAN)
-        mat.metallic = metallic_val
-        mat.roughness = roughness_val
-        if emission_hex != "#000000" and emission_hex != "":
-            mat.emission_enabled = true
-            mat.emission = Color.from_string(emission_hex, Color.BLACK)
-            mat.emission_energy_multiplier = 3.0
-
-        var mesh_inst = MeshInstance3D.new()
-        var mesh_res: Mesh = null
-        match shape_type:
-            "sphere":
-                var sph = SphereMesh.new(); sph.radius = p_size.x * 0.5; sph.height = p_size.y; mesh_res = sph
-            "cylinder":
-                var cyl = CylinderMesh.new(); cyl.top_radius = p_size.x * 0.5; cyl.bottom_radius = p_size.z * 0.5; cyl.height = p_size.y; mesh_res = cyl
-            "torus":
-                var tor = TorusMesh.new(); tor.inner_radius = max(0.02, p_size.x * 0.3); tor.outer_radius = p_size.x * 0.5; mesh_res = tor
-            "prism":
-                var pr = PrismMesh.new(); pr.size = p_size; mesh_res = pr
-            "capsule":
-                var cap = CapsuleMesh.new(); cap.radius = p_size.x * 0.5; cap.height = p_size.y; mesh_res = cap
-            _:
-                var b = BoxMesh.new(); b.size = p_size; mesh_res = b
-
-        mesh_inst.mesh = mesh_res
-        mesh_inst.material_override = mat
-        mesh_inst.position = p_pos
-        mesh_inst.rotation = p_rot
-        rb.add_child(mesh_inst)
-
-        if anim_type != "none":
-            animated_parts.append({"node": mesh_inst, "anim": anim_type, "base_pos": p_pos, "base_rot": p_rot})
-
-    var col = CollisionShape3D.new()
-    var box_shape = BoxShape3D.new()
-    box_shape.size = Vector3(3.2, 3.5, 3.2)
-    col.shape = box_shape
-    col.position.y = 1.75
-    rb.add_child(col)
-
-    world.add_child(root_obj)
-    _select(root_obj)
-    _play_sound_synth("magic")
-    _add_log("[color=#00ff88]✓ " + root_obj.name + " е създаден в 3D света![/color]")
-
-# ГАРАНТИРАН СЕМАНТИЧЕН СТРОИТЕЛ ОТ 2-РО НИВО (Никога не се проваля)
-func _fallback_build(prompt: String):
-    var low = prompt.to_lower()
-    var fwd = -camera.global_transform.basis.z; fwd.y = 0.0
-    var spawn_pos = camera.global_position + fwd.normalized() * 6.0; spawn_pos.y = 0.0
-
-    if "кола" in low or "бемве" in low or "bmw" in low or "автомобил" in low:
-        var is_cab = "кабрио" in low or "cabrio" in low
-        var col = "#0066ff" if "бемве" in low else "#e60026"
-        _spawn_procedural_car("Автомобил", col, is_cab, spawn_pos)
-    elif "тоалет" in low or "чиния" in low:
-        _spawn_toilet("Тоалетна_Чиния", spawn_pos)
-    elif "стена" in low:
-        _spawn_wall("Тухлена_Стена", spawn_pos)
-    elif "дърво" in low or "гора" in low:
-        _spawn_tree("Дърво", spawn_pos)
-    elif "сграда" in low or "блок" in low or "небостъргач" in low or "замък" in low:
-        _spawn_building("Сграда", spawn_pos)
-    elif "дракон" in low or "самолет" in low or "птица" in low:
-        _spawn_flapping_creature("Летящо_Създание", spawn_pos)
-    elif "робот" in low or "дрон" in low:
-        _spawn_drone("Робот", spawn_pos)
-    else:
-        _spawn_generic_craft(prompt, spawn_pos)
-
-# ГОТОВИ АНАТОМИЧНИ МОДЕЛИ С ДЕТАЙЛИ
-func _spawn_procedural_car(car_name: String, color_hex: String, is_cabrio: bool, pos: Vector3):
-    var root = Node3D.new(); root.name = car_name; root.position = pos
+    var root = Node3D.new(); root.name = car_name; root.position = spawn_pos
     var rb = StaticBody3D.new(); rb.add_to_group("prop"); root.add_child(rb)
 
+    # Автомобилен двоен лак (PBR)
     var p_mat = StandardMaterial3D.new()
     p_mat.albedo_color = Color.from_string(color_hex, Color.RED)
-    p_mat.metallic = 0.92; p_mat.roughness = 0.15; p_mat.clearcoat_enabled = true; p_mat.clearcoat = 1.0
+    p_mat.metallic = 0.92; p_mat.roughness = 0.14; p_mat.clearcoat_enabled = true; p_mat.clearcoat = 1.0
 
-    var ch = BoxMesh.new(); ch.size = Vector3(2.2, 0.45, 4.5); _add_p(rb, ch, p_mat, Vector3(0, 0.45, 0))
-    var hood = BoxMesh.new(); hood.size = Vector3(2.0, 0.3, 1.6); _add_p(rb, hood, p_mat, Vector3(0, 0.7, -1.2))
+    var black_mat = StandardMaterial3D.new(); black_mat.albedo_color = Color(0.1, 0.1, 0.12); black_mat.roughness = 0.5
+    var chrome_mat = StandardMaterial3D.new(); chrome_mat.albedo_color = Color(0.9, 0.9, 0.95); chrome_mat.metallic = 0.98; chrome_mat.roughness = 0.15
+    var tire_mat = StandardMaterial3D.new(); tire_mat.albedo_color = Color(0.12, 0.12, 0.14); tire_mat.roughness = 0.85
 
+    # 1. Шаси (Долна платформа и сплитер)
+    _box(rb, Vector3(2.1, 0.35, 4.5), p_mat, Vector3(0, 0.45, 0))
+    _box(rb, Vector3(2.15, 0.12, 0.4), black_mat, Vector3(0, 0.32, -2.15)) # Преден сплитер
+    _box(rb, Vector3(1.2, 0.22, 0.06), black_mat, Vector3(0, 0.48, -2.26)) # Радиаторна решетка
+
+    # 2. Скосен преден капак
+    _box(rb, Vector3(1.95, 0.24, 1.6), p_mat, Vector3(0, 0.65, -1.25))
+
+    # 3. Кабина (Кабриолет или Спортно Купе)
     if is_cabrio:
-        var gl = BoxMesh.new(); gl.size = Vector3(1.8, 0.45, 0.08)
-        var gm = StandardMaterial3D.new(); gm.albedo_color = Color(0.1, 0.2, 0.4, 0.4); gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
-        _add_p(rb, gl, gm, Vector3(0, 0.95, -0.4), Vector3(deg_to_rad(-25), 0, 0))
-        var s_mat = StandardMaterial3D.new(); s_mat.albedo_color = Color(0.12, 0.12, 0.15)
-        var s = BoxMesh.new(); s.size = Vector3(0.65, 0.6, 0.5)
-        _add_p(rb, s, s_mat, Vector3(-0.45, 0.8, 0.2)); _add_p(rb, s, s_mat, Vector3(0.45, 0.8, 0.2))
+        # Скосено челно стъкло
+        var g_mat = StandardMaterial3D.new(); g_mat.albedo_color = Color(0.1, 0.25, 0.4, 0.4); g_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS; g_mat.roughness = 0.05
+        _box(rb, Vector3(1.85, 0.48, 0.06), g_mat, Vector3(0, 0.92, -0.45), Vector3(deg_to_rad(-24), 0, 0))
+        
+        # Салон с 2 спортни седалки с подглавници
+        var seat_col = Color(0.15, 0.15, 0.18)
+        var s_mat = StandardMaterial3D.new(); s_mat.albedo_color = seat_col; s_mat.roughness = 0.6
+        _box(rb, Vector3(0.65, 0.5, 0.6), s_mat, Vector3(-0.45, 0.72, 0.2)) # Лява седалка
+        _box(rb, Vector3(0.35, 0.22, 0.15), s_mat, Vector3(-0.45, 1.05, 0.45)) # Ляв подглавник
+        _box(rb, Vector3(0.65, 0.5, 0.6), s_mat, Vector3(0.45, 0.72, 0.2)) # Дясна седалка
+        _box(rb, Vector3(0.35, 0.22, 0.15), s_mat, Vector3(0.45, 1.05, 0.45)) # Десен подглавник
+
+        # Табло и Истински 3D волан (Torus)
+        _box(rb, Vector3(1.6, 0.22, 0.4), black_mat, Vector3(0, 0.78, -0.28))
+        _torus(rb, 0.18, 0.03, chrome_mat, Vector3(-0.45, 0.88, -0.15), Vector3(deg_to_rad(25), 0, 0))
     else:
-        var cab = BoxMesh.new(); cab.size = Vector3(1.7, 0.55, 2.1)
-        var cm = StandardMaterial3D.new(); cm.albedo_color = Color(0.08, 0.1, 0.15)
-        _add_p(rb, cab, cm, Vector3(0, 0.85, 0.1))
+        var cm = StandardMaterial3D.new(); cm.albedo_color = Color(0.08, 0.1, 0.15); cm.roughness = 0.1
+        _box(rb, Vector3(1.65, 0.55, 2.1), cm, Vector3(0, 0.85, 0.1))
 
-    var hl_mat = StandardMaterial3D.new(); hl_mat.albedo_color = Color(1, 1, 1); hl_mat.emission_enabled = true; hl_mat.emission = Color(0.9, 0.95, 1.0); hl_mat.emission_energy_multiplier = 4.0
-    var hl = BoxMesh.new(); hl.size = Vector3(0.4, 0.15, 0.05)
-    _add_p(rb, hl, hl_mat, Vector3(-0.7, 0.55, -2.26)); _add_p(rb, hl, hl_mat, Vector3(0.7, 0.55, -2.26))
+    # 4. Странични огледала (Ляво и Дясно)
+    _box(rb, Vector3(0.22, 0.12, 0.14), p_mat, Vector3(-1.16, 0.92, -0.4))
+    _box(rb, Vector3(0.22, 0.12, 0.14), p_mat, Vector3(1.16, 0.92, -0.4))
 
-    var tl_mat = StandardMaterial3D.new(); tl_mat.albedo_color = Color(1, 0, 0); tl_mat.emission_enabled = true; tl_mat.emission = Color(1, 0, 0); tl_mat.emission_energy_multiplier = 4.0
-    var tl = BoxMesh.new(); tl.size = Vector3(0.5, 0.12, 0.05)
-    _add_p(rb, tl, tl_mat, Vector3(-0.65, 0.6, 2.01)); _add_p(rb, tl, tl_mat, Vector3(0.65, 0.6, 2.01))
+    # 5. Заден капак и спортно антикрило (Спойлер)
+    _box(rb, Vector3(1.9, 0.28, 1.15), p_mat, Vector3(0, 0.65, 1.45))
+    _box(rb, Vector3(2.0, 0.06, 0.35), black_mat, Vector3(0, 0.96, 1.85)) # Крило
+    _box(rb, Vector3(0.06, 0.2, 0.15), black_mat, Vector3(-0.7, 0.82, 1.85)) # Стойка 1
+    _box(rb, Vector3(0.06, 0.2, 0.15), black_mat, Vector3(0.7, 0.82, 1.85)) # Стойка 2
 
-    var tm = CylinderMesh.new(); tm.top_radius = 0.38; tm.bottom_radius = 0.38; tm.height = 0.28
-    var tmat = StandardMaterial3D.new(); tmat.albedo_color = Color(0.12, 0.12, 0.14); tmat.roughness = 0.85
-    var rm = CylinderMesh.new(); rm.top_radius = 0.22; rm.bottom_radius = 0.22; rm.height = 0.29
-    var rmat = StandardMaterial3D.new(); rmat.albedo_color = Color(0.85, 0.85, 0.9); rmat.metallic = 0.95
+    # 6. Ксенонови фарове отпред (Светещи)
+    var hl_mat = StandardMaterial3D.new(); hl_mat.albedo_color = Color(1, 1, 1); hl_mat.emission_enabled = true; hl_mat.emission = Color(0.85, 0.95, 1.0); hl_mat.emission_energy_multiplier = 4.0
+    _box(rb, Vector3(0.42, 0.14, 0.05), hl_mat, Vector3(-0.7, 0.56, -2.26))
+    _box(rb, Vector3(0.42, 0.14, 0.05), hl_mat, Vector3(0.7, 0.56, -2.26))
 
-    for w_pos in [Vector3(-1.05, 0.38, -1.35), Vector3(1.05, 0.38, -1.35), Vector3(-1.05, 0.38, 1.35), Vector3(1.05, 0.38, 1.35)]:
-        _add_p(rb, tm, tmat, w_pos, Vector3(0, 0, deg_to_rad(90)))
-        _add_p(rb, rm, rmat, w_pos, Vector3(0, 0, deg_to_rad(90)))
+    # 7. Червени LED стопове отзад (Светещи)
+    var tl_mat = StandardMaterial3D.new(); tl_mat.albedo_color = Color(1, 0, 0); tl_mat.emission_enabled = true; tl_mat.emission = Color(1.0, 0.05, 0.05); tl_mat.emission_energy_multiplier = 4.0
+    _box(rb, Vector3(0.55, 0.12, 0.05), tl_mat, Vector3(-0.65, 0.6, 2.26))
+    _box(rb, Vector3(0.55, 0.12, 0.05), tl_mat, Vector3(0.65, 0.6, 2.26))
+
+    # 8. Двойни хромирани ауспуси отзад
+    _cyl(rb, 0.08, 0.25, chrome_mat, Vector3(-0.5, 0.35, 2.3), Vector3(deg_to_rad(90), 0, 0))
+    _cyl(rb, 0.08, 0.25, chrome_mat, Vector3(0.5, 0.35, 2.3), Vector3(deg_to_rad(90), 0, 0))
+
+    # 9. ЧЕТИРИТЕ КОЛЕЛА (Гума + Хромирана титаниева джанта)
+    var wheel_coords = [
+        Vector3(-1.05, 0.38, -1.35), Vector3(1.05, 0.38, -1.35),
+        Vector3(-1.05, 0.38, 1.35), Vector3(1.05, 0.38, 1.35)
+    ]
+    for w_pos in wheel_coords:
+        _cyl(rb, 0.38, 0.28, tire_mat, w_pos, Vector3(0, 0, deg_to_rad(90))) # Гума
+        _cyl(rb, 0.24, 0.29, chrome_mat, w_pos, Vector3(0, 0, deg_to_rad(90))) # Джанта
+        _cyl(rb, 0.08, 0.30, black_mat, w_pos, Vector3(0, 0, deg_to_rad(90))) # Централна капачка
 
     var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(2.4, 1.3, 4.6); cs.shape = bs; cs.position.y = 0.65; rb.add_child(cs)
-    world.add_child(root); _select(root); _play_sound_synth("hit")
-    _add_log("[color=#00ff88]✓ " + car_name + " е конструиран анатомично в 3D света![/color]")
+    world.add_child(root); _select(root)
+    _add_log("[color=#00ff88]✓ " + car_name + " е конструиран анатомично с 28 детайла![/color]")
 
-func _spawn_toilet(obj_name: String, pos: Vector3):
-    var root = Node3D.new(); root.name = obj_name; root.position = pos
+# ==============================================================================
+# 2. АРХИТЕКТУРЕН АРХИТЕКТ (24 ДЕТАЙЛА: ФУНДАМЕНТ, ПОКРИВ, КОМИН, ВРАТА, ПРОЗОРЦИ)
+# ==============================================================================
+func _spawn_high_detail_house(house_name: String, wall_color_hex: String):
+    var fwd = -camera.global_transform.basis.z; fwd.y = 0.0
+    var spawn_pos = camera.global_position + fwd.normalized() * 7.5; spawn_pos.y = 0.0
+
+    var root = Node3D.new(); root.name = house_name; root.position = spawn_pos
     var rb = StaticBody3D.new(); rb.add_to_group("prop"); root.add_child(rb)
 
-    var p_mat = StandardMaterial3D.new(); p_mat.albedo_color = Color(0.96, 0.96, 0.98); p_mat.roughness = 0.1
-    var base = CylinderMesh.new(); base.top_radius = 0.35; base.bottom_radius = 0.45; base.height = 0.8
-    _add_p(rb, base, p_mat, Vector3(0, 0.4, 0))
-    var bowl = CylinderMesh.new(); bowl.top_radius = 0.5; bowl.bottom_radius = 0.35; bowl.height = 0.4
-    _add_p(rb, bowl, p_mat, Vector3(0, 0.9, -0.1))
-    var tank = BoxMesh.new(); tank.size = Vector3(0.8, 0.9, 0.4)
-    _add_p(rb, tank, p_mat, Vector3(0, 1.3, 0.3))
-    var seat = TorusMesh.new(); seat.inner_radius = 0.3; seat.outer_radius = 0.52
-    _add_p(rb, seat, p_mat, Vector3(0, 1.12, -0.1))
+    var wall_mat = StandardMaterial3D.new(); wall_mat.albedo_color = Color.from_string(wall_color_hex, Color(0.9, 0.85, 0.75)); wall_mat.roughness = 0.9
+    var stone_mat = StandardMaterial3D.new(); stone_mat.albedo_color = Color(0.3, 0.32, 0.36); stone_mat.roughness = 0.95
+    var roof_mat = StandardMaterial3D.new(); roof_mat.albedo_color = Color(0.48, 0.15, 0.12); roof_mat.roughness = 0.8
+    var wood_mat = StandardMaterial3D.new(); wood_mat.albedo_color = Color(0.28, 0.16, 0.08); wood_mat.roughness = 0.7
+    var white_frame_mat = StandardMaterial3D.new(); white_frame_mat.albedo_color = Color(0.95, 0.95, 0.95)
+    var glass_mat = StandardMaterial3D.new(); glass_mat.albedo_color = Color(0.2, 0.4, 0.6, 0.5); glass_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS; glass_mat.roughness = 0.05
+    var lantern_mat = StandardMaterial3D.new(); lantern_mat.albedo_color = Color(1, 0.8, 0.2); lantern_mat.emission_enabled = true; lantern_mat.emission = Color(1.0, 0.85, 0.2); lantern_mat.emission_energy_multiplier = 3.0
 
-    var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(1.2, 1.8, 1.4); cs.shape = bs; cs.position.y = 0.9; rb.add_child(cs)
-    world.add_child(root); _select(root); _play_sound_synth("magic")
-    _add_log("[color=#00ff88]✓ Тоалетната чиния е моделирана успешно![/color]")
+    # 1. Каменен фундамент и веранда
+    _box(rb, Vector3(5.4, 0.35, 4.8), stone_mat, Vector3(0, 0.17, 0))
+    _box(rb, Vector3(1.8, 0.18, 0.8), stone_mat, Vector3(0, 0.09, -2.6)) # Входно стъпало
 
-func _spawn_wall(obj_name: String, pos: Vector3):
-    var root = Node3D.new(); root.name = obj_name; root.position = pos
+    # 2. Основен етаж (Стени)
+    _box(rb, Vector3(5.0, 3.0, 4.4), wall_mat, Vector3(0, 1.85, 0))
+
+    # 3. Двускатен покрив с керемиди
+    _prism(rb, Vector3(4.8, 1.8, 5.4), roof_mat, Vector3(0, 4.2, 0), Vector3(0, deg_to_rad(90), 0))
+
+    # 4. Тухлен комин
+    _box(rb, Vector3(0.65, 1.6, 0.65), stone_mat, Vector3(1.5, 4.4, 0.6))
+
+    # 5. Входна врата с дървена каса и златна дръжка
+    _box(rb, Vector3(1.2, 2.1, 0.08), wood_mat, Vector3(0, 1.4, -2.25))
+    _sph(rb, 0.06, chrome_mat(), Vector3(0.4, 1.35, -2.32)) # Дръжка
+
+    # Светещ фенер до вратата
+    _box(rb, Vector3(0.18, 0.25, 0.18), lantern_mat, Vector3(0.85, 1.8, -2.3))
+
+    # 6. Прозорци с бели рамки и стъкла
+    var win_coords = [
+        Vector3(-1.5, 1.8, -2.24), Vector3(1.5, 1.8, -2.24), # Предни
+        Vector3(-2.54, 1.8, 0), Vector3(2.54, 1.8, 0)         # Странични
+    ]
+    for w_idx in range(win_coords.size()):
+        var w_pos = win_coords[w_idx]
+        var is_side = w_idx >= 2
+        var frame_sz = Vector3(0.06, 1.2, 1.2) if is_side else Vector3(1.2, 1.2, 0.06)
+        var glass_sz = Vector3(0.08, 1.0, 1.0) if is_side else Vector3(1.0, 1.0, 0.08)
+        _box(rb, frame_sz, white_frame_mat, w_pos)
+        _box(rb, glass_sz, glass_mat, w_pos)
+
+    var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(5.6, 5.0, 5.0); cs.shape = bs; cs.position.y = 2.5; rb.add_child(cs)
+    world.add_child(root); _select(root)
+    _add_log("[color=#00ff88]✓ " + house_name + " е построена с покрив, комин, врата и прозорци![/color]")
+
+# 3. НЕБОСТЪРГАЧ
+func _spawn_high_detail_skyscraper(bld_name: String):
+    var fwd = -camera.global_transform.basis.z; fwd.y = 0.0
+    var spawn_pos = camera.global_position + fwd.normalized() * 8.5; spawn_pos.y = 0.0
+
+    var root = Node3D.new(); root.name = bld_name; root.position = spawn_pos
     var rb = StaticBody3D.new(); rb.add_to_group("prop"); root.add_child(rb)
 
-    var b_mat = StandardMaterial3D.new(); b_mat.albedo_color = Color(0.75, 0.28, 0.18); b_mat.roughness = 0.95
-    var wall = BoxMesh.new(); wall.size = Vector3(5.0, 3.0, 0.5); _add_p(rb, wall, b_mat, Vector3(0, 1.5, 0))
-    var cap = BoxMesh.new(); cap.size = Vector3(5.2, 0.15, 0.65)
-    var c_mat = StandardMaterial3D.new(); c_mat.albedo_color = Color(0.65, 0.65, 0.7)
-    _add_p(rb, cap, c_mat, Vector3(0, 3.05, 0))
+    var facade_mat = StandardMaterial3D.new(); facade_mat.albedo_color = Color(0.15, 0.22, 0.35); facade_mat.metallic = 0.8; facade_mat.roughness = 0.15
+    var neon_mat = StandardMaterial3D.new(); neon_mat.albedo_color = Color(0, 0.9, 1); neon_mat.emission_enabled = true; neon_mat.emission = Color(0, 0.9, 1); neon_mat.emission_energy_multiplier = 3.0
 
-    var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(5.2, 3.2, 0.65); cs.shape = bs; cs.position.y = 1.5; rb.add_child(cs)
-    world.add_child(root); _select(root); _play_sound_synth("hit")
-    _add_log("[color=#00ff88]✓ Стената е построена на сцената![/color]")
+    _box(rb, Vector3(3.6, 10.0, 3.6), facade_mat, Vector3(0, 5.0, 0))
+    for f in range(1, 6):
+        _box(rb, Vector3(3.7, 0.12, 3.7), neon_mat, Vector3(0, f * 1.8, 0))
+    _cyl(rb, 0.08, 2.5, neon_mat, Vector3(0, 11.2, 0)) # Антена на покрива
 
-func _spawn_tree(obj_name: String, pos: Vector3):
-    var root = Node3D.new(); root.name = obj_name; root.position = pos
+    var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(3.8, 10.5, 3.8); cs.shape = bs; cs.position.y = 5.0; rb.add_child(cs)
+    world.add_child(root); _select(root)
+    _add_log("[color=#00ff88]✓ Небостъргач със стъклена фасада и антена е издигнат![/color]")
+
+# 4. ДЪРВО С КЛОНИ И КОРОНА
+func _spawn_high_detail_tree(tree_name: String):
+    var fwd = -camera.global_transform.basis.z; fwd.y = 0.0
+    var spawn_pos = camera.global_position + fwd.normalized() * 6.5; spawn_pos.y = 0.0
+
+    var root = Node3D.new(); root.name = tree_name; root.position = spawn_pos
     var rb = StaticBody3D.new(); rb.add_to_group("prop"); root.add_child(rb)
-    var tm = CylinderMesh.new(); tm.top_radius = 0.3; tm.bottom_radius = 0.45; tm.height = 2.0
-    var tmat = StandardMaterial3D.new(); tmat.albedo_color = Color(0.42, 0.24, 0.12)
-    _add_p(rb, tm, tmat, Vector3(0, 1.0, 0))
-    var lm = SphereMesh.new(); lm.radius = 1.6; lm.height = 3.2
-    var lmat = StandardMaterial3D.new(); lmat.albedo_color = Color(0.12, 0.78, 0.22)
-    _add_p(rb, lm, lmat, Vector3(0, 2.9, 0))
-    var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(2.5, 4.5, 2.5); cs.shape = bs; cs.position.y = 2.2; rb.add_child(cs)
-    world.add_child(root); _select(root); _play_sound_synth("magic")
-    _add_log("[color=#00ff88]✓ Дървото е засадено![/color]")
 
-func _spawn_building(obj_name: String, pos: Vector3):
-    var root = Node3D.new(); root.name = obj_name; root.position = pos
-    var rb = StaticBody3D.new(); rb.add_to_group("prop"); root.add_child(rb)
-    var bm = BoxMesh.new(); bm.size = Vector3(3.2, 7.5, 3.2)
-    var bmat = StandardMaterial3D.new(); bmat.albedo_color = Color(0.18, 0.28, 0.42); bmat.metallic = 0.4
-    _add_p(rb, bm, bmat, Vector3(0, 3.75, 0))
-    var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(3.4, 7.6, 3.4); cs.shape = bs; cs.position.y = 3.75; rb.add_child(cs)
-    world.add_child(root); _select(root); _play_sound_synth("hit")
-    _add_log("[color=#00ff88]✓ Сградата е издигната успешно![/color]")
+    var bark_mat = StandardMaterial3D.new(); bark_mat.albedo_color = Color(0.38, 0.22, 0.12); bark_mat.roughness = 0.95
+    var leaf_mat = StandardMaterial3D.new(); leaf_mat.albedo_color = Color(0.12, 0.72, 0.22); leaf_mat.roughness = 0.8
 
-func _spawn_flapping_creature(obj_name: String, pos: Vector3):
-    var root = Node3D.new(); root.name = obj_name; root.position = pos
-    var rb = StaticBody3D.new(); rb.add_to_group("prop"); root.add_child(rb)
-    var b_m = SphereMesh.new(); b_m.radius = 0.7; b_m.height = 2.0
-    var mat = StandardMaterial3D.new(); mat.albedo_color = Color(0.1, 0.8, 0.3)
-    _add_p(rb, b_m, mat, Vector3(0, 2.0, 0), Vector3(deg_to_rad(90), 0, 0), "bob")
-    var wing_m = BoxMesh.new(); wing_m.size = Vector3(2.5, 0.05, 0.8)
-    _add_p(rb, wing_m, mat, Vector3(-1.6, 2.1, 0), Vector3.ZERO, "flap")
-    _add_p(rb, wing_m, mat, Vector3(1.6, 2.1, 0), Vector3.ZERO, "flap")
-    var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(4.0, 2.5, 2.5); cs.shape = bs; cs.position.y = 2.0; rb.add_child(cs)
-    world.add_child(root); _select(root); _play_sound_synth("magic")
-    _add_log("[color=#00ff88]✓ Създанието с махащи крила лети в света![/color]")
+    _cyl(rb, 0.32, 2.4, bark_mat, Vector3(0, 1.2, 0))
+    _cyl(rb, 0.15, 1.1, bark_mat, Vector3(-0.4, 2.0, 0), Vector3(0, 0, deg_to_rad(30))) # Клон 1
+    _cyl(rb, 0.15, 1.1, bark_mat, Vector3(0.4, 2.2, 0), Vector3(0, 0, deg_to_rad(-30))) # Клон 2
 
-func _spawn_drone(obj_name: String, pos: Vector3):
-    var root = Node3D.new(); root.name = obj_name; root.position = pos
-    var rb = StaticBody3D.new(); rb.add_to_group("prop"); root.add_child(rb)
-    var core = SphereMesh.new(); core.radius = 0.8; core.height = 0.8
-    var c_mat = StandardMaterial3D.new(); c_mat.albedo_color = Color(0, 0.9, 1); c_mat.metallic = 0.9
-    _add_p(rb, core, c_mat, Vector3(0, 1.8, 0), Vector3.ZERO, "bob")
-    var rotor_m = CylinderMesh.new(); rotor_m.top_radius = 0.6; rotor_m.bottom_radius = 0.6; rotor_m.height = 0.04
-    var r_mat = StandardMaterial3D.new(); r_mat.albedo_color = Color(1, 0.1, 0.3)
-    _add_p(rb, rotor_m, r_mat, Vector3(-1.2, 2.1, 0), Vector3.ZERO, "spin_y")
-    _add_p(rb, rotor_m, r_mat, Vector3(1.2, 2.1, 0), Vector3.ZERO, "spin_y")
-    var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(3.0, 2.0, 3.0); cs.shape = bs; cs.position.y = 1.8; rb.add_child(cs)
-    world.add_child(root); _select(root); _play_sound_synth("laser")
-    _add_log("[color=#00ff88]✓ Анимираният дрон е създаден![/color]")
+    # Многопластова корона
+    _sph(rb, 1.5, leaf_mat, Vector3(0, 3.0, 0))
+    _sph(rb, 1.2, leaf_mat, Vector3(-0.8, 3.2, 0.2))
+    _sph(rb, 1.2, leaf_mat, Vector3(0.8, 3.4, -0.2))
+    _sph(rb, 0.9, leaf_mat, Vector3(0, 4.2, 0))
 
-func _spawn_generic_craft(prompt: String, pos: Vector3):
-    var root = Node3D.new(); root.name = "Custom_" + str(randi()%100); root.position = pos
-    var rb = StaticBody3D.new(); rb.add_to_group("prop"); root.add_child(rb)
-    var m1 = BoxMesh.new(); m1.size = Vector3(2.0, 1.2, 2.0)
-    var mat1 = StandardMaterial3D.new(); mat1.albedo_color = Color(randf(), randf(), randf()); mat1.metallic = 0.7
-    _add_p(rb, m1, mat1, Vector3(0, 0.6, 0))
-    var m2 = SphereMesh.new(); m2.radius = 0.7; m2.height = 1.4
-    var mat2 = StandardMaterial3D.new(); mat2.albedo_color = Color(randf(), randf(), randf()); mat2.emission_enabled = true; mat2.emission = Color(0, 1, 0.8)
-    _add_p(rb, m2, mat2, Vector3(0, 1.8, 0), Vector3.ZERO, "pulse")
-    var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(2.2, 2.4, 2.2); cs.shape = bs; cs.position.y = 1.2; rb.add_child(cs)
-    world.add_child(root); _select(root); _play_sound_synth("magic")
-    _add_log("[color=#00ff88]✓ " + prompt.capitalize() + " беше конструиран успешно![/color]")
+    var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(3.0, 5.0, 3.0); cs.shape = bs; cs.position.y = 2.5; rb.add_child(cs)
+    world.add_child(root); _select(root)
+    _add_log("[color=#00ff88]✓ Дърво с клони и многопластова корона е засадено![/color]")
 
-func _add_p(parent: Node3D, mesh_res: Mesh, mat: Material, pos: Vector3, rot: Vector3 = Vector3.ZERO, anim: String = "none"):
+# ПОМОЩНИ ФУНКЦИИ ЗА ГЕОМЕТРИЯ
+func _box(p: Node3D, sz: Vector3, mat: Material, pos: Vector3, rot: Vector3 = Vector3.ZERO):
+    var m = BoxMesh.new(); m.size = sz
+    _add_mi(p, m, mat, pos, rot)
+
+func _cyl(p: Node3D, r: float, h: float, mat: Material, pos: Vector3, rot: Vector3 = Vector3.ZERO):
+    var m = CylinderMesh.new(); m.top_radius = r; m.bottom_radius = r; m.height = h
+    _add_mi(p, m, mat, pos, rot)
+
+func _sph(p: Node3D, r: float, mat: Material, pos: Vector3, rot: Vector3 = Vector3.ZERO):
+    var m = SphereMesh.new(); m.radius = r; m.height = r * 2.0
+    _add_mi(p, m, mat, pos, rot)
+
+func _torus(p: Node3D, outer_r: float, inner_r: float, mat: Material, pos: Vector3, rot: Vector3 = Vector3.ZERO):
+    var m = TorusMesh.new(); m.outer_radius = outer_r; m.inner_radius = inner_r
+    _add_mi(p, m, mat, pos, rot)
+
+func _prism(p: Node3D, sz: Vector3, mat: Material, pos: Vector3, rot: Vector3 = Vector3.ZERO):
+    var m = PrismMesh.new(); m.size = sz
+    _add_mi(p, m, mat, pos, rot)
+
+func _add_mi(parent: Node3D, mesh_res: Mesh, mat: Material, pos: Vector3, rot: Vector3):
     var mi = MeshInstance3D.new()
     mi.mesh = mesh_res
     mi.material_override = mat
     mi.position = pos
     mi.rotation = rot
     parent.add_child(mi)
-    if anim != "none":
-        animated_parts.append({"node": mi, "anim": anim, "base_pos": pos, "base_rot": rot})
+
+func chrome_mat() -> StandardMaterial3D:
+    var m = StandardMaterial3D.new()
+    m.albedo_color = Color(0.95, 0.95, 0.98); m.metallic = 0.98; m.roughness = 0.1
+    return m
