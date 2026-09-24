@@ -1,0 +1,58 @@
+name: Build TipTop Godot 4 APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Сваляне на код
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Keystore генерация
+        run: |
+          keytool -keyalg RSA -genkeypair -alias androiddebugkey \
+            -keypass android -keystore debug.keystore \
+            -storepass android -dname "CN=Android Debug,O=Android,C=US" \
+            -validity 9999 -deststoretype pkcs12
+
+      - name: Инсталиране на Godot 4.3 Headless и Шаблони
+        run: |
+          GODOT_VER="4.3-stable"
+          wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VER}/Godot_v${GODOT_VER}_linux.x86_64.zip
+          unzip -q Godot_v${GODOT_VER}_linux.x86_64.zip
+          mv Godot_v${GODOT_VER}_linux.x86_64 godot
+          chmod +x godot
+
+          wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VER}/Godot_v${GODOT_VER}_export_templates.tpz
+          mkdir -p ~/.local/share/godot/export_templates/4.3.stable
+          unzip -q Godot_v${GODOT_VER}_export_templates.tpz
+          mv templates/* ~/.local/share/godot/export_templates/4.3.stable/
+
+      - name: Конфигуриране на Keystore път
+        run: |
+          mkdir -p export_build
+          sed -i 's|keystore/debug=""|keystore/debug="'"$PWD/debug.keystore"'"|g' export_presets.cfg || true
+
+      - name: Компилиране на APK
+        run: |
+          ./godot --headless --export-debug "Android" export_build/TipTop-Universal-Engine.apk
+
+      - name: Качване на готов APK файл
+        uses: actions/upload-artifact@v4
+        with:
+          name: TipTop-Universal-Engine-APK
+          path: export_build/TipTop-Universal-Engine.apk
