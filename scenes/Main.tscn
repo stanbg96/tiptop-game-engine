@@ -1,34 +1,31 @@
-[gd_scene load_steps=10 format=3 uid="uid://cxup6s1g2km8y"]
+[gd_scene load_steps=9 format=3 uid="uid://cxup6s1g2km8y"]
 
 [ext_resource type="Script" path="res://scripts/StudioManager.gd" id="1_mgr"]
 [ext_resource type="Script" path="res://scripts/VirtualJoystick.gd" id="2_joy"]
 
-[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
-sky_top_color = Color(0.2, 0.3, 0.45, 1)
-sky_horizon_color = Color(0.55, 0.65, 0.8, 1)
-ground_bottom_color = Color(0.15, 0.2, 0.25, 1)
-
-[sub_resource type="Sky" id="Sky_1"]
-sky_material = SubResource("ProceduralSkyMaterial_1")
-
 [sub_resource type="Environment" id="Environment_1"]
-background_mode = 2
-sky = SubResource("Sky_1")
+background_mode = 1
+background_color = Color(0.25, 0.55, 0.85, 1)
 ambient_light_source = 2
-ambient_light_color = Color(0.65, 0.72, 0.85, 1)
+ambient_light_color = Color(1, 1, 1, 1)
+ambient_light_energy = 0.7
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
 size = Vector2(200, 200)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_floor"]
-albedo_color = Color(0.2, 0.25, 0.3, 1)
-roughness = 0.8
+albedo_color = Color(0.18, 0.25, 0.2, 1)
+roughness = 0.9
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
 size = Vector3(200, 1, 200)
 
 [sub_resource type="PrismMesh" id="PrismMesh_arrow"]
 size = Vector3(0.8, 0.8, 0.2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_arrow"]
+shading_mode = 0
+albedo_color = Color(0, 0.95, 1, 1)
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_mgr")
@@ -38,7 +35,9 @@ environment = SubResource("Environment_1")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 20, 0)
-shadow_enabled = true
+shadow_enabled = false
+light_color = Color(1, 0.98, 0.92, 1)
+light_energy = 1.2
 
 [node name="Floor" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
@@ -53,140 +52,137 @@ shape = SubResource("BoxShape3D_floor")
 [node name="SelectionIndicator" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, -1, 8.74228e-08, 0, -8.74228e-08, -1, 0, 3, 0)
 mesh = SubResource("PrismMesh_arrow")
+surface_material_override/0 = SubResource("StandardMaterial3D_arrow")
 
 [node name="WorldObjects" type="Node3D" parent="."]
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.980066, 0.198669, 0, -0.198669, 0.980066, 0, 3, 8)
+transform = Transform3D(1, 0, 0, 0, 0.955336, 0.29552, 0, -0.29552, 0.955336, 0, 4, 12)
+current = true
 
 [node name="UI" type="CanvasLayer" parent="."]
 
-[node name="ToolsBar" type="PanelContainer" parent="UI"]
+[node name="VBox" type="VBoxContainer" parent="UI"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 0
+
+[node name="Zone3D" type="Control" parent="UI/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 1
+
+[node name="ToolsBar" type="HBoxContainer" parent="UI/VBox/Zone3D"]
+layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_bottom = 54.0
-
-[node name="HBox" type="HBoxContainer" parent="UI/ToolsBar"]
-layout_mode = 2
-theme_override_constants/separation = 12
+offset_top = 20.0
+offset_bottom = 70.0
 alignment = 1
+theme_override_constants/separation = 12
 
-[node name="LabelName" type="Label" parent="UI/ToolsBar/HBox"]
+[node name="LabelName" type="Label" parent="UI/VBox/Zone3D/ToolsBar"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0.95, 1, 1)
 text = "Обект"
 
-[node name="BtnUp" type="Button" parent="UI/ToolsBar/HBox"]
+[node name="BtnUp" type="Button" parent="UI/VBox/Zone3D/ToolsBar"]
 layout_mode = 2
-text = "⬆️"
+text = " ⬆️ "
 
-[node name="BtnDown" type="Button" parent="UI/ToolsBar/HBox"]
+[node name="BtnDown" type="Button" parent="UI/VBox/Zone3D/ToolsBar"]
 layout_mode = 2
-text = "⬇️"
+text = " ⬇️ "
 
-[node name="BtnRot" type="Button" parent="UI/ToolsBar/HBox"]
+[node name="BtnRot" type="Button" parent="UI/VBox/Zone3D/ToolsBar"]
 layout_mode = 2
-text = "🔄"
+text = " 🔄 "
 
-[node name="BtnCol" type="Button" parent="UI/ToolsBar/HBox"]
+[node name="BtnDup" type="Button" parent="UI/VBox/Zone3D/ToolsBar"]
 layout_mode = 2
-text = "🎨"
+text = " 📋 "
 
-[node name="BtnDup" type="Button" parent="UI/ToolsBar/HBox"]
-layout_mode = 2
-text = "📋"
-
-[node name="BtnDel" type="Button" parent="UI/ToolsBar/HBox"]
+[node name="BtnDel" type="Button" parent="UI/VBox/Zone3D/ToolsBar"]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.2, 0.3, 1)
-text = "🗑️"
+text = " 🗑️ "
 
-[node name="VirtualJoystick" type="Control" parent="UI"]
-layout_mode = 3
+[node name="VirtualJoystick" type="Control" parent="UI/VBox/Zone3D"]
+layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 30.0
-offset_top = -420.0
-offset_right = 170.0
-offset_bottom = -280.0
+offset_top = -160.0
+offset_right = 150.0
+offset_bottom = -40.0
 grow_vertical = 0
 script = ExtResource("2_joy")
 
-[node name="ChatPanel" type="ColorRect" parent="UI"]
-anchors_preset = 12
-anchor_top = 0.65
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 0
-color = Color(0.1, 0.12, 0.16, 0.95)
+[node name="ChatZone" type="ColorRect" parent="UI/VBox"]
+custom_minimum_size = Vector2(0, 420)
+layout_mode = 2
+color = Color(0.1, 0.12, 0.16, 1)
 
-[node name="VBox" type="VBoxContainer" parent="UI/ChatPanel"]
+[node name="Margin" type="MarginContainer" parent="UI/VBox/ChatZone"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-alignment = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
 
-[node name="Margin1" type="MarginContainer" parent="UI/ChatPanel/VBox"]
+[node name="VBox" type="VBoxContainer" parent="UI/VBox/ChatZone/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Log" type="RichTextLabel" parent="UI/VBox/ChatZone/Margin/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/margin_left = 12
-theme_override_constants/margin_top = 12
-
-[node name="Log" type="RichTextLabel" parent="UI/ChatPanel/VBox/Margin1"]
-layout_mode = 2
 bbcode_enabled = true
 scroll_following = true
 
-[node name="Chips" type="HBoxContainer" parent="UI/ChatPanel/VBox"]
+[node name="Chips" type="HBoxContainer" parent="UI/VBox/ChatZone/Margin/VBox"]
 layout_mode = 2
 alignment = 1
 theme_override_constants/separation = 12
 
-[node name="BtnBld" type="Button" parent="UI/ChatPanel/VBox/Chips"]
+[node name="BtnBld" type="Button" parent="UI/VBox/ChatZone/Margin/VBox/Chips"]
 layout_mode = 2
 text = "🏢 Сграда"
 
-[node name="BtnCar" type="Button" parent="UI/ChatPanel/VBox/Chips"]
+[node name="BtnCar" type="Button" parent="UI/VBox/ChatZone/Margin/VBox/Chips"]
 layout_mode = 2
 text = "🏎️ Кола"
 
-[node name="BtnTree" type="Button" parent="UI/ChatPanel/VBox/Chips"]
+[node name="BtnTree" type="Button" parent="UI/VBox/ChatZone/Margin/VBox/Chips"]
 layout_mode = 2
 text = "🌳 Дърво"
 
-[node name="Margin2" type="MarginContainer" parent="UI/ChatPanel/VBox"]
-layout_mode = 2
-theme_override_constants/margin_left = 12
-theme_override_constants/margin_right = 12
-theme_override_constants/margin_bottom = 12
-
-[node name="InputRow" type="HBoxContainer" parent="UI/ChatPanel/VBox/Margin2"]
+[node name="InputRow" type="HBoxContainer" parent="UI/VBox/ChatZone/Margin/VBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="ChatInput" type="TextEdit" parent="UI/ChatPanel/VBox/Margin2/InputRow"]
+[node name="ChatInput" type="TextEdit" parent="UI/VBox/ChatZone/Margin/VBox/InputRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "Напиши: кола, сграда, дърво..."
 scroll_fit_content_height = true
 
-[node name="SendBtn" type="Button" parent="UI/ChatPanel/VBox/Margin2/InputRow"]
+[node name="SendBtn" type="Button" parent="UI/VBox/ChatZone/Margin/VBox/InputRow"]
 layout_mode = 2
-custom_minimum_size = Vector2(54, 54)
+custom_minimum_size = Vector2(60, 60)
 text = "🚀"
 
-[connection signal="pressed" from="UI/ToolsBar/HBox/BtnUp" to="." method="_on_act_up"]
-[connection signal="pressed" from="UI/ToolsBar/HBox/BtnDown" to="." method="_on_act_down"]
-[connection signal="pressed" from="UI/ToolsBar/HBox/BtnRot" to="." method="_on_act_rot"]
-[connection signal="pressed" from="UI/ToolsBar/HBox/BtnCol" to="." method="_on_act_col"]
-[connection signal="pressed" from="UI/ToolsBar/HBox/BtnDup" to="." method="_on_act_dup"]
-[connection signal="pressed" from="UI/ToolsBar/HBox/BtnDel" to="." method="_on_act_del"]
-[connection signal="pressed" from="UI/ChatPanel/VBox/Chips/BtnBld" to="." method="_on_chip_pressed" binds= ["сграда"]]
-[connection signal="pressed" from="UI/ChatPanel/VBox/Chips/BtnCar" to="." method="_on_chip_pressed" binds= ["кола"]]
-[connection signal="pressed" from="UI/ChatPanel/VBox/Chips/BtnTree" to="." method="_on_chip_pressed" binds= ["дърво"]]
-[connection signal="pressed" from="UI/ChatPanel/VBox/Margin2/InputRow/SendBtn" to="." method="_on_send_chat"]
+[connection signal="pressed" from="UI/VBox/Zone3D/ToolsBar/BtnUp" to="." method="_on_act_up"]
+[connection signal="pressed" from="UI/VBox/Zone3D/ToolsBar/BtnDown" to="." method="_on_act_down"]
+[connection signal="pressed" from="UI/VBox/Zone3D/ToolsBar/BtnRot" to="." method="_on_act_rot"]
+[connection signal="pressed" from="UI/VBox/Zone3D/ToolsBar/BtnDup" to="." method="_on_act_dup"]
+[connection signal="pressed" from="UI/VBox/Zone3D/ToolsBar/BtnDel" to="." method="_on_act_del"]
+[connection signal="pressed" from="UI/VBox/ChatZone/Margin/VBox/Chips/BtnBld" to="." method="_on_chip_pressed" binds= ["сграда"]]
+[connection signal="pressed" from="UI/VBox/ChatZone/Margin/VBox/Chips/BtnCar" to="." method="_on_chip_pressed" binds= ["кола"]]
+[connection signal="pressed" from="UI/VBox/ChatZone/Margin/VBox/Chips/BtnTree" to="." method="_on_chip_pressed" binds= ["дърво"]]
+[connection signal="pressed" from="UI/VBox/ChatZone/Margin/VBox/InputRow/SendBtn" to="." method="_on_send_chat"]
