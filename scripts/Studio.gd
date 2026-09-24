@@ -35,6 +35,7 @@ var current_provider_idx: int = 0
 var api_key: String = ""
 var current_model: String = "default"
 var fetched_models: Array = []
+var model_ids_map: Array = []
 var is_testing_models: bool = false
 
 func _ready():
@@ -60,13 +61,34 @@ func _setup_provider_dropdown():
     provider_select.add_item("🤖 OpenAI (ChatGPT)")
     provider_select.add_item("🧠 DeepSeek (V3 / R1)")
 
-# Активиране на гладко скролване за изскачащите списъци с 400+ модела
+# Конфигуриране на дебела лента за скролване (Scrollbar) и удобен мобилен размер
 func _setup_popup_scrolling():
     var popup = model_select.get_popup()
     if popup:
-        popup.max_size = Vector2i(640, 520)
+        popup.max_size = Vector2i(660, 560)
         popup.always_on_top = true
         popup.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+
+        # Стилизиране на скролбара – дебел 28px в неоново зелено
+        var vscroll_grabber = StyleBoxFlat.new()
+        vscroll_grabber.bg_color = Color(0.0, 1.0, 0.55, 0.9)
+        vscroll_grabber.corner_radius_top_left = 14
+        vscroll_grabber.corner_radius_top_right = 14
+        vscroll_grabber.corner_radius_bottom_right = 14
+        vscroll_grabber.corner_radius_bottom_left = 14
+        vscroll_grabber.content_margin_left = 14.0
+        vscroll_grabber.content_margin_right = 14.0
+
+        var vscroll_bg = StyleBoxFlat.new()
+        vscroll_bg.bg_color = Color(0.06, 0.09, 0.1, 0.95)
+        vscroll_bg.corner_radius_top_left = 14
+        vscroll_bg.corner_radius_top_right = 14
+        vscroll_bg.corner_radius_bottom_right = 14
+        vscroll_bg.corner_radius_bottom_left = 14
+
+        popup.add_theme_stylebox_override("scroll", vscroll_bg)
+        popup.add_theme_stylebox_override("grabber", vscroll_grabber)
+        popup.add_theme_constant_override("v_scroll_width", 28)
 
 func _process(delta):
     if joy.output.length() > 0.05:
@@ -187,7 +209,7 @@ func _on_fetch_models_pressed():
 
     is_testing_models = true
     test_btn.disabled = true
-    status_lbl.text = "⏳ Сваляне на модели от " + providers[current_provider_idx]["name"] + "..."
+    status_lbl.text = "⏳ Сваляне и подреждане на безплатни модели..."
     status_lbl.modulate = Color(0, 1, 0.6)
 
     var url = providers[current_provider_idx]["models_url"]
@@ -226,15 +248,20 @@ func _on_http_response(result: int, response_code: int, headers: PackedStringArr
                 _add_log("[color=#00ff88]" + current_model + ":[/color] " + content)
                 _build(content.to_lower(), Vector3.INF)
         else:
-            _add_log("[color=#ff4444]AI грешка (" + str(response_code) + "). Провери ключа от '⚙️ AI Облак'.[/color]")
+            _add_log("[color=#ff4444]AI грешка (" + str(response_code) + "). Провери баланса/ключа.[/color]")
 
+# Интелигентно филтриране: Безплатните модели са най-отгоре + автоматичен избор
 func _populate_models_list(data: Dictionary):
     model_select.clear()
     fetched_models.clear()
+    model_ids_map.clear()
     
     var list = data.get("data", [])
     if list.is_empty():
         list = data.get("models", [])
+
+    var free_models = []
+    var paid_models = []
 
     for item in list:
         var m_id = ""
@@ -244,13 +271,42 @@ func _populate_models_list(data: Dictionary):
             m_id = item
             
         if not m_id.is_empty():
-            fetched_models.append(m_id)
-            model_select.add_item(m_id)
+            # Проверка за безплатен модел
+            if ":free" in m_id.to_lower() or "free" in m_id.to_lower():
+                free_models.append(m_id)
+            else:
+                paid_models.append(m_id)
 
-    if fetched_models.size() > 0:
-        status_lbl.text = "✅ Ключът работи! Свалени " + str(fetched_models.size()) + " модела."
+    free_models.sort()
+    paid_models.sort()
+
+    # 1. Автоматичен избор на първа позиция
+    var default_auto_id = "meta-llama/llama-3.3-70b-instruct:free"
+    if not free_models.is_empty():
+        default_auto_id = free_models[0]
+    elif not paid_models.is_empty():
+        default_auto_id = paid_models[0]
+
+    model_select.add_item("⚡ АВТОМАТИЧЕН (Най-добър безплатен)")
+    model_ids_map.append(default_auto_id)
+
+    # 2. Всички безплатни модели най-отгоре с ясен етикет
+    for m in free_models:
+        model_select.add_item("🎁 [FREE] " + m)
+        model_ids_map.append(m)
+
+    # 3. Останалите платени модели
+    for m in paid_models:
+        model_select.add_item("⭐ " + m)
+        model_ids_map.append(m)
+
+    fetched_models = model_ids_map
+
+    if fetched_models.size() > 1:
+        status_lbl.text = "✅ Намерени " + str(free_models.size()) + " безплатни от общо " + str(list.size()) + " модела!"
         status_lbl.modulate = Color(0, 1, 0.5)
-        current_model = fetched_models[0]
+        model_select.selected = 0
+        current_model = default_auto_id
         current_model_chip.text = "🤖 " + current_model
         _save_config()
     else:
@@ -258,8 +314,8 @@ func _populate_models_list(data: Dictionary):
         status_lbl.modulate = Color(1, 0.8, 0.2)
 
 func _on_model_selected(idx: int):
-    if idx >= 0 and idx < fetched_models.size():
-        current_model = fetched_models[idx]
+    if idx >= 0 and idx < model_ids_map.size():
+        current_model = model_ids_map[idx]
         current_model_chip.text = "🤖 " + current_model
         _save_config()
 
@@ -268,7 +324,7 @@ func _save_config():
         "provider": current_provider_idx,
         "api_key": key_input.text.strip_edges(),
         "model": current_model,
-        "models": fetched_models
+        "models": model_ids_map
     }
     var f = FileAccess.open("user://api_config.json", FileAccess.WRITE)
     if f:
@@ -286,12 +342,17 @@ func _load_saved_config():
             key_input.text = api_key
             current_model = cfg.get("model", "default")
             current_model_chip.text = "🤖 " + current_model
-            fetched_models = cfg.get("models", [])
-            if not fetched_models.is_empty():
+            model_ids_map = cfg.get("models", [])
+            if not model_ids_map.is_empty():
                 model_select.clear()
-                for m in fetched_models:
-                    model_select.add_item(m)
-                var saved_idx = fetched_models.find(current_model)
+                model_select.add_item("⚡ АВТОМАТИЧЕН (Най-добър безплатен)")
+                for idx in range(1, model_ids_map.size()):
+                    var m = model_ids_map[idx]
+                    if ":free" in m.to_lower():
+                        model_select.add_item("🎁 [FREE] " + m)
+                    else:
+                        model_select.add_item("⭐ " + m)
+                var saved_idx = model_ids_map.find(current_model)
                 if saved_idx != -1:
                     model_select.selected = saved_idx
 
