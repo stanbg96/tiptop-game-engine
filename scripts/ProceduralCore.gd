@@ -1,8 +1,5 @@
 class_name ProceduralCore
 
-static var pbr_shader: Shader = preload("res://shaders/procedural_pbr.gdshader")
-
-# Изчисляване на Smooth Normals директно в RAM
 static func compute_smooth_normals(verts: PackedVector3Array, indices: PackedInt32Array) -> PackedVector3Array:
 var normals = PackedVector3Array()
 normals.resize(verts.size())
@@ -24,66 +21,86 @@ else:
 normals[i] = Vector3.UP
 return normals
 
-# Създаване на шейдърен материал без картинки
-static func get_procedural_material(mode: int, col: Color, met: float = 0.0, rough: float = 0.5, clearcoat: float = 0.0, emit: Color = Color.BLACK) -> ShaderMaterial:
-var mat = ShaderMaterial.new()
-mat.shader = pbr_shader
-mat.set_shader_parameter("material_mode", mode)
-mat.set_shader_parameter("albedo_color", col)
-mat.set_shader_parameter("metallic_val", met)
-mat.set_shader_parameter("roughness_val", rough)
-mat.set_shader_parameter("clearcoat_val", clearcoat)
-mat.set_shader_parameter("emission_color", emit)
-return mat
+static func build_bezier_car(recipe: Dictionary) -> Node3D:
+var root = Node3D.new()
+var body_data = recipe.get("body", {})
+var l = float(body_data.get("length", 4.6))
+var w = float(body_data.get("width", 2.0))
+var h = float(body_data.get("height", 1.25))
+var paint_col = Color(body_data.get("paint_color", "#ff003b"))
 
-# Генериране на процедурен 3D терен в RAM
-static func generate_terrain(grid_size: int, world_scale: float, height_factor: float, terrain_type: String) -> ArrayMesh:
+# Генерация на повърхност в RAM
+var u_segs = 16
+var v_segs = 10
 var verts = PackedVector3Array()
 var indices = PackedInt32Array()
-var uvs = PackedVector2Array()
 
-var half = world_scale * 0.5
-var step = world_scale / float(grid_size)
+for i in range(u_segs + 1):
+var tu = float(i) / float(u_segs)
+var z = -l * 0.5 + tu * l
+var width_factor = sin(tu * PI) * (w * 0.5)
+var height_factor = (sin(tu * PI) * 0.4 + 0.6) * h
 
-for z_idx in range(grid_size + 1):
-var z = -half + z_idx * step
-for x_idx in range(grid_size + 1):
-var x = -half + x_idx * step
-var y = 0.0
-
-if terrain_type == "mountains":
-y = (sin(x * 0.15) * cos(z * 0.15) * 0.6 + sin(x * 0.05 + z * 0.05) * 0.4) * height_factor
-elif terrain_type == "islands":
-var dist = Vector2(x, z).length()
-var island_shape = clamp(1.0 - (dist / (half * 0.85)), 0.0, 1.0)
-y = (sin(x * 0.2) * cos(z * 0.2) * 0.5 + 0.5) * height_factor * island_shape
-elif terrain_type == "dunes":
-y = sin(x * 0.1 + z * 0.05) * (height_factor * 0.35)
-
+for j in range(v_segs + 1):
+var tv = float(j) / float(v_segs)
+var angle = (tv - 0.5) * PI
+var x = sin(angle) * width_factor
+var y = cos(angle) * (height_factor * 0.5) + (height_factor * 0.5)
 verts.append(Vector3(x, y, z))
-uvs.append(Vector2(float(x_idx) / grid_size, float(z_idx) / grid_size))
 
-for z_idx in range(grid_size):
-for x_idx in range(grid_size):
-var r1 = z_idx * (grid_size + 1)
-var r2 = (z_idx + 1) * (grid_size + 1)
-
-indices.append(r1 + x_idx)
-indices.append(r2 + x_idx)
-indices.append(r1 + x_idx + 1)
-
-indices.append(r1 + x_idx + 1)
-indices.append(r2 + x_idx)
-indices.append(r2 + x_idx + 1)
+for i in range(u_segs):
+for j in range(v_segs):
+var cur = i * (v_segs + 1) + j
+var nxt = cur + (v_segs + 1)
+indices.append(cur)
+indices.append(nxt)
+indices.append(cur + 1)
+indices.append(cur + 1)
+indices.append(nxt)
+indices.append(nxt + 1)
 
 var normals = compute_smooth_normals(verts, indices)
 var arr = []
 arr.resize(Mesh.ARRAY_MAX)
 arr[Mesh.ARRAY_VERTEX] = verts
 arr[Mesh.ARRAY_NORMAL] = normals
-arr[Mesh.ARRAY_TEX_UV] = uvs
 arr[Mesh.ARRAY_INDEX] = indices
 
 var mesh = ArrayMesh.new()
 mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
-return mesh
+
+var car_body = MeshInstance3D.new()
+car_body.mesh = mesh
+
+var mat = StandardMaterial3D.new()
+mat.albedo_color = paint_col
+mat.metallic = 0.95
+mat.roughness = 0.12
+mat.clearcoat_enabled = true
+mat.clearcoat = 1.0
+mat.clearcoat_roughness = 0.04
+car_body.material_override = mat
+root.add_child(car_body)
+
+# Добавяне на колела
+var wheel_mesh = CylinderMesh.new()
+wheel_mesh.top_radius = 0.36
+wheel_mesh.bottom_radius = 0.36
+wheel_mesh.height = 0.26
+var wheel_mat = StandardMaterial3D.new()
+wheel_mat.albedo_color = Color(0.1, 0.1, 0.12)
+wheel_mat.roughness = 0.8
+
+var offsets = [
+Vector3(-w * 0.48, 0.36, -l * 0.3), Vector3(w * 0.48, 0.36, -l * 0.3),
+Vector3(-w * 0.48, 0.36,  l * 0.3), Vector3(w * 0.48, 0.36,  l * 0.3)
+]
+for off in offsets:
+var w_inst = MeshInstance3D.new()
+w_inst.mesh = wheel_mesh
+w_inst.material_override = wheel_mat
+w_inst.rotation.z = deg_to_rad(90)
+w_inst.position = off
+root.add_child(w_inst)
+
+return root

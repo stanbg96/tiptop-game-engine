@@ -1,8 +1,8 @@
 config_version=5
 
 [application]
-config/name="TipTop Universal Engine"
-config/description="Procedural World & Entity Generation Engine"
+config/name="TipTop Game Engine"
+config/description="Procedural 3D World Engine"
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.3", "Mobile")
 config/icon="res://icon.svg"
