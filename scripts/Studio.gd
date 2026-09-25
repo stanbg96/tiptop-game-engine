@@ -1,6 +1,8 @@
 extends Node3D
 
-const Entities = preload("res://scripts/GameEntities.gd")
+const EnvStudio = preload("res://scripts/engine/EnvironmentStudio.gd")
+const AIHelper = preload("res://scripts/engine/AIBridge.gd")
+const CAD = preload("res://scripts/engine/ProceduralArchitect.gd")
 
 @onready var camera = $Camera3D
 @onready var joy = $UI/JoystickArea/VirtualJoystick
@@ -11,9 +13,9 @@ const Entities = preload("res://scripts/GameEntities.gd")
 @onready var indicator = $Indicator
 @onready var world = $World
 @onready var http_request = $HTTPRequest
-@onready var audio_player = $AudioPlayer
 @onready var env_node = $WorldEnvironment
 @onready var sun_light = $DirectionalLight3D
+@onready var rim_light = $RimLight
 
 @onready var api_page = $UI/ApiPage
 @onready var provider_select = $UI/ApiPage/Card/Margin/VBox/ProviderSelect
@@ -27,16 +29,7 @@ const Entities = preload("res://scripts/GameEntities.gd")
 var selected_obj: Node3D = null
 var is_dragging: bool = false
 var cam_yaw: float = 0.0
-var cam_pitch: float = -0.35
-
-var player_avatar: CharacterBody3D = null
-var is_driving: bool = false
-var car_speed: float = 0.0
-var active_vehicle: Node3D = null
-var walk_cycle: float = 0.0
-var drive_btn: Button = null
-var speedo_lbl: Label = null
-var engine_audio_timer: float = 0.0
+var cam_pitch: float = -0.4
 
 var providers = {
 0: {"name": "OpenRouter", "chat": "https://openrouter.ai/api/v1/chat/completions", "models_url": "https://openrouter.ai/api/v1/models"},
@@ -56,16 +49,14 @@ var last_user_prompt: String = ""
 func _ready():
 center_tools.visible = false; indicator.visible = false; api_page.visible = false
 http_request.request_completed.connect(_on_http_response)
-_setup_provider_dropdown(); _load_saved_config(); _setup_hud()
+_setup_provider_dropdown(); _load_saved_config()
 
-_add_log("[color=#00ff88]🎮 TipTop World Engine v4.0 е активен![/color]")
-_add_log("[color=#00f2fe]• Ходи пеша с аватара или влез в БМВ-то.[/color]")
-_add_log("[color=#ffff66]• Докосни пианото за музикален акорд.[/color]")
+_add_log("[color=#00ff88]✨ Модулен TipTop Studio Енджин е активен![/color]")
+_add_log("[color=#00f2fe]Модел:[/color] " + current_model)
+_add_log("[color=#ffff66]💡 Опитай: 'замък', 'тухлена стена', 'бемве', 'пиано', 'каща'![/color]")
 
-player_avatar = Entities.spawn_player(world, Vector3(0, 0, 0))
-Entities.spawn_car(world, "BMW_Cabrio", "#0066ff", true, Vector3(4.0, 0, -3.0))
-Entities.spawn_piano(world, Vector3(-6.0, 0, -5.0))
-Entities.spawn_brick_wall(world, Vector3(4.0, 0, -18.0))
+var obj = CAD.spawn_piano(Vector3(0, 0, -5.0), world)
+_select(obj)
 
 func _setup_provider_dropdown():
 provider_select.clear()
@@ -74,122 +65,39 @@ provider_select.add_item("⚡ Groq (Супер бърз)")
 provider_select.add_item("🤖 OpenAI (ChatGPT)")
 provider_select.add_item("🧠 DeepSeek (V3 / R1)")
 
-func _setup_hud():
-speedo_lbl = Label.new(); speedo_lbl.text = "0 km/h"; speedo_lbl.position = Vector2(24, 70)
-speedo_lbl.add_theme_font_size_override("font_size", 22); speedo_lbl.add_theme_color_override("font_color", Color(0, 1, 0.7))
-speedo_lbl.visible = false; $UI.add_child(speedo_lbl)
-
-drive_btn = Button.new(); drive_btn.text = "🏎️ ВЛЕЗ В КОЛАТА"; drive_btn.custom_minimum_size = Vector2(140, 48)
-drive_btn.position = Vector2(get_viewport().size.x - 160, 70); drive_btn.modulate = Color(0, 1, 0.6)
-drive_btn.visible = false; drive_btn.pressed.connect(_on_toggle_drive_mode); $UI.add_child(drive_btn)
-
 func _process(delta):
-if is_driving and active_vehicle and is_instance_valid(active_vehicle):
-_handle_car_driving(delta); return
-
-if player_avatar and is_instance_valid(player_avatar):
-_handle_player_walking(delta); _check_vehicle_proximity()
+if joy.output.length() > 0.05:
+var fwd = -camera.global_transform.basis.z; var rgt = camera.global_transform.basis.x
+fwd.y = 0.0; rgt.y = 0.0; fwd = fwd.normalized(); rgt = rgt.normalized()
+camera.global_position += (rgt * joy.output.x + fwd * -joy.output.y) * 15.0 * delta
 
 if selected_obj and is_instance_valid(selected_obj):
 indicator.visible = true
 indicator.global_position = selected_obj.global_position + Vector3(0, 3.5 + sin(Time.get_ticks_msec() * 0.006) * 0.25, 0)
-else: indicator.visible = false
-
-func _handle_player_walking(delta: float):
-if joy.output.length() > 0.05:
-var fwd = -camera.global_transform.basis.z; var rgt = camera.global_transform.basis.x
-fwd.y = 0; rgt.y = 0; fwd = fwd.normalized(); rgt = rgt.normalized()
-var move = (rgt * joy.output.x + fwd * -joy.output.y).normalized()
-player_avatar.velocity.x = move.x * 8.5; player_avatar.velocity.z = move.z * 8.5
-player_avatar.rotation.y = lerp_angle(player_avatar.rotation.y, atan2(move.x, move.z), 12.0 * delta)
-
-walk_cycle += delta * 12.0; var sw = sin(walk_cycle) * 0.6
-var ll = player_avatar.get_node_or_null("Visuals/LeftLeg"); var rl = player_avatar.get_node_or_null("Visuals/RightLeg")
-var la = player_avatar.get_node_or_null("Visuals/LeftArm"); var ra = player_avatar.get_node_or_null("Visuals/RightArm")
-if ll: ll.rotation.x = sw; if rl: rl.rotation.x = -sw; if la: la.rotation.x = -sw; if ra: ra.rotation.x = sw
 else:
-player_avatar.velocity.x = move_toward(player_avatar.velocity.x, 0.0, 15.0 * delta)
-player_avatar.velocity.z = move_toward(player_avatar.velocity.z, 0.0, 15.0 * delta)
-
-player_avatar.move_and_slide()
-var t_cam = player_avatar.global_position + Vector3(0, 3.2, 5.8)
-camera.global_position = camera.global_position.lerp(t_cam, 8.0 * delta)
-camera.look_at(player_avatar.global_position + Vector3(0, 1.2, 0), Vector3.UP)
-
-func _check_vehicle_proximity():
-var nearest: Node3D = null; var min_d = 4.5
-for c in world.get_children():
-if "car" in c.name.to_lower() or "бемве" in c.name.to_lower():
-var d = player_avatar.global_position.distance_to(c.global_position)
-if d < min_d: min_d = d; nearest = c
-if nearest:
-active_vehicle = nearest; drive_btn.text = "🏎️ ВЛЕЗ В КОЛАТА"; drive_btn.visible = true
-elif not is_driving: drive_btn.visible = false
-
-func _handle_car_driving(delta: float):
-var steer = -joy.output.x; var throttle = -joy.output.y
-if abs(steer) > 0.05: active_vehicle.rotate_y(steer * 2.8 * delta)
-if abs(throttle) > 0.05:
-car_speed = move_toward(car_speed, throttle * 28.0, 18.0 * delta)
-engine_audio_timer += delta
-if engine_audio_timer > 0.12: engine_audio_timer = 0.0; _play_engine_sound(abs(car_speed))
-else: car_speed = move_toward(car_speed, 0.0, 12.0 * delta)
-
-active_vehicle.global_position += -active_vehicle.global_transform.basis.z * car_speed * delta
-speedo_lbl.text = str(int(abs(car_speed) * 3.6)) + " km/h"
-
-var cam_t = active_vehicle.global_position + active_vehicle.global_transform.basis.z * 8.0 + Vector3(0, 3.4, 0)
-camera.global_position = camera.global_position.lerp(cam_t, 9.0 * delta)
-camera.look_at(active_vehicle.global_position + Vector3(0, 1.0, 0), Vector3.UP)
-
-func _on_toggle_drive_mode():
-if not is_driving and active_vehicle:
-is_driving = true; player_avatar.visible = false; drive_btn.text = "🧍 СЛЕЗ"; speedo_lbl.visible = true
-_add_log("[color=#00ff88]🏎️ Влезе в колата! Дай газ с джойстика.[/color]")
-elif is_driving and active_vehicle:
-is_driving = false; car_speed = 0.0
-player_avatar.global_position = active_vehicle.global_position + active_vehicle.global_transform.basis.x * 2.0
-player_avatar.visible = true; drive_btn.text = "🏎️ ВЛЕЗ В КОЛАТА"; speedo_lbl.visible = false
-_add_log("[color=#00f2fe]🧍 Слезе от колата.[/color]")
-
-func _play_engine_sound(spd: float):
-if not audio_player: return
-var sr = 22050.0; var dur = 0.1; var n = int(sr * dur); var pcm = PackedByteArray(); pcm.resize(n * 2)
-var freq = 60.0 + (spd * 8.0)
-for i in range(n):
-var t = float(i) / sr; var sample = (fmod(t * freq, 1.0) - 0.5) * 0.8
-pcm.encode_s16(i * 2, int(clamp(sample, -1.0, 1.0) * 32767.0))
-var st = AudioStreamWAV.new(); st.format = AudioStreamWAV.FORMAT_16_BITS; st.mix_rate = int(sr); st.data = pcm
-audio_player.stream = st; audio_player.play()
-
-func _play_piano_chord():
-if not audio_player: return
-var sr = 22050.0; var dur = 1.2; var n = int(sr * dur); var pcm = PackedByteArray(); pcm.resize(n * 2)
-var freqs = [261.63, 329.63, 392.00]
-for i in range(n):
-var t = float(i) / sr; var env = exp(-t * 2.5); var s = 0.0
-for f in freqs: s += sin(t * f * TAU) * 0.33
-pcm.encode_s16(i * 2, int(clamp(s * env, -1.0, 1.0) * 32767.0))
-var st = AudioStreamWAV.new(); st.format = AudioStreamWAV.FORMAT_16_BITS; st.mix_rate = int(sr); st.data = pcm
-audio_player.stream = st; audio_player.play()
-_add_log("[color=#00ff88]🎵 Пианото свири акорд C-E-G![/color]")
+indicator.visible = false
 
 func _unhandled_input(event):
-if api_page.visible or is_driving: return
+if api_page.visible: return
+var limit_h = get_viewport().size.y * 0.65
+
 if event is InputEventScreenTouch:
-if event.position.y > get_viewport().size.y * 0.65: return
+if event.position.y > limit_h: return
 if event.pressed:
 var hit = _raycast(event.position)
-if hit:
-_select(hit); is_dragging = true
-if "piano" in hit.name.to_lower(): _play_piano_chord()
+if hit: _select(hit); is_dragging = true
 else: _deselect(); is_dragging = false
 else: is_dragging = false
+
 elif event is InputEventScreenDrag:
-if event.position.y > get_viewport().size.y * 0.65: return
+if event.position.y > limit_h: return
 if is_dragging and selected_obj and is_instance_valid(selected_obj):
 var drop = _get_floor(event.position)
 if drop != Vector3.INF: selected_obj.global_position.x = drop.x; selected_obj.global_position.z = drop.z
+else:
+cam_yaw -= event.relative.x * 0.005
+cam_pitch = clamp(cam_pitch - event.relative.y * 0.005, -1.4, 1.4)
+camera.rotation.y = cam_yaw; camera.rotation.x = cam_pitch
 
 func _raycast(pos: Vector2):
 var from = camera.project_ray_origin(pos); var to = from + camera.project_ray_normal(pos) * 1000.0
@@ -199,30 +107,33 @@ return null
 
 func _get_floor(pos: Vector2):
 var from = camera.project_ray_origin(pos); var dir = camera.project_ray_normal(pos)
-var plane = Plane(Vector3.UP, selected_obj.global_position.y if selected_obj else 0.0)
-var hit = plane.intersects_ray(from, dir); return hit if hit != null else Vector3.INF
+var h = selected_obj.global_position.y if selected_obj else 0.0
+var plane = Plane(Vector3.UP, h); var hit = plane.intersects_ray(from, dir)
+return hit if hit != null else Vector3.INF
 
 func _select(obj): selected_obj = obj; lbl_selected.text = "🎯 " + obj.name; center_tools.visible = true
-func _deselect(): if not is_driving: selected_obj = null; center_tools.visible = false
+func _deselect(): selected_obj = null; center_tools.visible = false
 
-func _on_act_up(): if selected_obj: selected_obj.global_position.y += 0.8
-func _on_act_down(): if selected_obj: selected_obj.global_position.y = max(0.0, selected_obj.global_position.y - 0.8)
-func _on_act_rot(): if selected_obj: selected_obj.rotate_y(deg_to_rad(45.0))
-func _on_act_del(): if selected_obj: selected_obj.queue_free(); _deselect()
+func _on_act_up(): if selected_obj and is_instance_valid(selected_obj): selected_obj.global_position.y += 0.8
+func _on_act_down(): if selected_obj and is_instance_valid(selected_obj): selected_obj.global_position.y = max(0.0, selected_obj.global_position.y - 0.8)
+func _on_act_rot(): if selected_obj and is_instance_valid(selected_obj): selected_obj.rotate_y(deg_to_rad(45.0))
+func _on_act_del():
+if selected_obj and is_instance_valid(selected_obj): selected_obj.queue_free(); _deselect()
 
 func _on_open_settings(): api_page.visible = true
 func _on_close_settings(): api_page.visible = false; _save_config()
-func _on_confirm_and_enter(): _save_config(); api_page.visible = false
+func _on_confirm_and_enter(): _save_config(); api_page.visible = false; _add_log("[color=#00ff88]✓ Модел:[/color] " + current_model)
 func _on_key_submitted(_new_text: String): _on_fetch_models_pressed()
-func _on_provider_selected(idx: int): current_provider_idx = idx; models_list_ui.clear()
+func _on_provider_selected(idx: int): current_provider_idx = idx; status_lbl.text = "Доставчик: " + providers[idx]["name"]; models_list_ui.clear()
 
 func _on_fetch_models_pressed():
 api_key = key_input.text.strip_edges()
 if api_key.is_empty(): return
-is_testing_models = true; test_btn.disabled = true
+is_testing_models = true; test_btn.disabled = true; status_lbl.text = "⏳ Сваляне на модели..."; status_lbl.modulate = Color(0, 1, 0.6)
+var url = providers[current_provider_idx]["models_url"]
 var headers = ["Authorization: Bearer " + api_key, "Content-Type: application/json"]
 if current_provider_idx == 0: headers.append("HTTP-Referer: https://tiptop.engine")
-http_request.request(providers[current_provider_idx]["models_url"], headers, HTTPClient.METHOD_GET)
+http_request.request(url, headers, HTTPClient.METHOD_GET)
 
 func _on_http_response(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray):
 test_btn.disabled = false
@@ -238,15 +149,19 @@ if response_code == 200:
 var json = JSON.new()
 if json.parse(body.get_string_from_utf8()) == OK:
 var res = json.get_data(); var ch = res.get("choices", [])
-if not ch.is_empty(): _spawn_by_keyword(last_user_prompt)
-else: _spawn_by_keyword(last_user_prompt)
+if not ch.is_empty(): _interpret_and_build(ch[0].get("message", {}).get("content", ""))
+else: _fallback(last_user_prompt)
+else: _fallback(last_user_prompt)
+else: _fallback(last_user_prompt)
 
 func _render_models_list(source_list: Array, filter_query: String):
 models_list_ui.clear(); model_ids_map.clear()
-models_list_ui.add_item("⚡ АВТОМАТИЧЕН (OpenRouter Free Router)"); model_ids_map.append("openrouter/free")
+var q = filter_query.strip_edges().to_lower()
+if q.is_empty() or "free" in q: models_list_ui.add_item("⚡ АВТОМАТИЧЕН (OpenRouter Free Router)"); model_ids_map.append("openrouter/free")
 for item in source_list:
 var m_id = str(item.get("id", "")) if item is Dictionary else str(item)
 if m_id.is_empty() or m_id == "openrouter/free": continue
+if not q.is_empty() and not q in m_id.to_lower(): continue
 if ":free" in m_id.to_lower(): models_list_ui.add_item("🎁 [FREE] " + m_id); model_ids_map.append(m_id)
 else: models_list_ui.add_item("⭐ " + m_id); model_ids_map.append(m_id)
 
@@ -267,7 +182,9 @@ if not f: return
 var json = JSON.new()
 if json.parse(f.get_as_text()) != OK: return
 var cfg = json.get_data(); if not cfg is Dictionary: return
-current_provider_idx = int(cfg.get("provider", 0)); api_key = str(cfg.get("api_key", "")); key_input.text = api_key
+current_provider_idx = int(cfg.get("provider", 0))
+if current_provider_idx < provider_select.item_count: provider_select.selected = current_provider_idx
+api_key = str(cfg.get("api_key", "")); key_input.text = api_key
 current_model = str(cfg.get("model", "openrouter/free")); current_model_chip.text = "🤖 " + current_model
 raw_models_cache = cfg.get("raw_models", []); if not raw_models_cache.is_empty(): _render_models_list(raw_models_cache, "")
 
@@ -275,51 +192,59 @@ func _add_log(msg: String): chat_log.append_text(msg + "\n")
 
 func _on_send_chat():
 var t = chat_input.text.strip_edges(); if t.is_empty(): return
-chat_input.text = ""; _add_log("[color=#00ff88]Ти:[/color] " + t)
-last_user_prompt = t
+chat_input.text = ""; _add_log("[color=#00ff88]Ти:[/color] " + t); last_user_prompt = t
 
 var low = t.to_lower()
-if "нощ" in low or "залез" in low or "ден" in low:
-_change_env(low); return
-elif "гравитация" in low:
-var g = 0.0 if " 0" in low or "нул" in low else (1.6 if "лун" in low else 9.8)
-PhysicsServer3D.area_set_param(get_world_3d().space, PhysicsServer3D.AREA_PARAM_GRAVITY, g)
-_add_log("[color=#00f2fe]Гравитация: " + str(g) + " m/s².[/color]"); return
+if EnvStudio.handle_command(low, env_node, sun_light, rim_light, get_world_3d().space):
+_add_log("[color=#00f2fe]Командата за света е изпълнена![/color]"); return
 
-_spawn_by_keyword(t)
+var arch = AIBridge.detect_archetype(low)
+if not arch.is_empty():
+_spawn_archetype(arch, _get_spawn_pos()); return
+
+if not api_key.is_empty(): _request_ai(t)
+else: _fallback(t)
 
 func _on_chip_pressed(txt: String): chat_input.text = txt; _on_send_chat()
-
-func _change_env(type: String):
-if "нощ" in type:
-env_node.environment.background_color = Color(0.04, 0.05, 0.09)
-sun_light.light_energy = 0.2; sun_light.light_color = Color(0.4, 0.6, 1.0)
-elif "залез" in type:
-env_node.environment.background_color = Color(0.45, 0.18, 0.1)
-sun_light.light_energy = 1.3; sun_light.light_color = Color(1.0, 0.45, 0.2)
-else:
-env_node.environment.background_color = Color(0.18, 0.22, 0.28)
-sun_light.light_energy = 1.35; sun_light.light_color = Color(1.0, 0.98, 0.92)
 
 func _get_spawn_pos() -> Vector3:
 var fwd = -camera.global_transform.basis.z; fwd.y = 0.0
 var p = camera.global_position + fwd.normalized() * 7.5; p.y = 0.0
 return p
 
-func _spawn_by_keyword(prompt: String):
-var low = prompt.to_lower(); var pos = _get_spawn_pos()
+func _spawn_archetype(arch: String, pos: Vector3):
 var node: Node3D = null
-if "стен" in low or "тухл" in low or "зид" in low or "оград" in low:
-node = Entities.spawn_brick_wall(world, pos)
-elif "пиан" in low or "роял" in low or "клавиш" in low:
-node = Entities.spawn_piano(world, pos)
-elif "замък" in low or "замк" in low or "крепос" in low:
-node = Entities.spawn_castle(world, pos)
-elif "кол" in low or "бемв" in low or "bmw" in low or "кабри" in low:
-var is_cab = "кабри" in low or "бемв" in low or "bmw" in low
-node = Entities.spawn_car(world, "BMW_Cabrio" if is_cab else "Sports_Car", "#0066ff" if "бемв" in low else "#e60026", is_cab, pos)
-elif "зомби" in low or "бот" in low or "враг" in low or "робот" in low:
-node = Entities.spawn_bot(world, pos)
+if arch == "piano": node = CAD.spawn_piano(pos, world)
+elif arch == "castle": node = CAD.spawn_castle(pos, world)
+elif arch == "wall": node = CAD.spawn_brick_wall(pos, world)
+elif arch == "car": node = CAD.spawn_car(pos, world, "BMW_Cabrio", "#0066ff", true)
+elif arch == "house": node = CAD.spawn_house(pos, world, "Cozy_House", "#e76f51")
+if node:
+_select(node)
+_add_log("[color=#00ff88]✓ " + node.name + " е създаден на сцената![/color]")
+
+func _request_ai(prompt: String):
+_add_log("[color=#00f2fe]⏳ " + current_model + " проектира детайлен 3D CAD модел в RAM...[/color]")
+var url = providers[current_provider_idx]["chat"]
+var headers = ["Authorization: Bearer " + api_key, "Content-Type: application/json"]
+if current_provider_idx == 0: headers.append("HTTP-Referer: https://tiptop.engine")
+var body = JSON.stringify({
+"model": current_model,
+"messages": [{"role": "system", "content": AIBridge.get_system_prompt()}, {"role": "user", "content": "3D CAD for: " + prompt}],
+"max_tokens": 1400, "temperature": 0.2
+})
+http_request.request(url, headers, HTTPClient.METHOD_POST, body)
+
+func _interpret_and_build(raw_text: String):
+var recipe = AIBridge.repair_json(raw_text)
+if recipe.has("parts") and recipe["parts"].size() > 0:
+var node = CAD.compile_recipe(recipe, _get_spawn_pos(), world)
+_select(node)
+_add_log("[color=#00ff88]✓ " + node.name + " е генериран успешно от AI![/color]")
 else:
-node = Entities.spawn_brick_wall(world, pos)
-if node: _select(node); _add_log("[color=#00ff88]✓ " + node.name + " е създаден в света![/color]")
+_fallback(last_user_prompt)
+
+func _fallback(prompt: String):
+var arch = AIBridge.detect_archetype(prompt.to_lower())
+if arch.is_empty(): arch = "wall"
+_spawn_archetype(arch, _get_spawn_pos())
