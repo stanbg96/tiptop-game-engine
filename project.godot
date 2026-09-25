@@ -5,6 +5,11 @@ config/name="TipTop Studio"
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.3", "Mobile")
 
+[autoload]
+EnvMod="*res://scripts/modules/EnvMod.gd"
+AIMod="*res://scripts/modules/AIMod.gd"
+BuildMod="*res://scripts/modules/BuildMod.gd"
+
 [display]
 window/size/viewport_width=720
 window/size/viewport_height=1280

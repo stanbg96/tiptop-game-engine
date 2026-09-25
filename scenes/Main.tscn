@@ -1,6 +1,5 @@
 [gd_scene load_steps=12 format=3 uid="uid://cxup6s1g2km8y"]
-
-[ext_resource type="Script" path="res://scripts/Main.gd" id="1_mgr"]
+[ext_resource type="Script" path="res://scripts/Studio.gd" id="1_mgr"]
 [ext_resource type="Script" path="res://scripts/VirtualJoystick.gd" id="2_joy"]
 
 [sub_resource type="Environment" id="Environment_1"]
@@ -48,7 +47,6 @@ shadow_enabled = true
 
 [node name="Floor" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
-
 [node name="Mesh" type="MeshInstance3D" parent="Floor"]
 mesh = SubResource("PlaneMesh_floor")
 surface_material_override/0 = SubResource("StandardMaterial3D_floor")
@@ -60,13 +58,11 @@ mesh = SubResource("PrismMesh_arrow")
 surface_material_override/0 = SubResource("StandardMaterial3D_arrow")
 
 [node name="World" type="Node3D" parent="."]
-
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.923, 0.382, 0, -0.382, 0.923, 0, 6, 12)
 current = true
 
 [node name="UI" type="CanvasLayer" parent="."]
-
 [node name="VirtualJoystick" type="Control" parent="UI"]
 layout_mode = 3
 anchors_preset = 2
@@ -100,7 +96,6 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_center_tools")
 
 [node name="VBox" type="VBoxContainer" parent="UI/CenterTools/Panel"]
 layout_mode = 2
-
 [node name="Header" type="HBoxContainer" parent="UI/CenterTools/Panel/VBox"]
 layout_mode = 2
 [node name="LabelName" type="Label" parent="UI/CenterTools/Panel/VBox/Header"]
@@ -112,9 +107,6 @@ layout_mode = 2
 [node name="BtnUp" type="Button" parent="UI/CenterTools/Panel/VBox/Buttons"]
 layout_mode = 2
 text = "Горе"
-[node name="BtnDrive" type="Button" parent="UI/CenterTools/Panel/VBox/Buttons"]
-layout_mode = 2
-text = "КАРАЙ"
 [node name="BtnDel" type="Button" parent="UI/CenterTools/Panel/VBox/Buttons"]
 layout_mode = 2
 text = "Изтрий"
@@ -155,47 +147,3 @@ text = "🚀"
 
 [node name="ApiPage" type="Control" parent="UI"]
 visible = false
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-[node name="Card" type="PanelContainer" parent="UI/ApiPage"]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -170.0
-offset_top = -290.0
-offset_right = 170.0
-offset_bottom = 290.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_modal_card")
-[node name="Margin" type="MarginContainer" parent="UI/ApiPage/Card"]
-layout_mode = 2
-[node name="VBox" type="VBoxContainer" parent="UI/ApiPage/Card/Margin"]
-layout_mode = 2
-[node name="HeaderRow" type="HBoxContainer" parent="UI/ApiPage/Card/Margin/VBox"]
-layout_mode = 2
-[node name="CloseBtn" type="Button" parent="UI/ApiPage/Card/Margin/VBox/HeaderRow"]
-layout_mode = 2
-text = "X"
-[node name="ProviderSelect" type="OptionButton" parent="UI/ApiPage/Card/Margin/VBox"]
-layout_mode = 2
-[node name="KeyInput" type="LineEdit" parent="UI/ApiPage/Card/Margin/VBox"]
-layout_mode = 2
-[node name="TestBtn" type="Button" parent="UI/ApiPage/Card/Margin/VBox"]
-layout_mode = 2
-text = "Тест"
-[node name="StatusLbl" type="Label" parent="UI/ApiPage/Card/Margin/VBox"]
-layout_mode = 2
-[node name="ModelsList" type="ItemList" parent="UI/ApiPage/Card/Margin/VBox"]
-custom_minimum_size = Vector2(0, 150)
-layout_mode = 2
-
-[connection signal="pressed" from="UI/CenterTools/Panel/VBox/Buttons/BtnUp" to="." method="_on_act_up"]
-[connection signal="pressed" from="UI/CenterTools/Panel/VBox/Buttons/BtnDrive" to="." method="_on_toggle_drive"]
-[connection signal="pressed" from="UI/CenterTools/Panel/VBox/Buttons/BtnDel" to="." method="_on_act_del"]
-[connection signal="pressed" from="UI/ChatBG/VBox/Margin2/InputRow/SendBtn" to="." method="_on_send_chat"]
-[connection signal="pressed" from="UI/ApiPage/Card/Margin/VBox/HeaderRow/CloseBtn" to="." method="_on_close_settings"]
-[connection signal="pressed" from="UI/ApiPage/Card/Margin/VBox/TestBtn" to="." method="_on_fetch_models_pressed"]
