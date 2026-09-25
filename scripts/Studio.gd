@@ -9,6 +9,10 @@ extends Node3D
 @onready var indicator = $Indicator
 @onready var world = $World
 @onready var http_request = $HTTPRequest
+@onready var audio_player = $AudioPlayer
+@onready var env_node = $WorldEnvironment
+@onready var sun_light = $DirectionalLight3D
+@onready var rim_light = $RimLight
 
 @onready var api_page = $UI/ApiPage
 @onready var provider_select = $UI/ApiPage/Card/Margin/VBox/ProviderSelect
@@ -24,6 +28,12 @@ var is_dragging: bool = false
 var cam_yaw: float = 0.0
 var cam_pitch: float = -0.4
 var last_user_prompt: String = ""
+
+# РЕЖИМ КАРАНЕ НА КОЛА
+var is_driving: bool = false
+var car_speed: float = 0.0
+var car_velocity: Vector3 = Vector3.ZERO
+var drive_btn: Button = null
 
 var providers = {
     0: {"name": "OpenRouter", "chat": "https://openrouter.ai/api/v1/chat/completions", "models_url": "https://openrouter.ai/api/v1/models"},
@@ -47,12 +57,17 @@ func _ready():
     http_request.request_completed.connect(_on_http_response)
     _setup_provider_dropdown()
     _load_saved_config()
+    _setup_interactive_ui()
     
-    _add_log("[color=#00ff88]✨ Холивудско Студийно Осветление & PBR са активни![/color]")
-    _add_log("[color=#00f2fe]Модел:[/color] " + current_model)
-    _add_log("[color=#ffff66]💡 Опитай: 'замък', 'тухлена стена', 'бемве', 'пиано', 'каща'![/color]")
+    _add_log("[color=#00ff88]🎮 TipTop Интерактивен Енджин v3.0 е активен![/color]")
+    _add_log("[color=#00f2fe]• Избери колата и натисни '🏎️ КАРАЙ' за каране с джойстика.[/color]")
+    _add_log("[color=#ffff66]• Докосни пианото за музикален акорд.[/color]")
+    _add_log("[color=#ff6644]• Засили колата в тухлената стена, за да я разбиеш![/color]")
     
-    _spawn_detailed_piano("Grand_Piano", Vector3(0, 0, -5.0))
+    # Стартираме с готови БМВ кабрио, пиано и разрушима стена
+    _spawn_detailed_car("BMW_Cabrio", "#0066ff", true, Vector3(0, 0, -4.0))
+    _spawn_detailed_piano("Grand_Piano", Vector3(-6.0, 0, -5.0))
+    _spawn_detailed_brick_wall("Brick_Wall", Vector3(0, 0, -16.0))
 
 func _setup_provider_dropdown():
     provider_select.clear()
@@ -61,7 +76,22 @@ func _setup_provider_dropdown():
     provider_select.add_item("🤖 OpenAI (ChatGPT)")
     provider_select.add_item("🧠 DeepSeek (V3 / R1)")
 
+func _setup_interactive_ui():
+    var btn_container = $UI/CenterTools/Panel/VBox/Buttons
+    drive_btn = Button.new()
+    drive_btn.text = "🏎️ КАРАЙ"
+    drive_btn.custom_minimum_size = Vector2(85, 45)
+    drive_btn.modulate = Color(0, 1, 0.6)
+    drive_btn.pressed.connect(_on_toggle_drive_mode)
+    btn_container.add_child(drive_btn)
+
 func _process(delta):
+    # 1. РЕЖИМ КАРАНЕ НА КОЛА
+    if is_driving and selected_obj and is_instance_valid(selected_obj):
+        _handle_car_driving(delta)
+        return
+
+    # 2. РЕЖИМ ДРОН (Свободно летене на камерата с джойстика)
     if joy.output.length() > 0.05:
         var fwd = -camera.global_transform.basis.z
         var rgt = camera.global_transform.basis.x
@@ -69,6 +99,7 @@ func _process(delta):
         fwd = fwd.normalized(); rgt = rgt.normalized()
         camera.global_position += (rgt * joy.output.x + fwd * -joy.output.y) * 15.0 * delta
 
+    # 3. МАРКЕР НАД ИЗБРАНИЯ ОБЕКТ
     if selected_obj and is_instance_valid(selected_obj):
         indicator.visible = true
         var bounce = sin(Time.get_ticks_msec() * 0.006) * 0.25
@@ -76,8 +107,46 @@ func _process(delta):
     else:
         indicator.visible = false
 
+# ФИЗИКА И УПРАВЛЕНИЕ НА КОЛАТА
+func _handle_car_driving(delta: float):
+    # Джойстик: Y за газ/спирачка, X за завиване
+    var steer = -joy.output.x
+    var throttle = -joy.output.y
+
+    if abs(steer) > 0.05:
+        selected_obj.rotate_y(steer * 2.8 * delta)
+
+    if abs(throttle) > 0.05:
+        car_speed = move_toward(car_speed, throttle * 22.0, 16.0 * delta)
+    else:
+        car_speed = move_toward(car_speed, 0.0, 12.0 * delta)
+
+    var fwd = -selected_obj.global_transform.basis.z
+    selected_obj.global_position += fwd * car_speed * delta
+
+    # Камерата плавно следва колата от 3-то лице (Chase Cam)
+    var cam_target = selected_obj.global_position + selected_obj.global_transform.basis.z * 7.5 + Vector3(0, 3.2, 0)
+    camera.global_position = camera.global_position.lerp(cam_target, 8.0 * delta)
+    camera.look_at(selected_obj.global_position + Vector3(0, 1.0, 0), Vector3.UP)
+
+func _on_toggle_drive_mode():
+    if not selected_obj or not is_instance_valid(selected_obj): return
+    is_driving = !is_driving
+    
+    if is_driving:
+        drive_btn.text = "🛑 СПРИ"
+        drive_btn.modulate = Color(1, 0.3, 0.3)
+        indicator.visible = false
+        _add_log("[color=#00ff88]🏎️ Режим каране активен! Ползвай джойстика за газ и завой.[/color]")
+    else:
+        drive_btn.text = "🏎️ КАРАЙ"
+        drive_btn.modulate = Color(0, 1, 0.6)
+        car_speed = 0.0
+        indicator.visible = true
+        _add_log("[color=#00f2fe]🛠️ Върна се в режим Студио.[/color]")
+
 func _unhandled_input(event):
-    if api_page.visible: return
+    if api_page.visible or is_driving: return
     var limit_h = get_viewport().size.y * 0.65
 
     if event is InputEventScreenTouch:
@@ -87,6 +156,9 @@ func _unhandled_input(event):
             if hit:
                 _select(hit)
                 is_dragging = true
+                # Ако докоснеш пианото — свири музикален акорд!
+                if "piano" in hit.name.to_lower() or "роял" in hit.name.to_lower():
+                    _play_piano_chord()
             else:
                 _deselect()
                 is_dragging = false
@@ -128,8 +200,13 @@ func _select(obj):
     selected_obj = obj
     lbl_selected.text = "🎯 " + obj.name
     center_tools.visible = true
+    
+    # Показваме бутона за каране само ако е избрана кола
+    if drive_btn:
+        drive_btn.visible = ("car" in obj.name.to_lower() or "бемве" in obj.name.to_lower())
 
 func _deselect():
+    if is_driving: return
     selected_obj = null
     center_tools.visible = false
 
@@ -332,10 +409,39 @@ func _fuzzy_stem_match(low: String) -> bool:
     elif "кол" in low or "бемв" in low or "bmw" in low or "кабри" in low:
         var is_cab = "кабри" in low or "бемв" in low or "bmw" in low
         var col = "#0066ff" if "бемв" in low else "#e60026"
-        _spawn_detailed_car("Sports_Car", col, is_cab, pos)
+        _spawn_detailed_car("BMW_Cabrio" if is_cab else "Sports_Car", col, is_cab, pos)
         return true
 
     return false
+
+# СИНТЕЗАТОР НА ХАРМОНИЧЕН МУЗИКАЛЕН АКОРД ЗА ПИАНОТО (В RAM)
+func _play_piano_chord():
+    if not audio_player: return
+    var sample_rate = 22050.0
+    var duration = 1.2
+    var num_samples = int(sample_rate * duration)
+    var pcm = PackedByteArray()
+    pcm.resize(num_samples * 2)
+
+    # Мажорен акорд До-Ми-Сол (C4=261.63Hz, E4=329.63Hz, G4=392.00Hz)
+    var freqs = [261.63, 329.63, 392.00]
+
+    for idx in range(num_samples):
+        var t = float(idx) / sample_rate
+        var envelope = exp(-t * 2.5) # Естествено затихване на струна на пиано
+        var sample = 0.0
+        for f in freqs:
+            sample += sin(t * f * TAU) * 0.33
+        sample *= envelope
+        pcm.encode_s16(idx * 2, int(clamp(sample, -1.0, 1.0) * 32767.0))
+
+    var stream = AudioStreamWAV.new()
+    stream.format = AudioStreamWAV.FORMAT_16_BITS
+    stream.mix_rate = int(sample_rate)
+    stream.data = pcm
+    audio_player.stream = stream
+    audio_player.play()
+    _add_log("[color=#00ff88]🎵 Пианото свири хармоничен акорд C-E-G![/color]")
 
 func _request_ai_universal_recipe(prompt: String):
     _add_log("[color=#00f2fe]⏳ " + current_model + " проектира детайлен 3D CAD модел в RAM...[/color]")
@@ -452,7 +558,9 @@ func _spawn_detailed_piano(piano_name: String, pos: Vector3):
     lacquer.metallic = 0.4; lacquer.roughness = 0.06
     lacquer.clearcoat_enabled = true; lacquer.clearcoat = 1.0; lacquer.clearcoat_roughness = 0.03
 
-    var gold = StandardMaterial3D.new(); gold.albedo_color = Color(0.96, 0.82, 0.28); gold.metallic = 0.96; gold.roughness = 0.12
+    var gold = StandardMaterial3D.new()
+    gold.albedo_color = Color(0.96, 0.82, 0.28); gold.metallic = 0.96; gold.roughness = 0.12
+
     var red_felt = StandardMaterial3D.new(); red_felt.albedo_color = Color(0.8, 0.05, 0.12); red_felt.roughness = 0.95
     var white_keys = StandardMaterial3D.new(); white_keys.albedo_color = Color(0.96, 0.96, 0.98); white_keys.roughness = 0.15
     var black_keys = StandardMaterial3D.new(); black_keys.albedo_color = Color(0.06, 0.06, 0.08); black_keys.roughness = 0.08
@@ -484,30 +592,33 @@ func _spawn_detailed_piano(piano_name: String, pos: Vector3):
     world.add_child(root); _select(root)
     _add_log("[color=#00ff88]✓ Концертно пиано с PBR отражения, златни панти и червен филц е готово![/color]")
 
+# РАЗРУШИМА ТУХЛЕНА СТЕНА (С ДИНАМИЧНА ФИЗИКА RigidBody3D)
 func _spawn_detailed_brick_wall(wall_name: String, pos: Vector3):
     var root = Node3D.new(); root.name = wall_name; root.position = pos
-    var rb = StaticBody3D.new(); rb.add_to_group("prop"); root.add_child(rb)
 
-    var brick_red = StandardMaterial3D.new(); brick_red.albedo_color = Color(0.72, 0.25, 0.16); brick_red.roughness = 0.92
+    var brick_red = StandardMaterial3D.new(); brick_red.albedo_color = Color(0.75, 0.25, 0.16); brick_red.roughness = 0.92
     var brick_dark = StandardMaterial3D.new(); brick_dark.albedo_color = Color(0.58, 0.18, 0.12); brick_dark.roughness = 0.95
-    var mortar = StandardMaterial3D.new(); mortar.albedo_color = Color(0.7, 0.7, 0.72); mortar.roughness = 0.9
     var stone_cap = StandardMaterial3D.new(); stone_cap.albedo_color = Color(0.85, 0.85, 0.88); stone_cap.roughness = 0.85
 
-    _box(rb, Vector3(6.0, 3.2, 0.55), mortar, Vector3(0, 1.6, 0))
-
-    for row in range(7):
+    # Всяка тухла е самостоятелно физично тяло RigidBody3D, готово да бъде съборено!
+    for row in range(6):
         var y_p = 0.25 + row * 0.45
-        var offset_x = 0.3 if row % 2 == 1 else 0.0
-        for col_idx in range(-4, 5):
-            var x_p = col_idx * 0.7 + offset_x
-            if abs(x_p) < 2.8:
-                var mat = brick_red if (row + col_idx) % 2 == 0 else brick_dark
-                _box(rb, Vector3(0.62, 0.38, 0.62), mat, Vector3(x_p, y_p, 0))
+        var offset_x = 0.32 if row % 2 == 1 else 0.0
+        for col_idx in range(-3, 4):
+            var x_p = col_idx * 0.68 + offset_x
+            var brick_rb = RigidBody3D.new()
+            brick_rb.mass = 1.5
+            brick_rb.position = Vector3(x_p, y_p, 0)
+            
+            var mat = brick_red if (row + col_idx) % 2 == 0 else brick_dark
+            var bm = BoxMesh.new(); bm.size = Vector3(0.62, 0.38, 0.55)
+            var mi = MeshInstance3D.new(); mi.mesh = bm; mi.material_override = mat; brick_rb.add_child(mi)
+            
+            var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = bm.size; cs.shape = bs; brick_rb.add_child(cs)
+            root.add_child(brick_rb)
 
-    _box(rb, Vector3(6.3, 0.18, 0.75), stone_cap, Vector3(0, 3.3, 0))
-    var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(6.3, 3.4, 0.75); cs.shape = bs; cs.position.y = 1.7; rb.add_child(cs)
-    world.add_child(root); _select(root)
-    _add_log("[color=#00ff88]✓ Масивна тухлена стена с релефни тухли и каменна шапка е иззидана![/color]")
+    world.add_child(root)
+    _add_log("[color=#00ff88]✓ Разрушима тухлена стена от физични тухли е издигната! Засили колата в нея![/color]")
 
 func _spawn_detailed_castle(castle_name: String, pos: Vector3):
     var root = Node3D.new(); root.name = castle_name; root.position = pos
@@ -593,7 +704,7 @@ func _spawn_detailed_car(car_name: String, color_hex: String, is_cabrio: bool, p
 
     var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(2.4, 1.3, 4.6); cs.shape = bs; cs.position.y = 0.65; rb.add_child(cs)
     world.add_child(root); _select(root)
-    _add_log("[color=#00ff88]✓ " + car_name + " е конструиран анатомично![/color]")
+    _add_log("[color=#00ff88]✓ " + car_name + " е готово за каране![/color]")
 
 func _spawn_detailed_house(house_name: String, wall_color_hex: String, pos: Vector3):
     var root = Node3D.new(); root.name = house_name; root.position = pos
