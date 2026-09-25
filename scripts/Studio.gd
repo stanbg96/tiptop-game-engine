@@ -23,7 +23,6 @@ var selected_obj: Node3D = null
 var is_dragging: bool = false
 var cam_yaw: float = 0.0
 var cam_pitch: float = -0.4
-var animated_parts: Array = []
 var last_user_prompt: String = ""
 
 var providers = {
@@ -49,11 +48,11 @@ func _ready():
     _setup_provider_dropdown()
     _load_saved_config()
     
-    _add_log("[color=#00ff88]✨ TipTop High-Definition Studio е живо![/color]")
+    _add_log("[color=#00ff88]✨ Холивудско Студийно Осветление & PBR са активни![/color]")
     _add_log("[color=#00f2fe]Модел:[/color] " + current_model)
-    _add_log("[color=#ffff66]💡 Напиши: 'пиано', 'замък', 'бемве кабрио' или 'къща'![/color]")
+    _add_log("[color=#ffff66]💡 Опитай с грешки: 'каща', 'тухлена стена', 'стена от тухли', 'роял'![/color]")
     
-    # Стартираме директно с детайлно концертно пиано
+    # Стартираме веднага с новото лакирано пиано с контурни отражения
     _spawn_detailed_piano("Grand_Piano", Vector3(0, 0, -5.0))
 
 func _setup_provider_dropdown():
@@ -210,11 +209,11 @@ func _on_http_response(result: int, response_code: int, headers: PackedStringArr
                     var raw_content = choices[0].get("message", {}).get("content", "").strip_edges()
                     _interpret_and_build(raw_content, last_user_prompt)
                 else:
-                    _semantic_fallback(last_user_prompt)
+                    _fuzzy_semantic_engine(last_user_prompt)
             else:
-                _semantic_fallback(last_user_prompt)
+                _fuzzy_semantic_engine(last_user_prompt)
         else:
-            _semantic_fallback(last_user_prompt)
+            _fuzzy_semantic_engine(last_user_prompt)
 
 func _render_models_list(source_list: Array, filter_query: String):
     models_list_ui.clear()
@@ -299,21 +298,14 @@ func _on_send_chat():
     _add_log("[color=#00ff88]Ти:[/color] " + t)
     last_user_prompt = t
 
-    var low = t.to_lower()
-    if "пиано" in low or "роял" in low:
-        _spawn_detailed_piano("Grand_Piano", _get_spawn_pos())
-    elif "замък" in low or "крепост" in low:
-        _spawn_detailed_castle("Medieval_Castle", _get_spawn_pos())
-    elif "кола" in low or "бемве" in low:
-        var is_cab = "кабрио" in low or "cabrio" in low or "бемве" in low
-        var col = "#0066ff" if "бемве" in low else "#e60026"
-        _spawn_detailed_car("Sports_Car", col, is_cab, _get_spawn_pos())
-    elif "къща" in low or "дом" in low:
-        _spawn_detailed_house("Cozy_House", "#e76f51", _get_spawn_pos())
-    elif not api_key.is_empty():
+    # Толерантно разпознаване на корени (Stemming) преди AI заявката
+    if _fuzzy_stem_match(t.to_lower()):
+        return
+
+    if not api_key.is_empty():
         _request_ai_universal_recipe(t)
     else:
-        _semantic_fallback(t)
+        _fuzzy_semantic_engine(t)
 
 func _on_chip_pressed(txt: String):
     chat_input.text = txt
@@ -324,15 +316,50 @@ func _get_spawn_pos() -> Vector3:
     var p = camera.global_position + fwd.normalized() * 7.5; p.y = 0.0
     return p
 
+# ТОЛЕРАНТНО РАЗПОЗНАВАНЕ НА ПРАВОПИСНИ ГРЕШКИ И ЧЛЕНУВАНЕ (FUZZY STEMMING)
+func _fuzzy_stem_match(low: String) -> bool:
+    var pos = _get_spawn_pos()
+    
+    # 1. Стена / Зид / Тухли (вече никога няма да стане къща!)
+    if "стен" in low or "тухл" in low or "зид" in low or "оград" in low or "дувар" in low:
+        _spawn_detailed_brick_wall("Brick_Wall", pos)
+        return true
+
+    # 2. Пиано / Роял / Клавиши
+    elif "пиан" in low or "роял" in low or "клавиш" in low:
+        _spawn_detailed_piano("Grand_Piano", pos)
+        return true
+
+    # 3. Замък / Крепост / Кули
+    elif "замък" in low or "замк" in low or "крепос" in low or "цитадел" in low:
+        _spawn_detailed_castle("Medieval_Castle", pos)
+        return true
+
+    # 4. Къща / Каща / Дом / Вила (Хваща и "каща"!)
+    elif "къщ" in low or "кащ" in low or "дом" in low or "вил" in low or "хиж" in low:
+        _spawn_detailed_house("Cozy_House", "#e76f51", pos)
+        return true
+
+    # 5. Кола / Бемве / Кабрио / Автомобил
+    elif "кол" in low or "бемв" in low or "bmw" in low or "кабри" in low or "автомоб" in low:
+        var is_cab = "кабри" in low or "бемв" in low or "bmw" in low
+        var col = "#0066ff" if "бемв" in low or "син" in low else "#e60026"
+        _spawn_detailed_car("Sports_Car", col, is_cab, pos)
+        return true
+
+    return false
+
 func _request_ai_universal_recipe(prompt: String):
-    _add_log("[color=#00f2fe]⏳ " + current_model + " конструира детайлен 3D CAD модел в RAM...[/color]")
+    _add_log("[color=#00f2fe]⏳ " + current_model + " проектира детайлен 3D CAD модел в RAM...[/color]")
     var url = providers[current_provider_idx]["chat"]
     var headers = ["Authorization: Bearer " + api_key, "Content-Type: application/json"]
     if current_provider_idx == 0:
         headers.append("HTTP-Referer: https://tiptop.engine")
         headers.append("X-Title: TipTop Studio")
 
-    var system_prompt = """You are an expert 3D Procedural CAD Modeler. Output ONLY raw JSON:
+    var system_prompt = """You are an expert 3D Procedural CAD Modeler. 
+Understand user intent even with spelling typos (e.g. 'каща' -> house, 'тухлена стена' -> brick wall).
+Output ONLY raw JSON (no markdown, no backticks, no explanations):
 {
   "name": "BulgarianName",
   "parts": [
@@ -348,7 +375,7 @@ func _request_ai_universal_recipe(prompt: String):
     }
   ]
 }
-Y=0 is ground level (Y>=0). Use 6 to 16 well-proportioned parts."""
+Y=0 is ground level (Y>=0). Use 6 to 18 detailed parts."""
 
     var body = JSON.stringify({
         "model": current_model,
@@ -378,7 +405,7 @@ func _interpret_and_build(raw_text: String, original_prompt: String):
     if j.parse(clean) == OK and j.get_data() is Dictionary and j.get_data().has("parts"):
         _build_raw_recipe(j.get_data())
     else:
-        _semantic_fallback(original_prompt)
+        _fuzzy_semantic_engine(original_prompt)
 
 func _build_raw_recipe(recipe: Dictionary):
     var root = Node3D.new()
@@ -422,47 +449,58 @@ func _build_raw_recipe(recipe: Dictionary):
     world.add_child(root); _select(root)
     _add_log("[color=#00ff88]✓ " + root.name + " е компилиран в 3D света![/color]")
 
-func _semantic_fallback(prompt: String):
+func _fuzzy_semantic_engine(prompt: String):
     var low = prompt.to_lower()
     var pos = _get_spawn_pos()
-    if "замък" in low or "крепост" in low:
-        _spawn_detailed_castle("Medieval_Castle", pos)
-    elif "пиано" in low or "роял" in low:
-        _spawn_detailed_piano("Grand_Piano", pos)
-    elif "кола" in low or "бемве" in low:
-        _spawn_detailed_car("Sports_Car", "#e60026", true, pos)
-    else:
-        _spawn_detailed_house("Architecture", "#e76f51", pos)
+    if not _fuzzy_stem_match(low):
+        _spawn_detailed_brick_wall("Custom_Structure", pos)
 
-# 1. КОНЦЕРТНО ПИАНО (Черен лак, отворен капак, стойка, клавиши, златни педали)
+# ==============================================================================
+# 1. КОНЦЕРТНО ПИАНО С PBR ОТРАЖЕНИЯ, ЗЛАТНИ ПАНТИ, КАРАНТ И ЧЕРВЕН ФИЛЦ
+# ==============================================================================
 func _spawn_detailed_piano(piano_name: String, pos: Vector3):
     var root = Node3D.new(); root.name = piano_name; root.position = pos
     var rb = StaticBody3D.new(); rb.add_to_group("prop"); root.add_child(rb)
 
+    # Истински дълбок пиано лак (PBR с перлен отблясък под новия Rim Light)
     var lacquer = StandardMaterial3D.new()
-    lacquer.albedo_color = Color(0.05, 0.05, 0.07)
-    lacquer.metallic = 0.2; lacquer.roughness = 0.03
-    lacquer.clearcoat_enabled = true; lacquer.clearcoat = 1.0; lacquer.clearcoat_roughness = 0.02
+    lacquer.albedo_color = Color(0.08, 0.08, 0.1) # Дълбок графитен нюанс за истински блясък
+    lacquer.metallic = 0.4; lacquer.roughness = 0.06
+    lacquer.clearcoat_enabled = true; lacquer.clearcoat = 1.0; lacquer.clearcoat_roughness = 0.03
 
     var gold = StandardMaterial3D.new()
-    gold.albedo_color = Color(0.95, 0.8, 0.25); gold.metallic = 0.95; gold.roughness = 0.15
+    gold.albedo_color = Color(0.96, 0.82, 0.28); gold.metallic = 0.96; gold.roughness = 0.12
 
-    var white_keys = StandardMaterial3D.new(); white_keys.albedo_color = Color(0.96, 0.96, 0.98); white_keys.roughness = 0.2
-    var black_keys = StandardMaterial3D.new(); black_keys.albedo_color = Color(0.08, 0.08, 0.08); black_keys.roughness = 0.1
+    var red_felt = StandardMaterial3D.new(); red_felt.albedo_color = Color(0.8, 0.05, 0.12); red_felt.roughness = 0.95
+    var white_keys = StandardMaterial3D.new(); white_keys.albedo_color = Color(0.96, 0.96, 0.98); white_keys.roughness = 0.15
+    var black_keys = StandardMaterial3D.new(); black_keys.albedo_color = Color(0.06, 0.06, 0.08); black_keys.roughness = 0.08
 
+    # 1. Основен криловиден корпус на рояла
     _box(rb, Vector3(2.2, 0.45, 2.6), lacquer, Vector3(0, 1.15, 0))
     _box(rb, Vector3(1.6, 0.44, 1.4), lacquer, Vector3(-0.25, 1.15, 1.2))
 
-    for lp in [Vector3(-0.9, 0.55, -1.0), Vector3(0.9, 0.55, -1.0), Vector3(-0.2, 0.55, 1.6)]:
+    # Златни лайсни по корпуса (хващат контурната светлина)
+    _box(rb, Vector3(2.24, 0.04, 2.64), gold, Vector3(0, 1.38, 0))
+
+    # 2. Крака със златни месингови колелца и рингове
+    var leg_coords = [Vector3(-0.9, 0.55, -1.0), Vector3(0.9, 0.55, -1.0), Vector3(-0.2, 0.55, 1.6)]
+    for lp in leg_coords:
         _cyl(rb, 0.09, 1.1, lacquer, lp)
-        _sph(rb, 0.07, gold, lp - Vector3(0, 0.52, 0))
+        _cyl(rb, 0.11, 0.06, gold, lp + Vector3(0, 0.48, 0)) # Горен златен пръстен
+        _sph(rb, 0.07, gold, lp - Vector3(0, 0.52, 0))       # Долно колелце
 
+    # 3. Отворен горен капак със златни панти и подпорна стойка
     _box(rb, Vector3(2.3, 0.06, 2.7), lacquer, Vector3(0.3, 1.8, 0.1), Vector3(0, 0, deg_to_rad(32)))
-    _cyl(rb, 0.03, 0.9, gold, Vector3(0.7, 1.6, 0.2), Vector3(0, 0, deg_to_rad(15)))
+    _cyl(rb, 0.03, 0.9, gold, Vector3(0.7, 1.6, 0.2), Vector3(0, 0, deg_to_rad(15))) # Стойка
+    _box(rb, Vector3(0.12, 0.05, 0.2), gold, Vector3(-0.8, 1.4, 0.1)) # Златна панта 1
+    _box(rb, Vector3(0.12, 0.05, 0.2), gold, Vector3(-0.8, 1.4, 1.0)) # Златна панта 2
 
+    # 4. Клавиатура: Червена филцова лента + бели и черни клавиши
+    _box(rb, Vector3(1.92, 0.02, 0.06), red_felt, Vector3(0, 1.04, -1.32)) # Червен филц
     _box(rb, Vector3(1.9, 0.08, 0.35), white_keys, Vector3(0, 0.98, -1.45))
     _box(rb, Vector3(1.7, 0.12, 0.2), black_keys, Vector3(0, 1.02, -1.5))
 
+    # 5. Лира с три златни педала долу
     _box(rb, Vector3(0.35, 0.25, 0.1), lacquer, Vector3(0, 0.3, -0.6))
     _box(rb, Vector3(0.06, 0.04, 0.2), gold, Vector3(-0.08, 0.18, -0.68))
     _box(rb, Vector3(0.06, 0.04, 0.2), gold, Vector3(0.0, 0.18, -0.68))
@@ -470,17 +508,51 @@ func _spawn_detailed_piano(piano_name: String, pos: Vector3):
 
     var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(2.6, 2.2, 3.2); cs.shape = bs; cs.position.y = 1.1; rb.add_child(cs)
     world.add_child(root); _select(root)
-    _add_log("[color=#00ff88]✓ Концертно пиано с черен огледален лак и клавиши е готово![/color]")
+    _add_log("[color=#00ff88]✓ Концертно пиано с PBR отражения, златни панти и червен филц е готово![/color]")
 
-# 2. СРЕДНОВЕКОВЕН ЗАМЪК (4 кули, островърхи покриви, бойници, порта)
+# ==============================================================================
+# 2. ДЕТАЙЛНА ТУХЛЕНА СТЕНА (РЕЛЕФНИ ТУХЛИ, ФУГИ И КАМЕННА ШАПКА)
+# ==============================================================================
+func _spawn_detailed_brick_wall(wall_name: String, pos: Vector3):
+    var root = Node3D.new(); root.name = wall_name; root.position = pos
+    var rb = StaticBody3D.new(); rb.add_to_group("prop"); root.add_child(rb)
+
+    var brick_red = StandardMaterial3D.new(); brick_red.albedo_color = Color(0.72, 0.25, 0.16); brick_red.roughness = 0.92
+    var brick_dark = StandardMaterial3D.new(); brick_dark.albedo_color = Color(0.58, 0.18, 0.12); brick_dark.roughness = 0.95
+    var mortar = StandardMaterial3D.new(); mortar.albedo_color = Color(0.7, 0.7, 0.72); mortar.roughness = 0.9
+    var stone_cap = StandardMaterial3D.new(); stone_cap.albedo_color = Color(0.85, 0.85, 0.88); stone_cap.roughness = 0.85
+
+    # Основен хоросанов слой (фуги)
+    _box(rb, Vector3(6.0, 3.2, 0.55), mortar, Vector3(0, 1.6, 0))
+
+    # Релефни тухли на редове с разместване (Bond pattern)
+    for row in range(7):
+        var y_p = 0.25 + row * 0.45
+        var offset_x = 0.3 if row % 2 == 1 else 0.0
+        for col_idx in range(-4, 5):
+            var x_p = col_idx * 0.7 + offset_x
+            if abs(x_p) < 2.8:
+                var mat = brick_red if (row + col_idx) % 2 == 0 else brick_dark
+                _box(rb, Vector3(0.62, 0.38, 0.62), mat, Vector3(x_p, y_p, 0))
+
+    # Каменна шапка най-отгоре
+    _box(rb, Vector3(6.3, 0.18, 0.75), stone_cap, Vector3(0, 3.3, 0))
+
+    var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(6.3, 3.4, 0.75); cs.shape = bs; cs.position.y = 1.7; rb.add_child(cs)
+    world.add_child(root); _select(root)
+    _add_log("[color=#00ff88]✓ Масивна тухлена стена с релефни тухли и каменна шапка е иззидана![/color]")
+
+# ==============================================================================
+# 3. СРЕДНОВЕКОВЕН ЗАМЪК
+# ==============================================================================
 func _spawn_detailed_castle(castle_name: String, pos: Vector3):
     var root = Node3D.new(); root.name = castle_name; root.position = pos
     var rb = StaticBody3D.new(); rb.add_to_group("prop"); root.add_child(rb)
 
-    var stone = StandardMaterial3D.new(); stone.albedo_color = Color(0.42, 0.44, 0.48); stone.roughness = 0.95
-    var blue_roof = StandardMaterial3D.new(); blue_roof.albedo_color = Color(0.12, 0.25, 0.6); blue_roof.roughness = 0.8
+    var stone = StandardMaterial3D.new(); stone.albedo_color = Color(0.48, 0.5, 0.55); stone.roughness = 0.95
+    var blue_roof = StandardMaterial3D.new(); blue_roof.albedo_color = Color(0.12, 0.3, 0.75); blue_roof.roughness = 0.75
     var wood_gate = StandardMaterial3D.new(); wood_gate.albedo_color = Color(0.28, 0.15, 0.08); wood_gate.roughness = 0.85
-    var flag_mat = StandardMaterial3D.new(); flag_mat.albedo_color = Color(1.0, 0.2, 0.2)
+    var flag_mat = StandardMaterial3D.new(); flag_mat.albedo_color = Color(1.0, 0.15, 0.15)
 
     _box(rb, Vector3(7.0, 3.5, 7.0), stone, Vector3(0, 1.75, 0))
 
@@ -507,7 +579,9 @@ func _spawn_detailed_castle(castle_name: String, pos: Vector3):
     world.add_child(root); _select(root)
     _add_log("[color=#00ff88]✓ Средновековен замък с 4 кули и бойници е издигнат![/color]")
 
-# 3. АВТОМОБИЛЕН АРХИТЕКТ (Спойлер, фарове, джанти, салон, волан)
+# ==============================================================================
+# 4. СПОРТЕН АВТОМОБИЛ / БЕМВЕ
+# ==============================================================================
 func _spawn_detailed_car(car_name: String, color_hex: String, is_cabrio: bool, pos: Vector3):
     var root = Node3D.new(); root.name = car_name; root.position = pos
     var rb = StaticBody3D.new(); rb.add_to_group("prop"); root.add_child(rb)
@@ -560,7 +634,9 @@ func _spawn_detailed_car(car_name: String, color_hex: String, is_cabrio: bool, p
     world.add_child(root); _select(root)
     _add_log("[color=#00ff88]✓ " + car_name + " е конструиран анатомично![/color]")
 
-# 4. АРХИТЕКТУРНА КЪЩА (Фундамент, покрив, комин, врата, прозорци)
+# ==============================================================================
+# 5. ДЕТАЙЛНА КЪЩА
+# ==============================================================================
 func _spawn_detailed_house(house_name: String, wall_color_hex: String, pos: Vector3):
     var root = Node3D.new(); root.name = house_name; root.position = pos
     var rb = StaticBody3D.new(); rb.add_to_group("prop"); root.add_child(rb)
@@ -590,7 +666,6 @@ func _spawn_detailed_house(house_name: String, wall_color_hex: String, pos: Vect
     world.add_child(root); _select(root)
     _add_log("[color=#00ff88]✓ " + house_name + " е построена с покрив, комин и прозорци![/color]")
 
-# ГЕОМЕТРИЧНИ ХЕЛПЪРИ (Със задължителна стойност rot = Vector3.ZERO)
 func _box(p, sz, mat, pos, rot = Vector3.ZERO):
     var m = BoxMesh.new(); m.size = sz; _add_mesh(p, m, mat, pos, rot)
 
