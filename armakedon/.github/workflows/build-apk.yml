@@ -43,6 +43,6 @@ jobs:
           files: build/app/outputs/flutter-apk/app-release.apk
           tag_name: ${{ steps.tag.outputs.tag_name }}
           name: "Game Release ${{ steps.tag.outputs.tag_name }}"
-          body: "Автоматично компилиран APK с новата 3D игра."
+          body: "Чист нов билд на 3D играта."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -5,196 +5,89 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Армакедон: NFS Open World Edition</title>
     <style>
-        html, body { overflow: hidden; width: 100%; height: 100%; margin: 0; padding: 0; background: #020205; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        html, body { overflow: hidden; width: 100%; height: 100%; margin: 0; padding: 0; background: #020205; font-family: sans-serif; }
         #renderCanvas { width: 100%; height: 100%; touch-action: none; display: block; }
-        
-        /* NFS Style HUD */
-        #hud {
-            position: absolute;
-            bottom: 25px;
-            left: 25px;
-            background: rgba(10, 10, 20, 0.85);
-            border-left: 4px solid #00f0ff;
-            padding: 15px 20px;
-            border-radius: 0 8px 8px 0;
-            color: white;
-            pointer-events: none;
-            box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
-        }
+        #hud { position: absolute; bottom: 25px; left: 25px; background: rgba(10, 10, 20, 0.85); border-left: 4px solid #00f0ff; padding: 15px 20px; border-radius: 0 8px 8px 0; color: white; pointer-events: none; }
         .speedometer { font-size: 32px; font-weight: bold; color: #00f0ff; letter-spacing: 2px; }
         .unit { font-size: 14px; color: #888; margin-left: 5px; }
-        .gps-target { margin-top: 5px; font-size: 12px; color: #ffaa00; text-transform: uppercase; }
-
-        #minimap-container {
-            position: absolute;
-            top: 25px;
-            right: 25px;
-            width: 140px;
-            height: 140px;
-            background: rgba(10, 10, 20, 0.8);
-            border: 2px solid #00f0ff;
-            border-radius: 50%;
-            overflow: hidden;
-            pointer-events: none;
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .radar-sweep { color: #00f0ff; font-size: 11px; text-align: center; font-weight: bold; }
     </style>
-    <!-- Babylon.js CDN -->
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
 </head>
 <body>
     <div id="hud">
         <div id="speed" class="speedometer">0 <span class="unit">KM/H</span></div>
-        <div class="gps-target">📍 GPS: НАПРАВЛЕНИЕ ЦЕНТЪР</div>
     </div>
-
-    <div id="minimap-container">
-        <div class="radar-sweep">GPS RADAR</div>
-    </div>
-
     <canvas id="renderCanvas"></canvas>
-
     <script>
         const canvas = document.getElementById("renderCanvas");
         const engine = new BABYLON.Engine(canvas, true);
-
         const createScene = function () {
             const scene = new BABYLON.Scene(engine);
             scene.clearColor = new BABYLON.Color4(0.02, 0.02, 0.06, 1);
-
-            // Осветление (NFS нощна атмосфера с неонови нюанси)
             const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
-            light.intensity = 0.4;
-            light.groundColor = new BABYLON.Color3(0.1, 0.1, 0.2);
-
-            const neonLight = new BABYLON.DirectionalLight("dirLight", new BABYLON.Vector3(-1, -2, -1), scene);
-            neonLight.intensity = 0.7;
-
-            // Увеличена камера (NFS Follow Style)
+            light.intensity = 0.5;
             const camera = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 10, -25), scene);
             camera.radius = 14;
             camera.heightOffset = 4.5;
-            camera.rotationOffset = 0;
-            camera.cameraAcceleration = 0.08;
-            camera.maxCameraSpeed = 30;
 
-            // --- ПРОЦЕДУРНО ГЕНЕРИРАНЕ НА ГРАДА (GRID / BLOCKS) ---
             const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 600, height: 600}, scene);
             const groundMat = new BABYLON.StandardMaterial("gMat", scene);
             groundMat.diffuseColor = new BABYLON.Color3(0.08, 0.08, 0.1);
-            groundMat.specularColor = new BABYLON.Color3(0.05, 0.05, 0.05);
             ground.material = groundMat;
 
             const buildingMat = new BABYLON.StandardMaterial("bMat", scene);
             buildingMat.diffuseColor = new BABYLON.Color3(0.12, 0.12, 0.18);
-
-            // Процедурно разполагане на сгради като в реален квартал (избягвайки улиците)
-            const blockSize = 40;
-            for (let x = -200; x <= 200; x += blockSize) {
-                for (let z = -200; z <= 200; z += blockSize) {
-                    if (Math.abs(x) < 20 || Math.abs(z) < 20) continue; // Главен булевард в центъра
-
+            for (let x = -200; x <= 200; x += 40) {
+                for (let z = -200; z <= 200; z += 40) {
+                    if (Math.abs(x) < 20 || Math.abs(z) < 20) continue;
                     let height = 20 + Math.abs(Math.sin(x * z) * 60);
                     let b = BABYLON.MeshBuilder.CreateBox("b", {width: 28, height: height, depth: 28}, scene);
-                    b.position.x = x;
-                    b.position.y = height / 2;
-                    b.position.z = z;
+                    b.position.x = x; b.position.y = height / 2; b.position.z = z;
                     b.material = buildingMat;
                 }
             }
 
-            // --- СПОРТНА КОЛА (NFS STYLE) ---
             const car = BABYLON.MeshBuilder.CreateBox("car", {width: 2.2, height: 0.9, depth: 4.6}, scene);
             car.position.y = 0.45;
             const carMat = new BABYLON.StandardMaterial("carMat", scene);
-            carMat.diffuseColor = new BABYLON.Color3(0.95, 0.1, 0.2); // Ярко червено
-            carMat.specularColor = new BABYLON.Color3(1, 1, 1);
+            carMat.diffuseColor = new BABYLON.Color3(0.95, 0.1, 0.2);
             car.material = carMat;
-
             camera.target = car;
 
-            // --- ФИЗИКА И УПРАВЛЕНИЕ (NFS ARCADE & DRIFT) ---
-            let speed = 0;
-            let maxSpeed = 1.2;
-            let reverseSpeed = 0.4;
-            let acceleration = 0.025;
-            let deceleration = 0.95;
-            let steering = 0;
-            let inputMap = {};
-
+            let speed = 0, steering = 0, inputMap = {};
             scene.actionManager = new BABYLON.ActionManager(scene);
-            scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyDownTrigger, (evt) => {
-                inputMap[evt.sourceEvent.key] = true;
-            }));
-            scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyUpTrigger, (evt) => {
-                inputMap[evt.sourceEvent.key] = false;
-            }));
+            scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyDownTrigger, (evt) => { inputMap[evt.sourceEvent.key] = true; }));
+            scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyUpTrigger, (evt) => { inputMap[evt.sourceEvent.key] = false; }));
 
-            // Тъч поддръжка за телефони (виртуални бутони или с плъзгане)
             window.addEventListener("pointerdown", (e) => {
-                if (e.clientX < window.innerWidth / 2) {
-                    inputMap["ArrowLeft"] = true; // Завиване наляво с докосване на лявата половина
-                } else {
-                    inputMap["ArrowRight"] = true; // Завиване надясно с дясната
-                }
-                inputMap["ArrowUp"] = true; // Газ при клик
+                if (e.clientX < window.innerWidth / 2) inputMap["ArrowLeft"] = true;
+                else inputMap["ArrowRight"] = true;
+                inputMap["ArrowUp"] = true;
             });
             window.addEventListener("pointerup", () => {
-                inputMap["ArrowLeft"] = false;
-                inputMap["ArrowRight"] = false;
-                inputMap["ArrowUp"] = false;
+                inputMap["ArrowLeft"] = inputMap["ArrowRight"] = inputMap["ArrowUp"] = false;
             });
 
             scene.registerBeforeRender(() => {
-                // Ускорение / Назад
-                if (inputMap["w"] || inputMap["W"] || inputMap["ArrowUp"]) {
-                    speed = Math.min(speed + acceleration, maxSpeed);
-                } else if (inputMap["s"] || inputMap["S"] || inputMap["ArrowDown"]) {
-                    speed = Math.max(speed - acceleration, -reverseSpeed);
-                } else {
-                    speed *= deceleration; // Естествено триене
-                }
+                if (inputMap["w"] || inputMap["W"] || inputMap["ArrowUp"]) speed = Math.min(speed + 0.025, 1.2);
+                else if (inputMap["s"] || inputMap["S"] || inputMap["ArrowDown"]) speed = Math.max(speed - 0.025, -0.4);
+                else speed *= 0.95;
 
-                // Завиване с аркаден дрифт ефект
-                let turnFactor = 0.04 * (speed / maxSpeed);
-                if (inputMap["a"] || inputMap["A"] || inputMap["ArrowLeft"]) {
-                    steering -= turnFactor;
-                } else if (inputMap["d"] || inputMap["D"] || inputMap["ArrowRight"]) {
-                    steering += turnFactor;
-                } else {
-                    steering *= 0.85; // Изправяне на волана
-                }
+                let turnFactor = 0.04 * (speed / 1.2);
+                if (inputMap["a"] || inputMap["A"] || inputMap["ArrowLeft"]) steering -= turnFactor;
+                else if (inputMap["d"] || inputMap["D"] || inputMap["ArrowRight"]) steering += turnFactor;
+                else steering *= 0.85;
 
                 car.rotation.y += steering;
-                car.moveWithCollisions(new BABYLON.Vector3(
-                    Math.sin(car.rotation.y) * speed,
-                    0,
-                    Math.cos(car.rotation.y) * speed
-                ));
-
-                // Динамично разтягане на камерата при висока скорост (NFS Effect)
+                car.moveWithCollisions(new BABYLON.Vector3(Math.sin(car.rotation.y) * speed, 0, Math.cos(car.rotation.y) * speed));
                 camera.radius = 14 + (Math.abs(speed) * 4);
-
-                // Актуализиране на километража на екрана
-                let displaySpeed = Math.floor(Math.abs(speed) * 160);
-                document.getElementById("speed").innerHTML = `${displaySpeed} <span class="unit">KM/H</span>`;
+                document.getElementById("speed").innerHTML = `${Math.floor(Math.abs(speed) * 160)} <span class="unit">KM/H</span>`;
             });
-
             return scene;
         };
-
         const scene = createScene();
-        engine.runRenderLoop(() => {
-            scene.render();
-        });
-
-        window.addEventListener("resize", () => {
-            engine.resize();
-        });
+        engine.runRenderLoop(() => { scene.render(); });
+        window.addEventListener("resize", () => { engine.resize(); });
     </script>
 </body>
 </html>
